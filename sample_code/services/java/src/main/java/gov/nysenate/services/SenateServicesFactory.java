@@ -1,4 +1,4 @@
-package gov.nysenate.services.main;
+package gov.nysenate.services;
 
 import gov.nysenate.services.rpc.SenateServicesXmlRpc;
 

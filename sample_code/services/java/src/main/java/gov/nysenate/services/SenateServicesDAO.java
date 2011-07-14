@@ -1,7 +1,9 @@
-package gov.nysenate.services.main;
+package gov.nysenate.services;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
 
@@ -78,31 +80,13 @@ public class SenateServicesDAO {
 		if(!as(String.class,committeeMap.get("type")).equals("committee"))
 			return null;
 		
-		String name = as(String.class, committeeMap.get("title"));
-		String shortName = unwrap(String.class, committeeMap.get("field_short_name"), "value");
+		String name = as(String.class, committeeMap.get("title")).trim();
+		String shortName = unwrap(String.class, committeeMap.get("field_short_name"), "value").trim();
 		String url = BASE_URL + as(String.class, committeeMap.get("path"));
 		
-		ArrayList<Member> members = new ArrayList<Member>();
+		ArrayList<Member> members = getMembers(as(Object[].class, committeeMap.get("field_multi_senator")));
 		
-		Object[] memberObjects = as(Object[].class, committeeMap.get("field_multi_senator"));
-		for(Object object:memberObjects) {
-			HashMap<String,Object> multiSenatorMap = as(HashMap.class, object);
-			
-			int memberNodeId = new Integer(as(String.class, multiSenatorMap.get("nid")));
-			
-			members.add(new Member(getSenator(memberNodeId)));
-		}
-		
-		ArrayList<Member> chairs = new ArrayList<Member>();
-		
-		Object[] chairObjects = as(Object[].class, committeeMap.get("field_chairs"));
-		for(Object object:chairObjects) {
-			HashMap<String,Object> chairMap = as(HashMap.class, object);
-			
-			int memberNodeId = new Integer(as(String.class, chairMap.get("nid")));
-			
-			chairs.add(new Member(getSenator(memberNodeId)));
-		}
+		ArrayList<Member> chairs = getMembers(as(Object[].class, committeeMap.get("field_chairs")));
 		
 		logger.info("Got node id: " + nodeId + " for committee " + name);
 		
@@ -110,6 +94,31 @@ public class SenateServicesDAO {
 		fillCache(nodeId, committee);
 		
 		return committee;
+	}
+	
+	private ArrayList<Member> getMembers(Object[] memberObjects) {
+		ArrayList<Member> members = new ArrayList<Member>();
+		
+		TreeSet<Member> set = new TreeSet<Member>(new Comparator<Member>() {
+			public int compare(Member one, Member two) {
+				return one.getShortName().compareTo(two.getShortName());
+			}
+		});
+		
+		for(Object object:memberObjects) {
+			@SuppressWarnings("unchecked")
+			HashMap<String,Object> chairMap = as(HashMap.class, object);
+			
+			int memberNodeId = new Integer(as(String.class, chairMap.get("nid")));
+			
+			members.add(new Member(getSenator(memberNodeId)));
+		}
+		
+		set.addAll(members);
+		members.clear();
+		members.addAll(set);
+		
+		return members;
 	}
 	
 	
@@ -149,10 +158,10 @@ public class SenateServicesDAO {
 		if(!as(String.class,senatorMap.get("type")).equals("senator"))
 			return null;
 		
-		String name = as(String.class, senatorMap.get("title"));
+		String name = as(String.class, senatorMap.get("title")).trim();
 				
-		String lastName = unwrap(String.class, senatorMap.get("field_last_name"), "value");
-		String shortName = unwrap(String.class, senatorMap.get("field_short_name"), "value");
+		String lastName = unwrap(String.class, senatorMap.get("field_last_name"), "value").trim();
+		String shortName = unwrap(String.class, senatorMap.get("field_short_name"), "value").trim();
 		
 		String email = unwrap(String.class, senatorMap.get("field_email"), "email");
 		String additionalContact = unwrap(String.class, senatorMap.get("field_extra_contact_information"), "value");
