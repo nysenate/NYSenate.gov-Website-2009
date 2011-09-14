@@ -1,0 +1,426 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Blocks
+ *
+ *  This module defines several custom blocks.
+ *
+ *  To add a new block, you'll need to do the following:
+ *    1) Add the block to the $deltas list in nys_blocks_block $op 'list',
+ *        keyed as $delta => $info_title.
+ *    2) Define when the block will appear, in nyss_blocks_display.
+ *    3) Create a theme file at themes/nyss_blocks.theme.block.[$delta].inc
+ *    4) Create two functions in that file: theme_nyss_blocks_view_subject_[$delta]
+ *        and theme_nyss_blocks_view_content_[$delta].
+ *    5) Rebuild your theme to catch the new functions.
+ */
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_blocks_menu() {
+  $items = array();
+  $items['admin/nyss/nyss/blocks_suppress'] = array(
+    'title' => 'Suppress all blocks',
+    'description' => 'Suppress display of all sidebar blocks on the specified pages.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_blocks_suppress'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Form builder. Configure settings for specifying which pages should suppress all blocks
+ * so that the full width of the web page is available for content.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function nyss_blocks_suppress() {
+  $description = t("Enter one page per line as Drupal paths for each page where you want to suppress all sidebar blocks so that the full width of the web page is available for content. The '*' character is a wildcard. Example paths are %path and %path-wildcard for every calendar page.", array('%path' => 'blog', '%path-wildcard' => 'calendar/*'));
+  $form['nyss_blocks_suppress'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Pages'),
+    '#default_value' => variable_get('nyss_blocks_suppress', ''),
+    '#description' => $description,
+  );
+  return system_settings_form($form);
+}
+
+/**
+ *  Implements hook_block().
+ */
+function nyss_blocks_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+     case 'list':
+      $deltas = array(
+        'happening_now' => t('Happening Now...'),
+        'senate_blogs' => t('Senate Blogs'),
+        'most_popular' => t('Most Popular'),
+        'front_carousel' => t('Front Carousel'),
+        'issues' => t('Issues'),
+        'ustream_video' => t('Live Stream'),
+        'search_blogs' => t('Search All Blogs'),
+        'committee_chair' => t('Committee Chair'),
+        'committee_members' => t('Committee Members'),
+        'committee_issues' => t('Committee Issues'),
+        'committees' => t('Committees'),
+        'about_senator_blog' => t('About this blog'),
+        'nyss_senator_search' => t('Senator Page Senator Search'),
+        'global_nyss_senator_search' => t('Global Senator Search'),
+        'nyss_signup' => t('Signup'),
+        'social_buttons' => t('Social buttons'),
+        'my_committees' => t('My Committees'),
+        'senator_carousel' => t('Senator\'s Carousel'),
+        'legislation_bookblock' => t('Legislation Bookblock'),
+        'legislation_navigator' => t('Legislation Navigator'),
+        'live_session' => t('Watch Live Session'),
+        'live_session_temp' => t('Watch Live Session temp'),
+        'sen_video' => t('Senate Video Services'),
+        'flickr_gallery' => t('Image Gallery'),
+        'group_links' => t('Group Links'),
+        'group_twitter' => t('Group Twitter Stream'),
+        'senator_promo_sidebar' => t('Senator Sidebar Promo'),
+        'senator_promo_bottom' => t('Senator Bottom Promo'),
+        'initiative_sidebar_html' => t('Custom Sidebar HTML for Initiatives'),
+      );
+      $blocks = array();
+      foreach ($deltas as $delta => $info) {
+        $blocks[$delta] = array(
+          'info' => $info,
+          'visibility' => 2,
+          'pages' => "<?php return nyss_blocks_display('$delta'); ?>",
+        );
+      }
+      return $blocks;
+    case 'configure':
+      if ($delta == 'social_buttons') {
+        require_once('themes/nyss_blocks.theme.block.social_buttons.inc');
+        return nyss_blocks_configure_form_social_buttons();
+      }
+      break;
+    case 'save':
+      if ($delta == 'social_buttons') {
+        require_once('themes/nyss_blocks.theme.block.social_buttons.inc');
+        nyss_blocks_configure_form_save_social_buttons($edit);
+      }
+      break;
+    case 'view':
+      return array(
+        'subject' => theme('nyss_blocks_view_subject_'. $delta),
+        'content' => theme('nyss_blocks_view_content_'. $delta),
+      );
+  }
+}
+
+/**
+ *  Determine whether to display a specific block on the page.
+ *
+ *  This function is called by the 'pages' section of each individual block.
+ *  This is defined in hook_block, and controlled by PHP visibility (2).
+ *
+ *  @param $delta
+ *    The block to display.
+ *  @return
+ *    TRUE or FALSE, depending on whether the block should be displayed on this page.
+ */
+function nyss_blocks_display($delta=NULL) {
+  // suppress all blocks on pages that match the list on the settings page
+  $path = drupal_get_path_alias($_GET['q']);
+  // Compare with the internal and path alias (if any).
+  $matches_block_suppress_list = drupal_match_path($path, variable_get('nyss_blocks_suppress', ''));
+  if ($path != $_GET['q']) {
+    $matches_block_suppress_list = $matches_block_suppress_list || drupal_match_path($_GET['q'], variable_get('nyss_blocks_suppress', ''));
+  }
+  if ($matches_block_suppress_list) return FALSE;
+  if ((arg(0) == 'video' || arg(0) == 'video_nothumbs') && $delta != 'sen_video') {
+    return FALSE;
+  }
+  // dsm($path);
+  
+  // Special handling to suppress most blocks on veterans' hall of fame pages
+  $initiative = context_get('nyss', 'initiative');
+  if ($initiative && $initiative->nid == 54956) { // node ID for the Veterans Initiative
+    if (!in_array($delta, array('veterans_initiative_stories', 'veterans_initiative_nominate', 'nyss_signup', 'global_nyss_senator_search', 'initiative_sidebar_html', 'user:1', 'devel:1', 'devel:2'))) {
+      return FALSE;
+    }
+  }
+  
+  switch ($delta) {
+    case 'user:1':
+    case 'devel:1':
+    case 'devel:2':
+    case 'nyss_signup':
+      $path = strtolower(nyss_blocks_get_path());
+      
+      if (in_array($path, array('department/student-programs', 'department/student-programs/undergraduate-program', 'webform/undergraduate-internship-application', 'report/graduate-program', 'webform/senate-fellowship-application'))) {
+        return FALSE;
+      }
+      if ((arg(0) == 'districts') && (arg(1) == 'map')) {
+        return FALSE;
+      }
+      if ($delta == 'nyss_signup' && arg(0) == 'nyss_signup') {
+        return FALSE;
+      }
+      if (in_array($path, array('opendata','global_report','calendar','nyss/user','search/advanced', 'census/district/maps'))) {
+        return FALSE;
+      }
+      if ($delta == 'nyss_signup') {
+        if (context_isset('nyss', 'senator')) {
+          $senator = context_get('nyss', 'senator');
+          return (!nyss_blocks_is_checked($senator->field_hide_updates_signup) && !($senator->field_status[0]['value']));
+        }
+      }
+      return TRUE;
+    // Show some blocks on senator's pages unless the senator has checked the "hide" option for that block
+    case 'my_committees':
+      if (!context_isset('nyss', 'senator')) return FALSE;
+      $senator = context_get('nyss', 'senator');
+      return $senator->nid == arg(1) && arg(2) != 'edit' && $senator->field_hide_committees[0]['value'] != 1;
+    case 'district_map':
+      if (!context_isset('nyss', 'senator')) return FALSE;
+      $senator = context_get('nyss', 'senator');
+      return !nyss_blocks_is_checked($senator->field_hide_district_map);
+
+    case 'senator_featured_video':
+      if (!context_isset('nyss', 'senator')) return FALSE;
+      $senator = context_get('nyss', 'senator');
+      return !nyss_blocks_is_checked($senator->field_hide_featured_video);
+    case 'upcoming_events_senate':
+      if (!context_isset('nyss', 'senator')) return FALSE;
+      $senator = context_get('nyss', 'senator');
+      return !nyss_blocks_is_checked($senator->field_hide_upcoming_events);
+    case 'tax_credit_calculator':
+      if (!context_isset('nyss', 'senator')) return FALSE;
+      $senator = context_get('nyss', 'senator');
+      return nyss_blocks_is_checked($senator->field_show_tax_credit_calculator);
+    case 'senator_cta_block':
+      if (!context_isset('nyss', 'senator')) return FALSE;
+      $senator = context_get('nyss', 'senator');
+      $flag_exclude_from_homepage = flag_get_flag('exclude_webform_from_sen_home') or die('no "exclude_webform_from_sen_home" flag defined');
+      if ($flag_exclude_from_homepage->is_flagged($senator->nid) && $senator->nid == arg(1)) return FALSE; // Let senators flag that they don't want webform on their home page.
+      $node = menu_get_object();
+      if ($node->type == 'webform') return FALSE; // Don't show webform block on webform pages. That would be redundant!
+      return TRUE;
+    case 'senator_front':
+    case 'senator_carousel':
+      if (!context_isset('nyss', 'senator')) return FALSE;
+      $senator = context_get('nyss', 'senator');
+      return $senator->nid == arg(1) && arg(2) != 'edit';
+    case 'nyss_senator_search':
+      return context_isset('nyss', 'senator');
+    case 'views_gallery_block_1':
+      return context_isset('nyss', 'senator') && arg(2) == 'gallery';
+
+    // senators' pages and also other contexts
+    case 'social_buttons':
+      if (arg(0) == 'node' && is_numeric(arg(1))) {
+        $node = node_load(arg(1));
+        if ($node->type == 'group') return TRUE;
+      }
+      else if (drupal_is_front_page()) return TRUE;
+      return context_isset('nyss', 'senator');
+    case 'about_senator_blog':
+      if (arg(0) == 'node' && ($nid = arg(1)) && is_numeric($nid)) {
+        $node = node_load($nid);
+        if($node->type == 'senator' && $node->field_hide_about[0]['value'] != 1) {
+          return TRUE;
+        }
+        else if ($node->type == 'group') {
+          return TRUE;
+        }
+      }
+      return (arg(0) == 'blog');
+    case 'senator_promo_sidebar':
+      $node = context_get('nyss', 'committee');
+      if (!$node) {
+
+      if (!context_isset('nyss', 'senator')) return FALSE;
+        $node = context_isset('nyss', 'senator') ? context_get('nyss', 'senator') : FALSE;
+      }
+      return($node && ($node->nid == arg(1) && ($node->type == 'senator' || $node->type == 'committee') && arg(2) != 'edit') && $node->field_promo_sidebar[0]['filepath']);
+    case 'senator_promo_bottom':
+      $node = context_get('nyss', 'committee');
+      if (!$node) {
+        $node = context_isset('nyss', 'senator') ? context_get('nyss', 'senator') : FALSE;
+      }
+      return($node && ($node->nid == arg(1) && ($node->type == 'senator' || $node->type == 'committee') && arg(2) != 'edit') && $node->field_promo_bottom[0]['filepath']);
+    case 'search_blogs':
+      $arg0 = arg(0);
+      $arg1 = arg(1);
+      $node = FALSE;
+      if ($arg0 == 'node' && ($nid = $arg1) && is_numeric($nid)) {
+        $node = node_load($nid);
+      }
+      return (($node && $node->type == 'blog') || ($arg0 == 'senator' && arg(2) == 'blog'));
+    case 'sen_video':
+      $arg0 = arg(0);
+      $arg1 = arg(1);
+      $node = FALSE;
+      if ($arg0 == 'node' && ($nid = $arg1) && is_numeric($nid)) {
+        $node = node_load($nid);
+      }
+      if (context_isset('nyss', 'senator') && (arg(2) == 'gallery' || arg(2) == 'video')) {
+        $senator = context_get('nyss', 'senator');
+        return ($senator->field_hide_senate_videos[0]['value'] != 1);
+      }
+      else {
+        return ((arg(0) == 'media' || arg(0) == 'video' || arg(0) == 'video_nothumbs' || arg(2) == 'gallery' || arg(2) == 'video' || ($node && $node->type == 'video')));
+      }
+
+    // Everywhere BUT senator's pages (and also not on some other pages)
+    case 'global_nyss_senator_search':
+      $path = strtolower(nyss_blocks_get_path());
+      
+      if (in_array($path, array('department/student-programs', 'department/student-programs/undergraduate-program', 'webform/undergraduate-internship-application', 'report/graduate-program', 'webform/senate-fellowship-application'))) {
+        return FALSE;
+      }
+      
+      if ((arg(0) == 'districts') && (arg(1) == 'map')) {
+        return FALSE;
+      }
+      if (in_array($path, array('opendata','global_report','calendar','nyss/user','search/advanced', 'census/district/maps'))) {
+        return FALSE;
+      }
+      return !context_isset('nyss', 'senator');
+
+    // other sections of the site besides senators
+    case 'front_carousel':
+    case 'happening_now':
+    case 'senate_blogs':
+      return drupal_is_front_page() && arg(0) == 'front';
+    case 'most_popular':
+      return drupal_is_front_page();
+    case 'issues':
+    case 'ustream_video':
+      $path = nyss_blocks_get_path();
+      return ($path == 'media_reports' && (arg(1) != 'search'));
+    case 'committee_updates':
+      return nyss_committee_home();
+    case 'committee_chair':
+      $committee = context_get('nyss', 'committee');
+      return ($committee != FALSE && $committee->field_chairs[0]['nid'] != '');
+    case 'committee_members':
+    case 'committee_issues':
+    case 'initiative_upcoming_events':
+      return ($initiative != FALSE && !nyss_blocks_is_checked($initiative->field_hide_upcoming_events));
+    case 'initiative_related_pages':
+      return ($initiative != FALSE);
+    case 'veterans_initiative_nominate':
+      return ($initiative && $initiative->nid == 54956);
+    case 'veterans_initiative_stories':
+      if (in_array($path, array('veterans-hall-of-fame'))) {
+        return FALSE;
+      }
+      return ($initiative && $initiative->nid == 54956);
+    case 'committee_related_pages':
+      $committee = context_get('nyss', 'committee');
+      return ($committee != FALSE);
+    case 'initiative_updates':
+      return nyss_initiative_home();
+
+    // The following 'views' blocks are not defined with this module,
+    // but for convenience are used to determine their display options.
+    case 'live_session':
+    case 'live_session_temp':
+      if (arg(0) == 'newshroom') {
+        return TRUE;
+      }
+      return (drupal_is_front_page());
+    case 'legislation_navigator':
+    case 'legislation_bookblock':
+      if (arg(0) == 'node' && ($nid = arg(1)) && is_numeric($nid)) {
+        $node = node_load($nid);
+        return ($node->type == 'outline');
+      }
+      return FALSE;
+    case 'flickr_gallery':
+      return (arg(0) == 'node' && (arg(1) == 15 || arg(1) == 21915));
+    case 'group_links':
+    case 'group_twitter':
+      if(arg(0) == 'node' && (is_numeric(arg(1)))) {
+        $node = node_load(arg(1));
+        return ($node->type == 'group' || $node->type == 'initiative' || (isset($node->field_initiative) && $node->field_initiative[0]['nid'] != '') || count($node->og_groups) > 0);
+      }
+      else {
+        return FALSE;
+      }
+    case 'initiative_sidebar_html':
+      $path = nyss_blocks_get_path();
+      if(arg(0) == 'node' && (is_numeric(arg(1)))) {
+        $node = node_load(arg(1));
+        return ( ($path != 'census/district/maps') && ($node->type == 'initiative' || (isset($node->field_initiative) && $node->field_initiative[0]['nid'] != '')));
+      }
+      else {
+        return FALSE;
+      }
+    case 'masquerade':
+      return TRUE;
+    case 'og_hidden_selective': // Don't show organic groups signup block until a user is supposed to see it
+      if (arg(0) == 'node' && is_numeric(arg(1))) {
+        $node = node_load(arg(1));
+        list($txt, $subscription) = og_subscriber_count_link($node);
+        if ($subscription == 'active' || $subscription == 'requested' || (isset($node->og_selective) && $node->og_selective == OG_OPEN) || user_access('administer nodes')) {
+          return TRUE;
+        }
+      }
+  }
+  return FALSE;
+}
+
+/**
+ * Tests whether a checkbox field is checked.
+ *
+ *  @param $field
+ *    The field.
+ * @return Boolean
+ */
+function nyss_blocks_is_checked($field) {
+	return ($field[0]['value']);
+}
+
+/**
+ * Gets current path alias.
+ *
+ * @return string
+ */
+function nyss_blocks_get_path() {
+  static $path;
+  if (empty($path)) {
+    $path = drupal_get_path_alias($_GET['q']);
+  }
+  return $path;
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_blocks_theme($existing, $type, $theme, $path) {
+  $items = array();
+  foreach (nyss_blocks_block('list') as $delta => $block) {
+    $items["nyss_blocks_view_subject_$delta"] = array(
+      'arguments' => array(),
+      'file' => "themes/nyss_blocks.theme.block.$delta.inc",
+    );
+    $items["nyss_blocks_view_content_$delta"] = array(
+      'arguments' => array(),
+      'file' => "themes/nyss_blocks.theme.block.$delta.inc",
+    );
+  }
+  return $items;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function nyss_blocks_form_alter(&$form, $form_state, $form_id) {
+  // Remove the block title setting for the social buttons block.
+  if ($form_id == 'block_admin_configure' && $form['module']['#value'] == 'nyss_blocks' && $form['delta']['#value'] == 'social_buttons') {
+    $form['block_settings']['title'] = '';
+    $form['block_settings']['title']['#type'] = 'hidden';
+  }
+}

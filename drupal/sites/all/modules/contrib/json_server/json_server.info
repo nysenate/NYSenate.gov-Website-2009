@@ -1,0 +1,12 @@
+; $Id: json_server.info,v 1.2.4.1 2010/02/12 19:51:46 stevemckenzie Exp $
+name = "JSON server"
+description = "Provides a Services API Server that returns JSON."
+package = "Services - servers"
+dependencies[] = services
+core = 6.x
+; Information added by drupal.org packaging script on 2010-05-10
+version = "6.x-2.0-alpha2"
+core = "6.x"
+project = "json_server"
+datestamp = "1273516808"
+

@@ -1,0 +1,1194 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Contact
+ *
+ *  Custom contact forms for site and senators.
+ *  Also includes a FOIL request form.
+ *  
+ */
+
+define('NYSS_CONTACT_FIRST_ITEM', -1);
+
+/**
+ *  Implements hook_menu().
+ */
+function nyss_contact_menu() {
+  $items = array();
+  $items['contact_form'] = array(
+    'title' => 'Contact the NY Senate',
+    'page callback' => 'nyss_contact_site_page',
+    'access arguments' => array('access site-wide contact form'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['foil_request'] = array(
+    'title' => 'Freedom of Information Law Request',
+    'page callback' => 'nyss_contact_foil_page',
+    'access arguments' => array('access site-wide contact form'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function nyss_contact_mail_senator(&$form_state, $recipient, $extra_info = '') {
+  global $user;
+  profile_load_profile($user);
+
+  if (!is_object($recipient)) { 
+    $recipient = nyss_senator();
+  }
+  
+  $form['#token'] = (isset($user->name) ? $user->name : '') . (isset($user->mail) ? $user->mail : '');
+  $form['recipient'] = array('#type' => 'value', '#value' => $recipient);
+  $form['to'] = array('#type' => 'item',
+    '#title' => t('To Senator'),
+    '#value' => l($recipient->title, 'node/'.$recipient->nid),
+  );
+  if ($user->uid) {
+    $form['from'] = array('#type' => 'item',
+      '#title' => t('From'),
+      '#value' => theme('username', $user) .' &lt;'. check_plain($user->mail) .'&gt;',
+    );
+    $form['first_name'] = array(
+      '#type' => 'hidden',
+      '#title' => t('Your First Name'),
+      '#default_value' => $user->profile_firstname,
+      '#size' => 33,
+      '#maxlength' => 50,
+      '#required' => TRUE,
+    );    
+    $form['last_name'] = array(
+      '#type' => 'hidden',
+      '#title' => t('Last Name'),
+      '#default_value' => $user->profile_lastfirst,
+      '#size' => 33,
+      '#maxlength' => 50,
+      '#required' => TRUE,
+    );    
+    $form['from_email'] = array(
+      '#type' => 'hidden',
+      '#title' => t('Email Address'),
+      '#default_value' => check_plain($user->mail),
+      '#size' => 33,
+      '#maxlength' => 50,
+      '#required' => TRUE,
+    );
+  }
+  else {
+    $form['first_name'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Your First Name'),
+      '#size' => 33,
+      '#maxlength' => 50,
+      '#required' => TRUE,
+    );
+    $form['last_name'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Last Name'),
+      '#size' => 33,
+      '#maxlength' => 50,
+      '#required' => TRUE,
+    );    
+    $form['from_email'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Email Address'),
+      '#size' => 33,
+      '#maxlength' => 50,
+      '#required' => TRUE,
+    );
+  }
+
+  if(isset($recipient->guest_address) && substr($recipient->guest_address, -5) == $extra_info) {
+    $recipient->guest_address = substr($recipient->guest_address, 0, -6);
+  } 
+  
+  $form['guest_address'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Street address'),
+    '#default_value' => t($recipient->guest_address),
+    '#size' => 25,
+    '#required' => TRUE,
+  );
+  $form['guest_address2'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Apartment #'),
+    '#size' => 5,
+    '#required' => FALSE,
+  );
+  $form['city'] = array(
+    '#type' => 'textfield',
+    '#title' => t('City'),
+    '#size' => 25,
+    '#required' => TRUE,
+  );
+  $form['state'] = array(
+    '#type' => 'textfield',
+    '#title' => t('State'),
+    '#size' => 16,
+    '#required' => TRUE,
+    '#default_value' => 'NY',
+  );
+  $form['zip'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Zip code'),
+    '#default_value' => t($extra_info),
+    '#size' => 10,
+    '#required' => TRUE,
+  );
+  $form['phone'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Phone number'),
+    '#size' => 10,
+    '#required' => TRUE,
+  );
+
+  $issues = array();
+  $vidtree = taxonomy_get_tree(1);
+  foreach($vidtree as $vid) {
+    $issues[$vid->name] = $vid->name;
+  }
+  natcasesort($issues);
+  if ($recipient) {
+    $senissues = explode(';',$recipient->field_bronto_issues[0]['value']);
+    for($i=0; $i < count($senissues); $i++) {
+      $senissues[$i] = trim($senissues[$i]);
+    }
+    $issues = array_merge($issues, $senissues);
+    natcasesort($issues);
+    $issues = array_flip($issues);
+    foreach ($issues as $key => &$issue) {
+      $issue = $key; 
+    }
+  }
+  $form['issue'] = array('#type' => 'select',
+    '#title' => t('Related Issues'),
+    '#required' => FALSE,
+    '#options' => $issues,
+    '#multiple' => TRUE,
+  );
+
+  $form['subject'] = array('#type' => 'textfield',
+    '#title' => t('Subject'),
+    '#size' => 33,
+    '#maxlength' => 50,
+    '#required' => TRUE,
+  );
+  $form['message'] = array('#type' => 'textarea',
+    '#title' => t('Message'),
+    '#rows' => 15,
+    '#required' => TRUE,
+  );
+  $form['voteregistered'] = array('#type' => 'radios',
+    '#title' => 'Registration',
+    '#options' => array('Registered at this Address' => t('I am registered to vote at this address'), 'Not Registered at this Address' => t('I am not registered to vote at this address')), 
+    '#required' => TRUE,
+  );
+  // We do not allow anonymous users to send themselves a copy
+  // because it can be abused to spam people.
+  if ($user->uid) {
+    $form['copy'] = array('#type' => 'checkbox',
+      '#title' => t('Send yourself a copy.'),
+    );
+  }
+  $form['submit'] = array('#type' => 'submit',
+    '#value' => t('Send e-mail'),
+  );
+  
+  return $form;
+}
+/**
+ * Validate the senator contact page form submission.
+ */
+function nyss_contact_mail_senator_validate($form, &$form_state) {
+  if ($form_state['values']['from_email'] != '') {
+    if (!valid_email_address($form_state['values']['from_email'])) {
+      form_set_error('mail', t('You must enter a valid e-mail address.'));
+    }
+  }
+}
+/**
+ * Process the senator contact page form submission.
+ */
+function nyss_contact_mail_senator_submit($form, &$form_state) {
+  global $user, $language;
+  profile_load_profile($user);
+
+  $recipient = $form_state['values']['recipient'];
+  $values = $form_state['values'];
+  $values['user'] = $user;
+  
+  // Send from the current user to the requested user.
+  $to = $recipient->field_email[0]['email'];
+  $from = $values['from_email'];
+
+  // Save both users and all form values for email composition.
+  $values['autoresponse'] = $recipient->field_email_autoresponse[0]['value'];
+
+  // Send the e-mail in the requested user language.
+  drupal_mail('nyss_contact', 'senator_mail', $to, user_preferred_language($recipient), $values, $from);
+  nyss_contact_archive_message('senator_mail', $to, $values, $from);
+  // Send a copy to the main senate email address to log it
+  // Send a copy if requested, using current page language.
+  if ($values['copy']) {
+    drupal_mail('nyss_contact', 'senator_copy', $from, $language, $values, $from);
+  }
+  drupal_mail('nyss_contact', 'senator_mail_log', 'ciodesk@senate.state.ny.us', user_preferred_language($recipient), $values, $from);
+  
+  // Send an auto-reply from the Senator if necessary using the current language.
+  if (!($recipient->field_autoresponse[0]['value'])) {
+    drupal_mail('nyss_contact', 'senator_autoreply', $from, user_preferred_language($values['recipient']), $values, '"'.mime_header_encode($recipient->title).'" <'.$to.'>');
+  }
+  flood_register_event('contact');
+  
+  watchdog('mail', '%name-from (%email-from) sent %name-to an e-mail.', array('%name-from' => $values['first_name'] . ' ' . $values['last_name'], '%email-from' => $values['from_email'], '%name-to' => $recipient->title));
+  drupal_set_message(t('The message has been sent.'));
+
+  // Back to the requested users profile page.
+  $form_state['redirect'] = "node/$recipient->nid";
+}
+
+
+
+/**
+ * Site-wide contact page.
+ */
+function nyss_contact_site_page() {
+  global $user;
+  profile_load_profile($user);
+  if (!flood_is_allowed('contact', variable_get('contact_hourly_threshold', 3))) {
+    $output = t("You cannot send more than %number messages per hour. Please try again later.", array('%number' => variable_get('contact_hourly_threshold', 3)));
+  }
+  else {
+    $output = drupal_get_form('nyss_contact_mail_page');
+  }
+  return $output;
+}
+
+function nyss_contact_mail_page() {
+  global $user;
+  profile_load_profile($user);
+  $form = $categories = array();
+
+  $result = db_query('SELECT cid, category, selected FROM {contact} ORDER BY weight, category');
+  while ($category = db_fetch_object($result)) {
+    $categories[$category->cid] = $category->category;
+    if ($category->selected) {
+      $default_category = $category->cid;
+    }
+  }
+
+  if (count($categories) > 0) {
+    $form['#token'] = $user->uid ? $user->name . $user->mail : '';
+    //$form['contact_information'] = array('#value' => filter_xss_admin(variable_get('contact_form_information', t('You can leave a message using the contact form below.'))));
+
+    if ($user->uid) {
+      $form['from'] = array('#type' => 'item',
+        '#title' => t('From'),
+        '#value' => $user->profile_firstname . ' ' . $user->profile_lastfirst .' &lt;'. check_plain($user->mail) .'&gt;',
+      );
+      $form['first_name'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Your First Name'),
+        '#default_value' => $user->profile_firstname,
+        '#size' => 33,
+        '#maxlength' => 50,
+        '#required' => TRUE,
+      );    
+      $form['last_name'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Last Name'),
+        '#default_value' => $user->profile_lastfirst,
+        '#size' => 33,
+        '#maxlength' => 50,
+        '#required' => TRUE,
+      );    
+      $form['from_email'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Email Address'),
+        '#default_value' => check_plain($user->mail),
+        '#size' => 33,
+        '#maxlength' => 50,
+        '#required' => TRUE,
+      );
+    }
+    else {
+      $form['first_name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Your First Name'),
+        '#size' => 33,
+        '#maxlength' => 50,
+        '#required' => TRUE,
+      );
+      $form['last_name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Last Name'),
+        '#size' => 33,
+        '#maxlength' => 50,
+        '#required' => TRUE,
+      );    
+      $form['from_email'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Email Address'),
+        '#size' => 33,
+        '#maxlength' => 50,
+        '#required' => TRUE,
+      );
+    }
+    $form['guest_address'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Street Address'),
+      '#size' => 25,
+      '#required' => TRUE,
+    );
+    $form['guest_address2'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Apartment #'),
+      '#size' => 5,
+      '#required' => FALSE,
+    );
+    $form['city'] = array(
+      '#type' => 'textfield',
+      '#title' => t('City'),
+      '#size' => 25,
+      '#required' => TRUE,
+    );
+    $form['state'] = array(
+      '#type' => 'textfield',
+      '#title' => t('State'),
+      '#size' => 16,
+      '#required' => TRUE,
+      '#default_value' => 'NY',
+    );
+    $form['zip'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Zip Code'),
+      '#size' => 10,
+      '#required' => TRUE,
+    );
+    $form['phone'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Phone Number'),
+      '#size' => 10,
+      '#required' => TRUE,
+    );
+    if (count($categories) > 1) {
+      $sen_cat = t('Contact my Senator');
+      $categories = array($sen_cat) + $categories;
+      
+      $form['cid'] = array('#type' => 'radios',
+        '#title' => t('Describe the nature of your message'),
+        '#default_value' => $default_category,
+        '#options' => $categories,
+        '#required' => TRUE,
+        '#prefix' => '<div style="clear: both;"></div>',
+      );
+    }
+    else {
+      // If there is only one category, store its cid.
+      $category_keys = array_keys($categories);
+      $form['cid'] = array('#type' => 'value',
+        '#value' => array_shift($category_keys),
+      );
+    }
+    
+    $issues = array();
+    $vidtree = taxonomy_get_tree(1);
+    foreach($vidtree as $vid) {
+      $issues[$vid->name] = $vid->name;
+    }
+    natcasesort($issues);
+    if ($recipient) {
+      $senissues = explode(';',$recipient->field_bronto_issues[0]['value']);
+      for($i=0; $i < count($senissues); $i++) {
+        $senissues[$i] = trim($senissues[$i]);
+      }
+      $issues = array_merge($issues, $senissues);
+      natcasesort($issues);
+      $issues = array_flip($issues);
+      foreach ($issues as $key => &$issue) {
+        $issue = $key; 
+      }
+    }
+    $form['issue'] = array('#type' => 'select',
+      '#title' => t('Related Issues'),
+      '#required' => FALSE,
+      '#options' => $issues,
+      '#multiple' => TRUE,
+    );
+    
+    $form['subject'] = array('#type' => 'textfield',
+      '#title' => t('Subject'),
+      '#maxlength' => 255,
+      '#required' => TRUE,
+    );
+    $form['message'] = array('#type' => 'textarea',
+      '#title' => t('Message'),
+      '#required' => TRUE,
+    );
+    $form['voteregistered'] = array('#type' => 'radios',
+      '#title' => t('Registration'),
+      '#options' => array(t('I am registered to vote at this address'), t('I am not registered to vote at this address')), 
+      '#required' => TRUE,
+    );
+    // We do not allow anonymous users to send themselves a copy
+    // because it can be abused to spam people.
+    if ($user->uid) {
+      $form['copy'] = array('#type' => 'checkbox',
+        '#title' => t('Send yourself a copy.'),
+      );
+    }
+    else {
+      $form['copy'] = array('#type' => 'value', '#value' => FALSE);
+    }
+    $form['submit'] = array('#type' => 'submit',
+      '#value' => t('Contact the Senate'),
+    );
+  }
+  else {
+    drupal_set_message(t('The contact form has not been configured. <a href="@add">Add one or more categories</a> to the form.', array('@add' => url('admin/build/contact/add'))), 'error');
+  }
+  return $form;
+}
+
+/**
+ * Validate the site-wide contact page form submission.
+ */
+function nyss_contact_mail_page_validate($form, &$form_state) {
+  if (!valid_email_address($form_state['values']['from_email'])) {
+    form_set_error('mail', t('You must enter a valid e-mail address.'));
+  }
+  if ($form_state['values']['cid'] == 0) {
+    $xml = nyss_senator_search_cd_lookup($form_state['values']['guest_address'].', '.$form_state['values']['zip']); //lookup happening
+    if ($xml) {
+      $cd_arr = explode(" ", $xml->congressional->district);
+      $cd = $cd_arr[count($cd_arr) - 1];
+      $cd_upper_arr = explode(" ",$xml->senate->district);
+      $cd_upper = $cd_upper_arr[count($cd_upper_arr) - 1];
+      $cd_lower_arr = explode(" ",$xml->assembly->district);
+      $cd_lower = $cd_lower_arr[count($cd_lower_arr) - 1];
+      if ($cd) {
+        $sql = "SELECT s.nid FROM {content_type_senator} s
+        LEFT JOIN {node} n ON s.vid = n.vid
+        LEFT JOIN {content_type_senator} node_data_field_status ON n.vid = node_data_field_status.vid    
+        LEFT JOIN {content_type_district} d ON s.field_senators_district_nid = d.nid
+        WHERE n.status = 1 AND (n.type in ('senator')) AND (node_data_field_status.field_status_value IS NULL) AND d.field_district_number_value = %d";
+        $senator_nid = db_result(db_query(db_rewrite_sql($sql), $cd_upper));
+        $senator = node_load($senator_nid);
+        $form_state['values']['recipient'] = node_load($senator_nid);
+      }
+    }
+  }
+}
+
+/**
+ * Process the site-wide contact page form submission.
+ */
+function nyss_contact_mail_page_submit($form, &$form_state) {
+  global $user;
+  profile_load_profile($user);
+  $values = $form_state['values'];
+  $values['user'] = $user;
+  
+  // E-mail address of the sender: as the form field is a text field,
+  // all instances of \r and \n have been automatically stripped from it.
+  $from = $values['from_email'];
+  // If a Senator has been affiliated and the user wants to contact their senator
+  if ($values['cid'] == 0 && $values['recipient']) {
+    // Send from the current user to the requested senator.
+    $to = $values['recipient']->field_email[0]['email'];
+    $values['autoresponse'] = $values['recipient']->field_email_autoresponse[0]['value'];
+
+    // Send the e-mail in the requested user language.
+    drupal_mail('nyss_contact', 'senator_mail', $to, user_preferred_language($values['recipient']), $values, $from);
+    nyss_contact_archive_message('senator_mail', $to, $values, $from);
+
+    // Send a copy if requested, using current page language.
+    if ($values['copy']) {
+      drupal_mail('nyss_contact', 'senator_copy', $from, user_preferred_language($values['recipient']), $values, $from);
+    }
+    
+    // Send an auto-reply from the Senator if necessary using the current language.
+    if (!($recipient->field_autoresponse[0]['value'])) {
+      drupal_mail('nyss_contact', 'senator_autoreply', $from, user_preferred_language($values['recipient']), $values, '"'.$values['recipient']->title.'" <'.$to.'>');
+    }
+    flood_register_event('contact');
+    watchdog('mail', '%name-from (%email-from) sent %name-to an e-mail.', array('%name-from' => $values['first_name'] . ' ' . $values['last_name'], '%email-from' => $values['from_email'], '%name-to' => $recipient->title));
+    drupal_set_message(t('You have successfully sent a message to Senator @name-to.', array('@name-to' => $values['recipient']->title)));
+  }
+  else {
+    // Load category properties and save form values for email composition.
+    $contact = contact_load($values['cid'] ? $values['cid'] : 1); // If $values['cid'] is 0, load contact for cid 1 anyway.
+    $values['contact'] = $contact;
+
+    // Send the e-mail to the recipients using the site default language.
+    drupal_mail('nyss_contact', 'page_mail', $contact['recipients'], language_default(), $values, $from);
+    nyss_contact_archive_message('page_mail', $contact['recipients'], $values, $from);
+
+    // If the user requests it, send a copy using the current language.
+    if ($values['copy']) {
+      drupal_mail('nyss_contact', 'page_copy', $from, $language, $values, $from);
+    }
+
+    // Send an auto-reply from the site if necessary using the current language.
+    if ($contact['reply']) {
+      drupal_mail('nyss_contact', 'page_autoreply', $from, $language, $values, $contact['recipients']);
+    }
+    
+    flood_register_event('contact');
+    watchdog('mail', '%name-from sent an e-mail regarding %category.', array('%name-from' => $values['first_name'] . ' ' . $values['last_name'] ." [$from]", '%category' => $contact['category']));
+    drupal_set_message(t('Your message has been sent.'));
+  }
+
+  // Jump to home page rather than back to contact page to avoid
+  // contradictory messages if flood control has been activated.
+  $form_state['redirect'] = '';
+}
+
+
+/**
+ * FOIL Request page.
+ */
+function nyss_contact_foil_page() {
+  $output  = '<p>'. t('Thank you for your interest in the New York State Senate\'s work. Please fill out the following form to complete your request for information.');
+  $output .= ' ' . l(t('You can find a list of all records covered by FOIL here.'), 'report/foil-rules-and-regulations' ) . '</p>';
+  $output .= '<p>' . t('The New York State Senate proactively publishes much of the Chamber\'s legislative records on !openleg and !opendata. For Committee documents, you may also contact the !chair.',
+    array(
+      '!chair' => l(t('Committee chair'), 'committees'),
+      '!openleg' => l(t('Open Legislation'), 'legislation'),
+      '!opendata' => l(t('Open Data'), 'opendata'),
+    )
+  ) . '</p>';
+  $output .= '<p><em>'. t('Please note that any request for documents that do not exist in electronic format must be answered with hard copies which have a $0.25 per page fee.') .'</em></p>';
+  $output .= drupal_get_form('nyss_contact_foil_form');
+  return $output;
+}
+
+function nyss_contact_foil_form(&$form_state) {
+  global $user;
+  profile_load_profile($user);
+  
+  $form['#token'] = $user->name . $user->mail;
+  
+  $form['general'] = array(
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+    '#title' => t('General'),
+  );
+  $form['general']['first_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('First Name'),
+    '#size' => 33,
+    '#maxlength' => 50,
+    '#required' => FALSE,
+  );
+  $form['general']['last_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last Name'),
+    '#size' => 33,
+    '#maxlength' => 50,
+    '#required' => FALSE,
+  );
+  $form['general']['phone'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Phone Number'),
+    '#size' => 33,
+    '#maxlength' => 50,
+    '#required' => TRUE,
+  );
+  $form['general']['from_email'] = array('#type' => 'textfield',
+    '#title' => t('Email Address'),
+    '#size' => 33,
+    '#maxlength' => 50,
+    '#required' => TRUE,
+  );
+  $form['general']['mailing_address'] = array(
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+    '#attributes' => array('style' => 'border: 0; padding: 0 20px 0 0; '),
+  );
+  $form['general']['mailing_address']['part1'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Mailing Address'),
+    '#size' => 33,
+    '#required' => TRUE,
+  );
+  $form['general']['mailing_address']['part2'] = array(
+    '#type' => 'textfield',
+    '#size' => 33,
+    '#required' => FALSE,
+  );
+  $form['general']['city'] = array(
+    '#type' => 'textfield',
+    '#title' => t('City'),
+    '#size' => 33,
+    '#required' => TRUE,
+  );
+  $form['general']['state'] = array(
+    '#type' => 'textfield',
+    '#title' => t('State'),
+    '#size' => 33,
+    '#required' => TRUE,
+    '#default_value' => 'New York',
+  );
+  $form['general']['zip'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Zip Code'),
+    '#size' => 10,
+    '#required' => TRUE,
+  );
+
+  $form['business'] = array(
+    '#tree' => TRUE,
+    '#type' => 'fieldset',
+    '#title' => t('Business (Optional)'),
+  );
+  $form['business']['businessname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Business/Organization'),
+    '#size' => 33,
+  );
+  $form['business']['phone'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Phone Number'),
+    '#size' => 33,
+    '#maxlength' => 50,
+  );
+  $form['business']['mailing_address'] = array(
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+    '#attributes' => array('style' => 'border: 0; padding: 0 20px 0 0; '),
+  );
+  $form['business']['mailing_address']['part1'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Mailing Address'),
+    '#size' => 33,
+  );
+  $form['business']['mailing_address']['part2'] = array(
+    '#type' => 'textfield',
+    '#size' => 33,
+  );
+  $form['business']['city'] = array(
+    '#type' => 'textfield',
+    '#title' => t('City'),
+    '#size' => 33,
+  );
+  $form['business']['state'] = array(
+    '#type' => 'textfield',
+    '#title' => t('State'),
+    '#size' => 33,
+    '#default_value' => 'New York',
+  );  
+  $form['business']['zip'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Zip Code'),
+    '#size' => 10,
+  );
+
+  $doc_list_text .= ' ' . l(t('You can find a list of all records covered by FOIL here.'), 'report/foil-rules-and-regulations' );
+  $form['documents'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Please identify the documents you would like to the best of your ability using record name, content, committee, date, etc.'), // . $doc_list_text,
+    '#rows' => 5,
+    '#required' => TRUE,
+    '#description' => $doc_list_text,
+  );
+  
+  $form['deliver'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Please let us know how you would like your data'),
+    '#options' => array(
+      'emailed' => t('Emailed to the address above as electronic files, if available in such form'),
+      'cd' => t('Put on CD as electronic files, if available in such form'),
+      'hard' => t('Hard copies sent to the mailing address above'),
+      'person' => t('In person at the Journal Clerk\'s Offices in the Capital'),
+      ),
+    '#suffix' => '<div style="font-style: italic;">'.t('We are currently in the process of digitizing our files. If electronic files are available they will be sent to you via email. Unavailable files will be hard copied and mailed at the $0.25 per page rate.') . '</div>',
+  );
+  
+  $form['denied'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Contact me in writing if my request is denied for any reason with the legal basis for denial and with information on how to appeal.'),
+  );
+  
+  $form['submit'] = array('#type' => 'submit',
+    '#value' => t('Submit Request'),
+  );
+  return $form;
+}
+
+
+function nyss_contact_foil_form_validate($form, &$form_state) {
+  $biz = $form_state['values']['business'];
+  if ($biz['businessname'] != '' || $biz['phone'] != '' || $biz['mailing_address']['part1'] != '') {
+    if ($biz['businessname'] == '' || $biz['phone'] == '' || $biz['mailing_address']['part1'] == '' || $biz['city'] == '' || $biz['state'] == '' || $biz['zip'] == '') {
+      form_set_error('business', t('You must fill out all business fields.'));
+    }
+    $form_state['biz'] = TRUE;
+  }
+}
+
+function nyss_contact_foil_form_submit($form, &$form_state) {
+  global $user;
+  profile_load_profile($user);
+
+  $values = $form_state['values'];
+  
+  $values['deliverytype'] = '';
+  if ($values['deliver']['emailed']) {
+    $values['deliverytype'] .= "Please email\n";
+  }
+  if ($values['deliver']['cd']) {
+    $values['deliverytype'] .= "Please send CD\n";
+  }
+  if ($values['deliver']['hard']) {
+    $values['deliverytype'] .= "Please send hard copies\n";
+  }
+  if ($values['deliver']['person']) {
+    $values['deliverytype'] .= "Will pick up in person\n";
+  }
+  
+  drupal_mail('nyss_contact', 'foil_request', 'foil@senate.state.ny.us, nysenatecioteam@gmail.com', user_preferred_language($user), $values, $values['general']['from_email']);
+  watchdog('nyss', '%name-from made a FOIL request.', array('%name-from' => $values['general']['first_name'] . ' '. $values['general']['last_name']));
+  drupal_set_message(t('You have successfully submitted your FOIL request.'));
+
+}
+
+/**
+ * Implementation of hook_mail().
+ */
+function nyss_contact_mail($key, &$message, $params) {
+  $language = $message['language'];
+  switch ($key) {
+    case 'page_mail':
+    case 'page_copy':
+      $contact = $params['contact'];
+      $message['subject'] .= t('[!category] !subject', array('!category' => $contact['category'], '!subject' => $params['subject']), $language->language);
+      $message['body'][] = t("!name sent a message using the contact form at !form.", array('!name' => $params['first_name'] . ' ' . $params['last_name'], '!form' => url($_GET['q'], array('absolute' => TRUE, 'language' => $language))), $language->language);
+      $message['body'][] = t('Address:', NULL, $language->language) ."\n". implode(' ', array($params['guest_address'], $params['guest_address2'])) . ', '. $params['zip'] ."\n". $params['city'];
+      $message['body'][] = t('Phone:', NULL, $language->language) ."\n". $params['phone'];
+      $message['body'][] = t('Related Issues:', NULL, $language->language) ."\n". implode('; ', $params['issue']);
+      $message['body'][] = t('Voting:', NULL, $language->language) ."\n". $params['voteregistered'];
+      $message['body'][] = t('Message:', NULL, $language->language) ."\n". $params['message'];
+      break;
+    case 'page_autoreply':
+      $contact = $params['contact'];
+      $message['subject'] .= t('[!category] !subject', array('!category' => $contact['category'], '!subject' => $params['subject']), $language->language);
+      $message['body'][] = $contact['reply'];
+      break;
+    case 'senator_mail':
+    case 'senator_copy':
+    case 'senator_mail_log':
+      $user = $params['user'];
+      $recipient = $params['recipient'];
+      $message['subject'] .= '[NYsenate.gov Contact] '. $params['subject'];
+      $message['body'][] = "$recipient->title,";
+      if (!$user->uid) {
+        $message['body'][] = t("Anonymous user \"!name\" has sent you a message via your contact form (!form-url) at !site.", array('!name' => $params['first_name'] . ' ' . $params['last_name'], '!form-url' => url($_GET['q'], array('absolute' => TRUE, 'language' => $language)), '!site' => variable_get('site_name', 'Drupal')), $language->language);
+      }
+      else {
+        $message['body'][] = t("!name (!name-url) has sent you a message via your contact form (!form-url) at !site.", array('!name' => $params['first_name'] . ' ' . $params['last_name'], '!name-url' => url("user/$user->uid", array('absolute' => TRUE, 'language' => $language)), '!form-url' => url($_GET['q'], array('absolute' => TRUE, 'language' => $language)), '!site' => variable_get('site_name', 'Drupal')), $language->language);
+      }
+      $message['body'][] = t('Address:', NULL, $language->language) ."\n". implode(' ', array($params['guest_address'], $params['guest_address2'])) . ', '. $params['zip'] ."\n". $params['city'];
+      $message['body'][] = t('Phone:', NULL, $language->language) ."\n". $params['phone'];
+      $message['body'][] = t('Email:', NULL, $language->language) . "\n" . $params['from_email'];
+      $message['body'][] = t('Related Issues:', NULL, $language->language) ."\n". implode('; ', $params['issue']);
+      $message['body'][] = t('Voting:', NULL, $language->language) ."\n". $params['voteregistered'];
+      $message['body'][] = t('Message:', NULL, $language->language) ."\n". $params['message'];
+      break;
+    case 'senator_autoreply':
+      $contact = $params['contact'];
+      $autoresponse = $params['autoresponse'] ? $params['autoresponse'] : t('Thank you for contacting your senator. Your email has been received and will be processed shortly.');
+      $message['subject'] .= t('[NYS Senator Autoreply] !subject', array('!category' => $contact['category'], '!subject' => $params['subject']), $language->language);
+      $message['body'][] = $autoresponse;
+      break;
+    case 'foil_request':
+      $message['subject'] .= '[FOIL REQUEST] '. ' '. $params['general']['first_name'].' '.$params['general']['last_name'];
+      $message['body'][] = t("!name has submitted a FOIL request.", array('!name' => $params['general']['first_name'].' '.$params['general']['last_name']));
+      $message['body'][] = t('Home Address:') ."\n". $params['general']['mailing_address']['part1']."\n".$params['general']['mailing_address']['part2'] ."\n".$params['general']['city'].', '.$params['general']['state'].', '. $params['general']['zip'] ."\n".$params['general']['from_email']."\n".$params['general']['phone'];
+      if($params['biz'] == TRUE) {
+        $message['body'][] = t('Business Address:') ."\n". $param['business']['businessname'] ."\n". $params['business']['mailing_address']['part1']."\n".$params['business']['mailing_address']['part2'] ."\n".$params['business']['city'].', '.$params['business']['state'].', '. $params['business']['zip'] ."\n".$params['business']['from_email']."\n".$params['business']['phone'];
+      }
+      $message['body'][] = t('Documents requested:') ."\n". $params['documents'];
+      $message['body'][] = t('Delivery type:') ."\n". $params['deliverytype'];
+      if($params['denied'] == 1) {
+        $message['body'][] = t('Please contact in writing if request denied.');
+      }
+      break;
+  }
+}
+
+/**
+ *  Archive an email message sent to the senate.
+ *
+ *  @param $key
+ *    The key used to route the message from drupal_mail through nyss_contact_mail()
+ *  @param $to
+ *    The recipient's email address.
+ *  @param $values
+ *    The values from which the message is constructed: an array with the following structure:
+ *        Array(
+ *           'user' => the user object for the message sender
+ *           'voteregistered' => is the sender a registered voter?
+ *           'first_name' => the first name of the message sender
+ *           'last_name' => the last name of the message sender
+ *           'from_email' => email address of the message sender
+ *           'guest_address' => the sender's street address
+ *           'guest_address2' => the sender's apartment number
+ *           'city' => sender's city
+ *           'state' => sender's state
+ *           'zip' => sender's zip code
+ *           'phone' => sender's phone number
+ *           'recipient' => the senator node object for the message recipient
+ *           'subject' => the message subject line
+ *           'message' => the text of the message
+ *           'issues' => an array of the issues which the sender has indicated pertain to the message
+ *        )
+ *  @param $from
+ *    The sender's email address.
+ *  @return
+ *    The page output.
+ */
+function nyss_contact_archive_message($source_form = 'senator_mail', $to, $values, $from) {
+//  drupal_set_message('<pre>' . print_r($values['recipient'], TRUE) . '</pre>');
+/*
+    drupal_set_message('<pre>' . print_r(array(
+        'cid' => NULL,
+        'source_form' => $source_form,
+        'uid' => $values['user']->uid,
+        'voter_registered' => !$values['voteregistered'], // negate this so 1 = registered, 0 = not registered
+        'first_name' => $values['first_name'] ? $values['first_name'] : $values['user']->name,
+        'last_name' => $values['last_name'] ? $values['last_name'] : $values['user']->name,
+        'from_url' => $values['user']->uid ? "http://www.nysenate.gov/user/".$values['user']->uid : '',
+        'from_email' => $values['from_email'] ? $values['from_email'] : $values['user']->mail,
+        'address' => $values['guest_address'],
+        'apartment' => $values['guest_address2'],
+        'city' => $values['city'],
+        'state' => $values['state'],
+        'zip' => $values['zip'],
+        'phone' => $values['phone'],
+        'to_name' => $values['recipient']->title,
+        'to_nid' => $values['recipient']->nid,
+        'to_district_number' => node_load($values['recipient']->field_senators_district[0]['nid'])->field_district_number[0]['value'],
+        'to_short_name' => $values['recipient']->field_short_name[0]['value'],
+        'subject' => $values['subject'],
+        'message' => $values['message'],
+        'issues' => array_values($values['issue']),
+        'to_email' => $to,
+        'submitted' => time(),
+  ), TRUE) . '</pre>');
+*/
+
+  $fields = array(
+    'source_form' => $source_form,
+    'uid' => $values['user']->uid,
+    'voter_registered' => !$values['voteregistered'], // negate this so 1 = registered, 0 = not registered
+    'first_name' => $values['first_name'] ? $values['first_name'] : $values['user']->name,
+    'last_name' => $values['last_name'] ? $values['last_name'] : $values['user']->name,
+    'from_url' => $values['user']->uid ? "http://www.nysenate.gov/user/".$values['user']->uid : '',
+    'from_email' => $values['from_email'] ? $values['from_email'] : $values['user']->uid,
+    'address' => $values['guest_address'],
+    'apartment' => $values['guest_address2'],
+    'city' => $values['city'],
+    'state' => $values['state'],
+    'zip' => $values['zip'],
+    'phone' => $values['phone'],
+    'to_name' => $values['recipient']->title,
+    'to_nid' => $values['recipient']->nid,
+    'to_district_number' => node_load($values['recipient']->field_senators_district[0]['nid'])->field_district_number[0]['value'],
+    'to_short_name' => $values['recipient']->field_short_name[0]['value'],
+    'subject' => $values['subject'],
+    'message' => $values['message'],
+    'issues' => serialize(array_values($values['issue'])),
+    'to_email' => $to,
+    'submitted' => time(),
+  );
+  drupal_write_record('nyss_contact', $fields);
+}
+
+/*
+* Implementation of hook_service()
+* Required by all server modules
+* Returns array defining all the methods available in the service
+*/
+function nyss_contact_service() {
+  return array(
+   
+    /**
+     * nyss_contact.get
+     * We define methods in hashed arrays
+     */
+    array(
+     
+      /**
+       * #method - defines the namespace and method name
+       * the namespace is everything before the last period, so you can do
+       * methods like 'nyss_contact.lunch.all' where 'nyss_contact.lunch' is the namespace,
+       * or service, and 'all' is the method
+       */
+      '#method' => 'nyss_contact.messages',
+     
+      // #callback - the php function to map the method call to
+      '#callback' => 'nyss_contact_messages',
+     
+      '#access callback'  => 'nyss_contact_messages_access',
+      /**
+       * #args - a list of method arguments
+       * These may be in lazy form - array('string','array') with only an array
+       * of datatypes.
+       * Or, they may be in in the form of an array of hashed arrays like shown
+       * below:
+       */
+      '#args' => array(
+        array(
+          '#name'         => 'start_date',
+          '#type'         => 'int',
+          '#optional'       => TRUE,
+          '#description'  => t('An optional start date in timestamp format indicating the earliest date from which messages are requested.')),
+        array(
+          '#name'         => 'end_date',
+          '#type'         => 'int',
+          '#optional'       => TRUE,
+          '#description'  => t('An optional end date in timestamp format indicating the latest date for which messages are requested.')),
+          array(
+            '#name'         => 'start_mid',
+            '#type'         => 'int',
+            '#optional'       => TRUE,
+            '#description'  => t('An optional start message ID number for the range from which results are desired.')),
+          array(
+            '#name'         => 'end_mid',
+            '#type'         => 'int',
+            '#optional'       => TRUE,
+            '#description'  => t('An optional last message ID number for the range from which results are desired.')),
+          array(
+            '#name'           => 'source_form',
+            '#type'           => 'string',
+            '#optional'       => TRUE,
+            '#description'    => t('Options are "senator_mail" for messages to individual senators and "page_mail" for messages to the senate.')),
+          array(
+            '#name'           => 'senator_short_name',
+            '#type'           => 'string',
+            '#optional'       => TRUE,
+            '#description'    => t('The short name for the senator receiving the message, which defines the domain name for the senator\'s Bluebird instance.')),
+          array(
+            '#name'         => 'district_number',
+            '#type'         => 'int',
+            '#optional'       => TRUE,
+            '#description'  => t('The district of the recipient senator.')),
+          array(
+            '#name'         => 'limit',
+            '#type'         => 'int',
+            '#optional'       => TRUE,
+            '#description'  => t('The maximum number of responses to return (default 100). If a limit of "0" is specified, all responses will be returned.')),
+      ),
+      // #return - The return data type, may be used by certain server modules
+      '#return' => 'struct',
+     
+      // #help - Used in the service browser
+      '#help' => 'Returns an array of messages sent to the senate via the nyss_contact module'
+    ),
+
+    array(
+     
+      /**
+       * #method - defines the namespace and method name
+       * the namespace is everything before the last period, so you can do
+       * methods like 'nyss_contact.lunch.all' where 'nyss_contact.lunch' is the namespace,
+       * or service, and 'all' is the method
+       */
+      '#method' => 'nyss_contact.senator_data',
+     
+      // #callback - the php function to map the method call to
+      '#callback' => 'nyss_contact_senator_data',
+     
+      '#access callback'  => 'nyss_contact_senator_data_access',
+      /**
+       * #args - a list of method arguments
+       * These may be in lazy form - array('string','array') with only an array
+       * of datatypes.
+       * Or, they may be in in the form of an array of hashed arrays like shown
+       * below:
+       */
+      '#args' => array(
+      ),
+      // #return - The return data type, may be used by certain server modules
+      '#return' => 'struct',
+     
+      // #help - Used in the service browser
+      '#help' => 'Returns an array of data about each current senator'
+    )
+   
+  );
+}
+
+/**
+ * Callback for "nyss_contact.messages"
+ * We do not need to include an API key or SESSID field if these are enabled
+ * for Services.  These arguments are handled by Services transparently and
+ * stripped before we reach this callback.
+ *
+ * Additional parameters for the nyss_contact.get method:
+ * @param $start_date
+ *   Number. An optional start date in timestamp format indicating the earliest date from which messages are requested.
+ * @param $end_date
+ *   Number. An optional end date in timestamp format indicating the latest date for which messages are requested.
+ * @param $start_mid
+ *   Number. An optional start message ID number for the range from which results are desired.
+ * @param $end_mid
+ *   Number. An optional last message ID number for the range from which results are desired.
+ * @param $source_form
+ *   String. Options are "senator_mail" for messages to individual senators and "page_mail" for messages to the senate.
+ * @param $senator_short_name
+ *   String. The short name for the senator receiving the message, which defines the domain name for the senator's Bluebird instance.
+ * @param $district_number
+ *   Number. The district of the recipient senator.
+ * @param $limit
+ *   Number. The maximum number of responses to return (default 100). 
+ *   If a limit of "0" is specified, all responses will be returned. Warning: setting no limit could result in timeout or memory errors!
+ * @return
+ *    an associative array
+ */
+function nyss_contact_messages($start_date=NULL, $end_date=NULL, $start_mid=NULL, $end_mid=NULL, $source_form=NULL, $senator_short_name=NULL, $district_number=NULL, $limit=100) {
+  $filters = array();
+  $where = array();
+  if ($start_date) {
+    $filters['start_date'] = $start_date;
+  }
+  if ($end_date) {
+    $filters['end_date'] = $end_date;
+  }
+  if ($start_mid) {
+    $filters['start_mid'] = $start_mid;
+  }
+  if ($end_mid) {
+    $filters['end_mid'] = $end_mid;
+  }
+  if ($source_form) {
+    $filters['source_form'] = $source_form;
+  }
+  if ($senator_short_name) {
+    $filters['senator_short_name'] = $senator_short_name;
+  }
+  if ($district_number) {
+    $filters['district_number'] = $district_number;
+  }
+  foreach ($filters as $column => $value) {
+    switch ($column) {
+      case 'start_date':
+        $where[] = "submitted >= '%d'";
+        break;
+      case 'end_date':
+        $where[] = "submitted <= '%d'";
+        break;
+      case 'start_mid':
+        $where[] = "mid >= '%d'";
+        break;
+      case 'end_mid':
+        $where[] = "mid <= '%d'";
+        break;
+      case 'source_form':
+        $where[] = "source_form = '%s'";
+        break;
+      case 'senator_short_name':
+        $where[] = "to_short_name = '%s'";
+        break;
+      case 'district_number':
+        $where[] = "to_district_number = '%d'";
+        break;
+    }
+  }
+  $query = 'SELECT * FROM {nyss_contact}' 
+    . ($where ? ' WHERE ' . implode(' AND ', $where) : '') 
+    . ($limit ? ' LIMIT ' . $limit : '');
+  $arguments = array_values($filters);
+  $results = db_query($query, $arguments);
+  $return = array();
+  $return['first_mid'] = NYSS_CONTACT_FIRST_ITEM;
+  $return['last_mid'] = 0;
+  $return['start_date'] = NYSS_CONTACT_FIRST_ITEM;
+  $return['end_date'] = 0;
+  $return['item_count'] = 0;
+  $return['items'] = array();
+  while ($message = db_fetch_array($results)) {
+    if ($return['first_mid'] == NYSS_CONTACT_FIRST_ITEM) {
+      $return['first_mid'] = $message['mid'];
+    }
+    else {
+      $return['first_mid'] = min($return['first_mid'], $message['mid']);
+    }
+    $return['last_mid'] = max($return['last_mid'], $message['mid']);
+
+    if ($return['start_date'] == NYSS_CONTACT_FIRST_ITEM) {
+      $return['start_date'] = $message['submitted'];
+    }
+    else {
+      $return['start_date'] = min($return['start_date'], $message['submitted']);
+    }
+    $return['end_date'] = max($return['end_date'], $message['submitted']);
+
+    $return['item_count']++;
+    
+    $message['issues'] = unserialize($message['issues']);
+    $return['items'][] = $message;
+  }
+  return $return;
+}
+
+/**
+ * Check if the user has the permission to get the
+ * messages data thru services.
+ *
+ * @return
+ *   Boolean. TRUE if the user has view access.
+ */
+function nyss_contact_messages_access() {
+  return TRUE;
+}
+
+/**
+ * Callback for "nyss_contact.senator_data"
+ * We do not need to include an API key or SESSID field if these are enabled
+ * for Services.  These arguments are handled by Services transparently and
+ * stripped before we reach this callback.
+ *
+ * @return
+ *    an associative array
+ */
+function nyss_contact_senator_data() {
+  $sql = "SELECT DISTINCT(node.nid) AS nid,
+      node.title AS senator_name, 
+      node_data_field_short_name.field_short_name_value AS short_name, 
+      node_node_data_field_senators_district_node_data_field_district_number.field_district_number_value AS district, 
+      node_data_field_email.field_email_email AS email, 
+      node_data_field_email.field_path_value AS path_value 
+    FROM node node
+      LEFT JOIN content_type_senator node_data_field_senators_district ON node.vid = node_data_field_senators_district.vid
+      LEFT JOIN node node_node_data_field_senators_district ON node_data_field_senators_district.field_senators_district_nid = node_node_data_field_senators_district.nid
+      LEFT JOIN content_type_senator node_data_field_status ON node.vid = node_data_field_status.vid AND (node_data_field_status.field_status_value = 'incoming' OR node_data_field_status.field_status_value = 'former')
+      LEFT JOIN content_field_short_name node_data_field_short_name ON node.vid = node_data_field_short_name.vid
+      LEFT JOIN content_type_district node_node_data_field_senators_district_node_data_field_district_number ON node_node_data_field_senators_district.vid = node_node_data_field_senators_district_node_data_field_district_number.vid
+      LEFT JOIN content_field_bronto_sitename node_data_field_bronto_sitename ON node.vid = node_data_field_bronto_sitename.vid
+      LEFT JOIN content_field_bronto_mailing_list node_data_field_bronto_mailing_list ON node.vid = node_data_field_bronto_mailing_list.vid
+      LEFT JOIN content_type_senator node_data_field_email ON node.vid = node_data_field_email.vid
+    WHERE (node.status <> 0) AND (node.type in ('senator')) AND (node_data_field_status.field_status_value IS NULL)
+    GROUP BY nid";
+  $results = db_query($sql);
+  $senators = array();
+  while ($senator = db_fetch_array($results)) {
+    $senators[] = $senator;
+  }
+  return $senators;
+}
+
+/**
+ * Check if the user has the permission to get the
+ * senator data thru services.
+ *
+ * @return
+ *   Boolean. TRUE if the user has view access.
+ */
+function nyss_contact_senator_data_access() {
+  return TRUE;
+}
+

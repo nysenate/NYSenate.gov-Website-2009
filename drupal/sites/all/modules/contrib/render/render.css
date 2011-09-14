@@ -1,0 +1,23 @@
+/* $Id: render.css,v 1.2 2007/09/20 14:11:01 sun Exp $ */
+
+.container-inline label {
+  display: inline;
+}
+table.render-rules {
+  width: 100%;
+}
+.render-font {
+  font-size: 2em;
+  vertical-align: middle;
+}
+.render-font-color {
+  float: left;
+  width: 14px;
+  height: 14px;
+  margin: 0 3px 0 0;
+  border: 1px solid black;
+}
+.render-rule-op img {
+  margin: 0 6px 0 0;
+}
+

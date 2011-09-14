@@ -1,0 +1,162 @@
+/* $Id: taxonomy_list.css,v 1.1.2.1.2.5 2008/12/31 15:16:39 nancyw Exp $ */
+
+.taxonomy_list_radios .form-item label.option {
+  float: left;
+  margin-right: 1.5em;
+}
+
+.taxonomy_list_radios .form-item .description {
+  clear: both;
+}
+
+#taxonomy-image-admin-settings .form-item {
+  margin-bottom: 0;
+}
+
+.taxonomy-list-table {
+  width: 100%;
+  border: 0;
+  clear: both;
+}
+
+.taxonomy-list-table td {
+  vertical-align: top;
+}
+
+.taxonomy-list-parent a.taxonomy-list-term {
+  font-size: 175%;
+}
+
+.taxonomy-list-item {
+  float: left;
+  clear: both;
+}
+
+.taxonomy-list-term {
+  float: left;
+}
+
+.taxonomy-list-term a {
+  font-size: 133%;
+}
+
+.taxonomy-list-term-count {
+  font-size: 85%;
+  float: left;
+  margin-left: 1em;
+}
+
+.taxonomy-list-description {
+  font-size: 100%;
+  clear: both;
+}
+
+.taxonomy-list-description p {
+  margin: 4px 0 0 0;
+  text-indent: 1.5em;
+}
+
+.taxonomy-list-item .taxonomy_image_wrapper {
+  float: left;
+  width: auto;
+}
+
+.taxonomy-list-vocabulary {
+  position: relative;
+  clear: both;
+  margin-top: 1em;
+}
+
+.taxonomy-list-vocabulary .name {
+  position: relative;
+  float: left;
+  font-size: 133%;
+  font-weight: bold;  
+}
+
+.taxonomy-list-vocabulary .description {
+  position: relative;
+  float: left;  
+  font-style: italic;
+  margin-left: 1em;
+  padding-top: 3px;
+}
+
+.taxonomy-list-vocabulary .node-types {
+  clear: both;
+  margin-left: 1em;
+  font-size: 85%;
+}
+
+.taxonomy-list-cascade {
+  background-color: #ffffff;
+}
+
+.taxonomy-list-admin-links {
+  margin-top: .75em;
+}
+
+a.taxonomy-list-edit-link {
+  font-size: 80%;
+  margin-left: 1em;
+}
+
+a.taxonomy-list-search-term {
+  font-size: 80%;
+}
+
+.block-taxonomy_list {
+  font-size: 80%;
+}
+
+.block-taxonomy_list p {
+  text-indent: 0;
+}
+
+.block-taxonomy_list .node-types {
+  display: none;
+}
+
+.block-taxonomy_list .description {
+  margin: 0 0 3px 0;
+  font-style: normal;
+  font-size: 80%;
+}
+
+.taxonomy-list-parents {
+  float: left;
+  margin-left: 0.5em;
+  font-size: 80%;
+}
+
+td.cells-1 {
+  width: 100%;
+}
+
+td.cells-2 {
+  width: 50%;
+}
+
+td.cells-3 {
+  width: 33%;
+}
+
+td.cells-4 {
+  width: 25%;
+}
+
+td.cells-5 {
+  width: 20%;
+}
+
+td.cells-6 {
+  width: 16%;
+}
+
+td.cells-7 {
+  width: 14%;
+}
+
+td.cells-8 {
+  width: 12%;
+}

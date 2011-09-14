@@ -1,0 +1,15 @@
+; $Id: legal.info,v 1.6 2008/05/29 14:31:45 MegaGrunt Exp $
+name = Legal
+description = Display Terms and Conditions statement on the registration page.
+dependencies[] = checkbox_validate
+core = 6.x
+
+
+
+
+; Information added by drupal.org packaging script on 2008-08-08
+version = "6.x-2.2-beta4"
+core = "6.x"
+project = "legal"
+datestamp = "1218236117"
+

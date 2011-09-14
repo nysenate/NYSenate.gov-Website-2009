@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Home Page
+description = Create the panel for the NY Senate homepage.
+package = NYSS
+core = 6.x

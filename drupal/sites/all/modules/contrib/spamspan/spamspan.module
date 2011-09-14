@@ -1,0 +1,283 @@
+<?php
+// $Id: spamspan.module,v 1.7.2.4.2.13 2010/12/04 16:35:46 lakka Exp $
+
+/**
+ * @file
+ * This module implements the spamspan technique (http://www.spamspan.com ) for hiding email addresses from spambots.
+ *
+ * If javascript is disabled on the client-side, addresses appear as
+ * example [at] example [dot] com.
+ *
+ * @author Lawrence Akka
+ * @copyright 2006-2009, Lawrence Akka
+ * @license http://www.gnu.org/licenses/gpl.txt  GPL v 2.0
+ */
+
+/**
+ *  Set up a regex constant to split an email address into name and domain
+ *  parts. The following pattern is not perfect (who is?), but is intended to
+ * intercept things which look like email addresses.  It is not intended to
+ * determine if an address is valid.  It will not intercept addresses with
+ * quoted local parts.
+ *
+ * @constant string SPAMSPAN_EMAIL
+ */
+  define('SPAMSPAN_EMAIL', "
+      ([-\.\~\'\!\#\$\%\&\+\/\*\=\?\^\_\`\{\|\}\w\+^@]+) # Group 1 - Match the name part - dash, dot or
+                           #special characters.
+     @                     # @
+     ((?:        # Group 2
+       [-\w]+\.            # one or more letters or dashes followed by a dot.
+       )+                  # The whole thing one or more times
+       [A-Z]{2,6}          # with between two and six letters at the end (NB
+                           # .museum)
+     )");
+
+/**
+ * Implementation of hook_help().
+ */
+function spamspan_help($path, $arg) {
+  switch ($path) {
+  case 'admin/help#spamspan':
+    return t('<p>The SpamSpan module obfuscates email addresses to help prevent spambots from collecting them. It will produce clickable links if JavaScript is enabled, and will show the email address as <code>example [at] example [dot] com</code> if the browser does not support JavaScript.</p><p>To configure the module, select "configure" next to the <a href="admin/filters">input format</a> you\'d like to use. Enable "Hide Email Addresses using the SpamSpan technique" and submit the form. Then select the "configure" tab to choose relevant options.</p>');
+  }
+}
+
+
+/**
+ * Implementation of hook_filter_tips().
+ */
+function spamspan_filter_tips($delta, $format, $long = FALSE) {
+  switch ($delta) {
+  case 0:
+    return t('Each email address will be obfuscated in a human readable fashion or (if JavaScript is enabled) replaced with a spamproof clickable link.');
+    break;
+  }
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function spamspan_filter($op, $delta = 0, $format = -1, $text = '') {
+  if ($op == 'list') {
+    return array(0 => t('Hide email addresses using the SpamSpan technique'));
+  }
+  switch ($delta) {
+  case 0:
+
+    switch ($op) {
+    case 'description':
+      return t('Attempt to hide email addresses from spam-bots.');
+
+    case 'prepare':
+      return $text;
+
+    case 'process':
+      return spamspan($text);
+
+    case 'settings':
+      // field set for the spamspan settings
+      $form['spamspan_settings'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('SpamSpan email address encoding filter'),
+        '#description' => t('Warning: these are global settings and not per input format. Changing them here will change them for other input formats too.  You should not normally need to change any of these settings.'),
+        '#collapsible' => TRUE,
+      );
+      // spamspan user name part class name
+      $form['spamspan_settings']['spamspan_userclass'] = array(
+        '#type' => 'textfield',
+        '#title' => t('User name class'),
+        '#default_value' =>  variable_get('spamspan_userclass', 'u'),
+        '#required' => TRUE,
+        '#description' => t('The class name of the &lt;span&gt; element enclosing the part of the address before the "@".'),
+      );
+      // spamspan domain part class name
+      $form['spamspan_settings']['spamspan_domainclass'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Domain part class'),
+        '#default_value' => variable_get('spamspan_domainclass', 'd'),
+        '#required' => TRUE,
+        '#description' => t('The class name of the &lt;span&gt; element enclosing the part of the address after the "@".')
+      );
+      // spamspan '@' replacement
+      $form['spamspan_settings']['spamspan_at'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Replacement for "@"'),
+        '#default_value' => variable_get('spamspan_at', ' [at] '),
+        '#required' => TRUE,
+        '#description' => t('Replace "@" with this text when javascript is disabled.')
+      );
+      $form['spamspan_settings']['spamspan_use_graphic'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Use a graphical replacement for "@"'),
+        '#default_value' => variable_get('spamspan_use_graphic', 0),
+        '#description' => t('Replace "@" with a graphical representation when javascript is disabled (and ignore the setting "Replacement for @" above).')
+        );
+      return $form;
+    }
+    break;
+  }
+}
+
+
+/**
+ * Implementation of hook_init().
+ */
+function spamspan_init() {
+  // Add the javascript to each page
+  drupal_add_js(drupal_get_path("module", "spamspan") .'/spamspan.compressed.js');
+  // pass necessary variables to the javascript
+  drupal_add_js(array(
+    'spamspan' => array(
+      'm' => 'spamspan',
+      'u' => variable_get('spamspan_userclass', 'u'),
+      'd' => variable_get('spamspan_domainclass', 'd'),
+      'h' => 'h',
+      't' => variable_get('spamspan_anchorclass', 't')
+    )
+  ), 'setting');
+}
+
+/**
+ * The callback functions for preg_replace_callback
+ *
+ * Replace an email addresses which has been found with the appropriate
+ * <span> tags
+ *
+ * @param $matches
+ *  An array containing parts of an email address or mailto: URL.
+ * @return
+ *  The span with which to replace the email address
+ */
+function _spamspan_callback_mailto($matches) {
+  // take the mailto: URL in $matches[2] and split the query string
+  // into its component parts, putting them in $headers as
+  // [0]=>"header=contents" etc.  We cannot use parse_str because
+  // the query string might contain dots.
+  $headers = preg_split('/[&;]/', parse_url($matches[2], PHP_URL_QUERY));
+  // if no matches, $headers[0] will be set to '' so $headers must be reset
+  if ($headers[0] == '') $headers=array();
+  return _spamspan_output($matches[3], $matches[4], $matches[5], $headers);
+}
+
+function _spamspan_callback_email($matches) {
+  return _spamspan_output($matches[1], $matches[2], '', '');
+}
+
+/**
+ * A helper function for the callbacks
+ *
+ * Replace an email addresses which has been found with the appropriate
+ * <span> tags
+ *
+ * @param $name
+ *  The user name
+ * @param $domain
+ *  The email domain
+ * @param $contents
+ *  The contents of any <a> tag
+ * @param $headers
+ *  The email headers extracted from a mailto: URL
+ * @return
+ *  The span with which to replace the email address
+ */
+function _spamspan_output($name, $domain, $contents, $headers) {
+
+
+  // Replace .'s in the address with [dot]
+  $user_name = str_replace(".", " [dot] ", $name);
+  $domain = str_replace(".", " [dot] ", $domain);
+  if (variable_get('spamspan_use_graphic', 0)) {
+    $image = base_path() . drupal_get_path("module", "spamspan") ."/image.gif";
+    $at = '<img alt="at" width="10" src="'. $image .'" />';
+  }
+  else {
+    $at = variable_get('spamspan_at', ' [at] ');
+  }
+  $output = '<span class="spamspan"><span class="'.
+    variable_get('spamspan_userclass', 'u') ."\">$user_name</span>".
+    $at ."<span class=\"".
+    variable_get('spamspan_domainclass', 'd') ."\">$domain</span>";
+
+// if there are headers, include them as eg (subject: xxx, cc: zzz)
+    if (isset ($headers) and $headers) {
+      foreach ($headers as $value) {
+        //replace the = in the headers arrays by ": " to look nicer
+        $temp_headers[]= str_replace("=", ": ", $value);
+            }
+        $output .= "<span class=\"h\"> (". check_plain(implode(', ', $temp_headers)) .") </span>";
+    }
+// if there are tag contents, include them, between round brackets, unless
+// the contents are an email address.  In that case, we can ignore them.  This
+// is also a good idea because otherise the tag contents are themselves
+// converted into a spamspan, with undesirable consequences - see bug #305464.
+// NB problems may still be caused by edge cases, eg if the tag contents are
+// "blah blah email@example.com ..."
+  if (isset ($contents) and $contents and  !(preg_match("!^". SPAMSPAN_EMAIL ."$!ix", $contents))) {
+    $output .= "<span class=\"". variable_get('spamspan_anchorclass', 't') ."\"> (". $contents .")</span>";
+  }
+  $output .= "</span>";
+  // remove anything except certain inline elements, just in case.  NB nested
+  // <a> elements are illegal.  <img> needs to be here to allow for graphic
+  // @
+  $output = filter_xss($output, $allowed_tags = array('em', 'strong', 'cite', 'b', 'i', 'code', 'span', 'img'));
+  return $output;
+}
+
+/**
+ * Scan text and replace email addresses with span tags
+ *
+ * We are aiming to replace emails with code like this:
+ *   <span class="spamspan">
+ *   <span class="u">user</span>
+ *   [at]
+ *   <span class="d">example [dot] com</span>
+ *   <span class="t"tag contents></span></span>
+ *
+ * This function may be called by other modules and themes.
+ *
+ * @param $string
+ *  Text, maybe containing email addresses.
+ * @return
+ *  The input text with emails replaced by spans
+ */
+function spamspan($string) {
+
+  // Top and tail the email regexp it so that it is case insensitive and
+  // ignores whitespace.
+  $emailpattern = "!". SPAMSPAN_EMAIL ."!ix";
+
+  // Next set up a regex for mailto: URLs.
+  // - see http://www.faqs.org/rfcs/rfc2368.html
+  // This captures the whole mailto: URL into the second group,
+  // the name into the third group and the domain into
+  // the fourth. The tag contents go into the fifth.
+
+  $mailtopattern = "!<a\s+                            # opening <a and spaces
+      (?:(?:\w+\s*=\s*)(?:\w+|\"[^\"]*\"|'[^']*'))*?  # any attributes
+      \s*                                             # whitespace
+      href\s*=\s*(['\"])(mailto:"                     # the href attribute
+      . SPAMSPAN_EMAIL .                              # The email address
+      "(?:\?[A-Za-z0-9_= %\.\-\~\_\&]*)?)" .            # an optional ? followed
+                                                      # by a query string. NB
+                                                      # we allow spaces here,
+                                                      # even though strictly
+                                                      # they should be URL
+                                                      # encoded
+      "\\1                                            # the relevant quote
+                                                      # character
+      (?:(?:\s+\w+\s*=\s*)(?:\w+|\"[^\"]*\"|'[^']*'))*? # any more attributes
+      >                                               # end of the first tag
+      (.*?)                                           # tag contents.  NB this
+                                                      # will not work properly
+                                                      # if there is a nested
+                                                      # <a>, but this is not
+                                                      # valid xhtml anyway.
+      </a>                                            # closing tag
+      !ix";
+
+  // Now we can convert all mailto URLs
+  $string = preg_replace_callback($mailtopattern, '_spamspan_callback_mailto', $string);
+  // and finally, all bare email addresses
+  return preg_replace_callback($emailpattern, '_spamspan_callback_email', $string);
+}

@@ -1,0 +1,149 @@
+<?php
+// $Id: iframe.install,v 1.6 2010/11/10 00:06:17 neffets Exp $
+
+/**
+ * @file
+ * Defines simple iframe field types.
+ *  based on the cck-module "link" by quicksketch
+ * Functions for install and uninstall AND Migrations
+ */
+
+function iframe_requirements($phase) {
+  $requirements = array();
+  // Ensure translations don't break at install time
+  $t = get_t();
+  if (!module_exists('content') || !function_exists('content_notify')) {
+    $requirements['iframe'] = array(
+      'title' => $t('CCK needed'),
+      'description' => $t("CCK module \"content\" required."),
+      'severity' => REQUIREMENT_ERROR,
+    );
+  }
+  return $requirements;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function iframe_install() {
+  if (!module_exists('content') || !function_exists('content_notify')) {
+    $ret['#abort'] = array('success' => FALSE, 'query' => t('Required module "content" (cck) not found!'));
+    return $ret;
+  }
+  content_notify('install', 'iframe');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function iframe_uninstall() {
+  if (module_exists('content') && function_exists('content_notify')) {
+    content_notify('uninstall', 'iframe');
+  }
+}
+
+/**
+ * Implementation of hook_enable().
+ */
+function iframe_enable() {
+  if (!module_exists('content') || !function_exists('content_notify')) {
+    $ret['#abort'] = array('success' => FALSE, 'query' => t('Required module "content" (cck) not found!'));
+    return $ret;
+  }
+  content_notify('enable', 'iframe');
+}
+
+/**
+ * Implementation of hook_disable().
+ */
+function iframe_disable() {
+  if (module_exists('content') && function_exists('content_notify')) {
+    content_notify('disable', 'iframe');
+  }
+}
+
+/**
+ * Removed iframe.module created tables, move data to content.module tables
+ * attributes will contain width,heigth,...
+ */
+function iframe_update_1() {
+  $ret = array();
+
+  include_once(drupal_get_path('module', 'content') . '/content.module');
+  include_once(drupal_get_path('module', 'content') . '/includes/content.admin.inc');
+
+  $fields = content_fields();
+
+  if (FALSE) foreach ($fields as $field) {
+    switch ($field['type']) {
+      case 'iframe':
+        $columns = array(
+          'url' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => "''"),
+          'title' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => "''"),
+          'attributes' => array('type' => 'mediumtext', 'not null' => FALSE),
+          'width' => array('type' => 'mediumtext', 'not null' => FALSE),
+          'height' => array('type' => 'mediumtext', 'not null' => FALSE),
+        );
+
+        // content_alter_db_field(array(), array(), $field, $columns);
+        content_alter_db($columns['url'], $columns['url']);
+        content_alter_db($columns['title'], $columns['title']);
+        content_alter_db($columns['attributes'], $columns['attributes']);
+        content_alter_db($columns['width'], '');
+        content_alter_db($columns['height'], '');
+
+        $db_info = content_database_info($field);
+        if ($field['multiple']) {
+          $ret[] = update_sql('INSERT INTO {' . $db_info['table'] . '} (vid, delta, nid, ' .
+            $field['field_name'] .'_url, ' .
+            $field['field_name'] .'_title, ' .
+            $field['field_name'] .'_attributes) ' .
+            'SELECT vid, delta, nid, ' .
+            'field_url, ' .
+            'field_title, ' .
+            'attributes FROM {node_field_iframe_data} ' .
+            'WHERE field_name = "' . $field['field_name'] . '"');
+        }
+        else {
+          $ret[] = update_sql('UPDATE {' . $db_info['table'] . '} c, {node_field_iframe_data} l SET ' .
+            'c.' . $field['field_name'] . '_url = l.field_url, ' .
+            'c.' . $field['field_name'] . '_title = l.field_title, ' .
+            'c.' . $field['field_name'] . '_attributes = l.attributes ' .
+            'WHERE l.field_name = "' . $field['field_name'] . '" AND c.vid = l.vid AND c.nid = l.nid');
+        }
+    }
+  }
+
+  //$ret[] = update_sql('DROP TABLE {node_field_iframe_data}');
+
+  $ret[] = update_sql('DELETE FROM {cache}');
+  return $ret;
+}
+
+/**
+ * Increase size of url-field to 1024 chars
+ */
+function iframe_update_6010() {
+  $ret = array();
+
+  include_once(drupal_get_path('module', 'content') . '/content.module');
+  include_once(drupal_get_path('module', 'content') . '/includes/content.admin.inc');
+  include_once(drupal_get_path('module', 'content') . '/includes/content.crud.inc');
+
+  /* 1. update the general settings for iframe-field */
+  $fields = content_fields();
+
+  foreach ($fields as $field) {
+    switch ($field['type']) {
+      case 'iframe':
+        $field_name = $field['field_name'];
+        $field['columns']['url']['length'] = 1024;
+
+        content_field_instance_update($field);
+    }
+  }
+
+  $ret[] = update_sql('DELETE FROM {cache}');
+  return $ret;
+}
+

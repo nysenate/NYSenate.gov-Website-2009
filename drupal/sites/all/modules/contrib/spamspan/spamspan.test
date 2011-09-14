@@ -1,0 +1,187 @@
+<?php
+// $Id: spamspan.test,v 1.1.2.5 2010/12/04 16:35:46 lakka Exp $
+
+/**
+  * @file
+  * Tests for the SpamSpan module
+  */
+
+
+class SpamSpanBasicTestCase extends DrupalWebTestCase {
+  /**
+    * Implementation of getInfo().
+    */
+  public static function getInfo() {
+    return array(
+      'name' => t('SpamSpan basic tests'),
+      'description' => t('Test SpamSpan email replacement functions.'),
+      'group' => t('SpamSpan'),
+      );
+  }
+
+  /**
+    * Implementation of setUp().
+    */
+  function setUp() {
+    parent::setUp('spamspan');
+    // set up required defaults
+    variable_set('spamspan_userclass', 'u');
+    variable_set('spamspan_domainclass', 'd');
+    variable_set('spamspan_anchorclass', 't');
+    variable_set('spamspan_at', ' [at] ');
+    variable_set('spamspan_use_graphic', 0);
+  }
+
+  /**
+    * A utility function to check that emails within text are converted
+    */
+  function _checkEmail($prefix = '', $suffix = '', $original = "", $shouldbe = '', $message = '') {
+    $this->assertEqual($prefix . $shouldbe . $suffix, spamspan($prefix . $original . $suffix, ""), $message );
+
+  }
+
+  /**
+    * Test that strings without emails are passed through unchanged
+    */
+  function testSpamSpanNoEmail() {
+    $noemails = array(
+      'no email here',
+      'oneword',
+      '',
+      'notan@email',
+      'notan@email either',
+      'some text and notan.email@something here',
+      );
+    while ($text = each($noemails)) {
+      $this->assertEqual(spamspan($text, ""), $text, "Checking for false positives");
+    }
+  }
+
+  /**
+    * Check that emails in odd places are properly converted
+    *
+    * Each sub-test is run several times, using a different type of email
+    * address each time.
+    */
+  function testSpamSpanEmail() {
+    // a list of address, together with what they should look like
+    $emails = array('user@example.com' =>
+      '<span class="spamspan"><span class="u">user</span> [at] <span class="d">example [dot] com</span></span>',
+      'user@example.co.uk' =>
+      '<span class="spamspan"><span class="u">user</span> [at] <span class="d">example [dot] co [dot] uk</span></span>',
+      'user@example.museum' =>
+      '<span class="spamspan"><span class="u">user</span> [at] <span class="d">example [dot] museum</span></span>',
+      'user.user@example.com' =>
+      '<span class="spamspan"><span class="u">user [dot] user</span> [at] <span class="d">example [dot] com</span></span>',
+      'user\'user@example.com' =>
+      '<span class="spamspan"><span class="u">user\'user</span> [at] <span class="d">example [dot] com</span></span>',
+      'user-user@example.com' =>
+      '<span class="spamspan"><span class="u">user-user</span> [at] <span class="d">example [dot] com</span></span>',
+      'user_user@example.com' =>
+      '<span class="spamspan"><span class="u">user_user</span> [at] <span class="d">example [dot] com</span></span>',
+      'user+user@example.com' =>
+      '<span class="spamspan"><span class="u">user+user</span> [at] <span class="d">example [dot] com</span></span>',
+      'user!#$%*+-/=?^_`{|}~user@example.com' => #strange characters: #906474
+      '<span class="spamspan"><span class="u">user!#$%*+-/=?^_`{|}~user</span> [at] <span class="d">example [dot] com</span></span>',
+      );
+
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("", "" , $original, $shouldbe, "Test for bare email");
+    }
+
+    // Test for email with text at the start
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("some text here ", "", $original, $shouldbe, "Test for email with text at the start");
+    }
+    // Test for email with text at the end
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("", " some text here", $original, $shouldbe, "Test for email with text at the end");
+    }
+    // Test for email with text at the start and end
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("some text here ", " some text here", $original, $shouldbe, "Test for email with text at the start and end");
+    }
+    // Test for email with tags at the start and end
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("<p>", "</p>", $original, $shouldbe, "Test for email with tags at the start and end");
+    }
+    // Test for email with trailing commas
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("some text here. ", ", Next sentence", $original, $shouldbe, "Test for email with trailing commas");
+    }
+    // Test for email with trailing full stop
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("some text here. ", ". Next sentence", $original, $shouldbe, "Test for email with trailing full stop");
+    }
+    // Test for email with preceding tag
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("<p>", "</p>", $original, $shouldbe, "Test for email with preceding tag");
+    }
+    // Test for email with preceding tag,  and no closing tag
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("<dt>", ". no tag here", $original, $shouldbe, "Test for email with preceding tag,  and no closing tag");
+    }
+    // Test for brackets
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("(", ")", $original, $shouldbe, "Test for brackets");
+    }
+    // Test for angle brackets;
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("<", ">", $original, $shouldbe, "Test for angle brackets");
+    }
+    // Test for newlines
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail("\n", "\n", $original, $shouldbe, "Test for newlines");
+    }
+    // Test for spaces
+    foreach ($emails as $original => $shouldbe) {
+      $this->_checkEmail(" ", " ", $original, $shouldbe, "Test for spaces");
+    }
+  }
+}
+
+class SpamSpanMailtoTestCase extends DrupalWebTestCase {
+  /**
+    * Implementation of getInfo().
+    */
+  public static function getInfo() {
+    return array(
+      'name' => t('SpamSpan mailto: tests'),
+      'description' => t('Test SpamSpan mailto: replacement functions.'),
+      'group' => t('SpamSpan'),
+      );
+  }
+
+  /**
+    * Implementation of setUp().
+    */
+  function setUp() {
+    parent::setUp('spamspan');
+    // set up required defaults
+    variable_set('spamspan_userclass', 'u');
+    variable_set('spamspan_domainclass', 'd');
+    variable_set('spamspan_anchorclass', 't');
+    variable_set('spamspan_at', ' [at] ');
+    variable_set('spamspan_use_graphic', 0);
+  }
+  /**
+    * Test for proper conversion of mailto: URLs
+    */
+  function testSpamSpanMailto() {
+    // plain
+    $this->assertEqual(spamspan("<a href='mailto:email@example.com'></a>"),  '<span class="spamspan"><span class="u">email</span> [at] <span class="d">example [dot] com</span></span>', "Test plain mailto:");
+    // with anchor text
+    $this->assertEqual(spamspan("<a href='mailto:email@example.com'>some text</a>"),  '<span class="spamspan"><span class="u">email</span> [at] <span class="d">example [dot] com</span><span class="t"> (some text)</span></span>',  "Test mailto: with anchor tag");
+    // with an extra attribute
+    $this->assertEqual(spamspan("<a attribute='something' href='mailto:email@example.com'></a>"),  '<span class="spamspan"><span class="u">email</span> [at] <span class="d">example [dot] com</span></span>', "test mailto: with extra attribute");
+    // with nested tags
+    $this->assertEqual(spamspan("<a href='mailto:email@example.com'>some <em>text</em></a>"),  '<span class="spamspan"><span class="u">email</span> [at] <span class="d">example [dot] com</span><span class="t"> (some <em>text</em>)</span></span>', "Test mailto: with nested tags");
+    // with an email address as the tag contents
+    $this->assertEqual(spamspan("<a href='mailto:email@example.com'>email@example.com</a>"),  '<span class="spamspan"><span class="u">email</span> [at] <span class="d">example [dot] com</span></span>', "Test mailto: with email as tag contents");
+    // with a URL parameter string
+    $this->assertEqual(spamspan("<a href='mailto:email@example.com?subject=subject'>some text</a>"),  '<span class="spamspan"><span class="u">email</span> [at] <span class="d">example [dot] com</span><span class="h"> (subject: subject) </span><span class="t"> (some text)</span></span>', "Test mailto: with a URL parameter string");
+    // with a URL parameter string - multiple headers
+    $this->assertEqual(spamspan('<a href="mailto:email@example.com?subject=test%20subject&body=some%20text">some text</a>'),  '<span class="spamspan"><span class="u">email</span> [at] <span class="d">example [dot] com</span><span class="h"> (subject: test%20subject, body: some%20text) </span><span class="t"> (some text)</span></span>', "Test mailto: with a URL parameter string - multiple headers");
+
+  }
+}

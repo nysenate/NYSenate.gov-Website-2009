@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Contact
+description = Creates custom contact pages for Senators based on the contact module.
+package = NYSS
+core = 6.x
+dependencies[] = contact

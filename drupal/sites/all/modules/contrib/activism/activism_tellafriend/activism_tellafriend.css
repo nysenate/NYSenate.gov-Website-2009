@@ -1,0 +1,14 @@
+#activism-tellafriend-recipients-wrapper div {
+  float:          left;
+  margin-bottom:  0.2em;
+  margin-right:   1em;
+  margin-top:     0.2em;
+}
+
+#activism-tellafriend-recipients-wrapper input {
+  width:          212px;
+}
+
+#edit-activism-tellafriend-recipient-add {
+  margin:         1em 0;
+}

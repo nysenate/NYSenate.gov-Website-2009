@@ -1,0 +1,193 @@
+# $Id$
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  conditional_fields.module: n/a
+#  conditional_fields.info: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2008-12-06 15:36+0100\n"
+"PO-Revision-Date: 2008-12-06 HH:MM+ZZZZ\n"
+"Last-Translator: peterpoe <gmagini@gmail.com>\n"
+"Language-Team: Italian <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+#: conditional_fields.module:16
+msgid "These settings only apply to the conditional fields of this content type."
+msgstr "Queste impostazioni si applicano solo ai conditional fields in questo tipo di contenuto."
+
+#: conditional_fields.module:59
+msgid "Don't use javascript. Fields are only hidden on node view."
+msgstr "Non usare javascript. I campi verranno nascosti solo quando il nodo è visualizzato."
+
+#: conditional_fields.module:59
+msgid "Hide untriggered fields."
+msgstr "Nascondi campi non attivati."
+
+#: conditional_fields.module:59
+msgid "Disable untriggered fields."
+msgstr "Disabilita campi non attivati."
+
+#: conditional_fields.module:62
+msgid "User Interface options"
+msgstr "Opzioni Interfaccia Utente"
+
+#: conditional_fields.module:63
+msgid "Choose the desired javascript behaviour in node editing forms."
+msgstr "Scegli il comportamento di javascript nel modulo di modifica dei nodi."
+
+#: conditional_fields.module:73
+msgid "Orphaned controlled fields settings"
+msgstr "Impostazioni campi controllati orfani"
+
+#: conditional_fields.module:74
+msgid "Configure the visibility/editability of controlled fields whose controlling fields are not visible/editable."
+msgstr "Configura la visibilità/modificabilità dei campi controllati i cui campi di controllo non sono visibili/modificabili."
+
+#: conditional_fields.module:78
+msgid "Hide"
+msgstr "Nascondi"
+
+#: conditional_fields.module:78
+msgid "Show only triggered"
+msgstr "Mostra solo quelli attivati"
+
+#: conditional_fields.module:78
+msgid "Show all"
+msgstr "Mostra tutti"
+
+#: conditional_fields.module:81
+msgid "On node view"
+msgstr "Nella visualizzazione del nodo"
+
+#: conditional_fields.module:87
+msgid "On node edit"
+msgstr "Nella modifica del nodo"
+
+#: conditional_fields.module:93
+msgid "Administrators see all fields"
+msgstr "Gli amministratori vedono tutti i campi"
+
+#: conditional_fields.module:94
+msgid "Select this box to let users with the <a href=\"@access-control-page\">administer conditional fields</a> permission to view all controlled fields of a node."
+msgstr "Spunta questa casella per permettere agli utenti con il permesso <a href=\"@access-control-page\">amministra conditional fields</a> di vedere sempre i campi controllati di un nodo."
+
+#: conditional_fields.module:99
+msgid "Reset"
+msgstr "Resetta"
+
+#: conditional_fields.module:100
+msgid "Delete all conditional fields configured for this content type. This will delete the conditional fields settings, not the fields themselves."
+msgstr "Cancella tutti i conditional fields configurati in questo tipo di contenuto. Questa opzione cancella le impostazioni condizionali, non i campi in sé per sé."
+
+#: conditional_fields.module:105
+msgid "Submit"
+msgstr "Invia"
+
+#: conditional_fields.module:115
+msgid " All configured conditional fields have been deleted."
+msgstr " Tutti i conditional fields configurati sono stati cancellati."
+
+#: conditional_fields.module:123
+msgid "Conditional fields options for this content type saved."
+msgstr "Opzioni conditional fields per questo tipo di contenuto salvate."
+
+#: conditional_fields.module:288
+msgid "group"
+msgstr "gruppo"
+
+#: conditional_fields.module:288;291
+msgid "edit"
+msgstr "modifica"
+
+#: conditional_fields.module:291
+msgid "field"
+msgstr "campo"
+
+#: conditional_fields.module:297
+msgid "<p>Below is a list of all fields and groups controlled by this field. If you want to make this field controllable, you have to clear the settings for each controlled field.</p>"
+msgstr "<p>Qui sotto c'è una lista di tutti i campi e i gruppi controllati da questo campo. Se vuoi rendere questo campo controllabile, devi cancellare le impostazioni per ogni campo controllato.</p>"
+
+#: conditional_fields.module:297
+msgid "Name"
+msgstr "Nome"
+
+#: conditional_fields.module:297
+msgid "Type"
+msgstr "Tipo"
+
+#: conditional_fields.module:297
+msgid "Options"
+msgstr "Opzioni"
+
+#: conditional_fields.module:342
+msgid "<p>Choose which allowed values of available controlling fields will trigger this @context, making it visible both in node editing and view. If no value is set, the @context will be always visible.</p>"
+msgstr "<p>Scegli quali valori ammessi dei campi di controllo disponibili attiveranno questo @context, rendendolo visibile nella modifica e nella visualizzazione di un nodo. Se non imposti alcun valore, il @context sarà sempre visibile.</p>"
+
+#: conditional_fields.module:347
+msgid "Conditional fields settings"
+msgstr "Impostazioni conditional fields"
+
+#: conditional_fields.module:361
+msgid "Not set"
+msgstr "Non impostato"
+
+#: conditional_fields.module:367
+msgid "<a href=\"@edit-field\">Edit the allowed values</a> of the %field-name field."
+msgstr "<a href=\"@edit-field\">Modifica i valori ammessi</a> del campo %field-name."
+
+#: conditional_fields.module:392
+msgid "You cannot select 'Not set' and other values at the same time."
+msgstr "Non puoi selezionare 'Non impostato' e altri valori allo stesso tempo."
+
+#: conditional_fields.module:398
+msgid "This field is controlling the group %field. You can only control a group from a field not in a group."
+msgstr "Questo campo controlla il gruppo %field. Puoi controllare un gruppo solo da un campo che non è in un gruppo."
+
+#: conditional_fields.module:402
+msgid "The field %field is not in the same group that you selected (%group). You can only control a field in a group from another field in the same group."
+msgstr "Il campo %field non è nello stesso gruppo che hai selezionato (%group). Puoi controllare un campo in un gruppo solo da un altro campo nello stesso gruppo."
+
+#: conditional_fields.module:408
+msgid "The field %field is in the group %group. You can only control a field in a group from another field in the same group."
+msgstr "Il campo %field è nel gruppo %group. Puoi controllare un campo in un gruppo solo da un altro campo nello stesso gruppo."
+
+#: conditional_fields.module:417
+msgid "If you removed one or more allowed value from the field, you probably have to edit its controlled Conditional fields and/or fieldgroups settings."
+msgstr "Se hai rimosso uno o più valori ammessi dal campo, dovrai probabilmente modificare i campi e/o i gruppi che controlla."
+
+#: conditional_fields.module:715
+msgid "You can't change the parent group of a conditional field."
+msgstr "Non puoi cambiare il gruppo che contiene un conditional field."
+
+#: conditional_fields.module:51
+msgid "administer conditional fields"
+msgstr "amministra conditional fields"
+
+#: conditional_fields.module:33
+msgid "Conditional fields"
+msgstr "Conditional fields"
+
+#: conditional_fields.module:0
+msgid "conditional_fields"
+msgstr "conditional_fields"
+
+#: conditional_fields.info:0
+msgid "Conditional Fields"
+msgstr "Conditional Fields"
+
+#: conditional_fields.info:0
+msgid "Content fields and groups visibility based on the values of user defined 'trigger' fields."
+msgstr "Visibilità di campi e gruppi basata sui valori di altri campi, definiti dall'utente."
+
+#: conditional_fields.info:0
+msgid "CCK"
+msgstr "CCK"
+

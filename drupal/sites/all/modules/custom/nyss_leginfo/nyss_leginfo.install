@@ -1,0 +1,15 @@
+<?php
+function nyss_leginfo_schema() {
+  $schema['cache_leginfo'] = drupal_get_schema_unprocessed('system', 'cache');
+  return $schema;
+}
+
+function nyss_leginfo_install() {
+  // Create my tables.
+  drupal_install_schema('nyss_leginfo');
+}
+
+function nyss_leginfo_uninstall() {
+  // Drop my tables.
+  drupal_uninstall_schema('nyss_leginfo');
+}

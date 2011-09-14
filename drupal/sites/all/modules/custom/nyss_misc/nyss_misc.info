@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Misc
+description = Miscellaneous high-level theme and function alterations.
+package = NYSS
+core = 6.x

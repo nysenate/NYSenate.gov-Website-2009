@@ -1,0 +1,13 @@
+name = Acquia site information
+description = "Sends a site profile including Acquia Drupal version, platform and module information; number of posts, comments and users; as well as file hashes and file metainformation on files in the system to the Acquia Network to facilitate support and update notifications."
+package = Acquia Network Connector
+php = 5.0
+core = 6.x
+dependencies[] = acquia_agent
+
+; Information added by drupal.org packaging script on 2011-05-19
+version = "6.x-1.11"
+core = "6.x"
+project = "acquia_connector"
+datestamp = "1305826614"
+

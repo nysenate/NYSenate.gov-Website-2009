@@ -1,0 +1,73 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Carousel
+ *
+ *  This module controls the placement of the Carousel (and other) flags.
+ */
+
+/**
+ *  Implements hook_link_alter().
+ */
+function nyss_carousel_link_alter(&$links, $node) {
+  // See if we have node editing access for the node.
+  $access = nyss_editors_node_access_callback($node, 'flags');
+  $accessmaj = nyss_editors_node_access_callback($node, 'flags-maj');
+
+  // PHOTO/FEATURE-IMAGE FLAGS
+
+  // Remove the 'Feature on Front Carousel' link if the node has no feature image.
+  if (isset($links['flag-feature_on_front_carousel']) && ((!$node->field_feature_image[0]['fid'] && (strpos($links['flag-feature_on_front_carousel']['title'], 'remove') === FALSE)) || !$access)) {
+    unset($links['flag-feature_on_front_carousel']);
+  }
+  // Remove the 'Feature on Senator's Carousel' link if the node has no feature image, or the editor has no permission to edit that senator's content.
+  if (isset($links['flag-senator_carousel']) && ((!$node->field_feature_image[0]['fid'] && (strpos($links['flag-senator_carousel']['title'], 'remove') === FALSE)) || !$accessmaj)) {
+    unset($links['flag-senator_carousel']);
+  }
+  // Remove the 'request to promote to main gallery' link if the node has no feature image.
+  if (isset($links['flag-request_to_gallery']) && ((!$node->field_feature_image[0]['fid'] && (strpos($links['flag-request_to_gallery']['title'], 'revoke') === FALSE)) || !$access)) {
+    unset($links['flag-request_to_gallery']);
+  }
+  // Remove the 'promote to main gallery' link if the node has no feature image.
+  if (isset($links['flag-promote_to_main_gallery']) && ((!$node->field_feature_image[0]['fid'] && (strpos($links['flag-promote_to_main_gallery']['title'], 'demote') === FALSE)) || !$access)) {
+    unset($links['flag-promote_to_main_gallery']);
+  }
+  // Remove the 'revoke request to gallery' if the content is already in the gallery.
+  if (isset($links['flag-promote_to_main_gallery']) && (((strpos($links['flag-promote_to_main_gallery']['title'], 'demote') !== FALSE)) || !$access)) {
+    unset($links['flag-request_to_gallery']);
+  }
+  // Remove the 'Keep from Senators' Gallery' if the node has no feature image or the User hasn't got permissions.
+  if (isset($links['flag-senator_no_gallery']) && ((!$node->field_feature_image[0]['fid'] && (strpos($links['flag-promote_to_main_gallery']['title'], 'demote') === FALSE)) || !$accessmaj)) {
+    unset($links['flag-request_to_gallery']);
+  }
+
+  // VIDEO FLAGS
+
+  // Remove the 'Feature Front Video' link if the node has no video.
+  if (isset($links['flag-featured_front_video']) && ((!$node->field_video[0]['value'] && (strpos($links['flag-featured_front_video']['title'], 'Remove') === FALSE)) || !$access)) {
+    unset($links['flag-featured_front_video']);
+  }
+  // Remove the 'Committee Featured Video' link if the node has no video.
+  if (isset($links['flag-committee_featured_video']) && ((!$node->field_video[0]['value'] && (strpos($links['flag-committee_featured_video']['title'], 'Remove') === FALSE)) || !$access || (!$node->field_committee[0]['nid']))) {
+    unset($links['flag-committee_featured_video']);
+  }
+  // Remove the 'Senator Featured Video' link if the node has no video.
+  if (isset($links['flag-senator_featured_video']) && ((!$node->field_video[0]['value'] && (strpos($links['flag-senator_featured_video']['title'], 'Remove') === FALSE)) || !$access)) {
+    unset($links['flag-senator_featured_video']);
+  }
+  // Remove the 'request to promote video to main gallery' link if the node has no feature video.
+  if (isset($links['flag-request_video_to_gallery']) && ((!$node->field_video[0]['value'] && (strpos($links['flag-request_video_to_gallery']['title'], 'revoke') === FALSE)) || !$access)) {
+    unset($links['flag-request_video_to_gallery']);
+  }
+  // Remove the 'promote to main gallery' link if the node has no feature image.
+  if (isset($links['flag-promote_video_to_main_gallery']) && ((!$node->field_video[0]['value'] && (strpos($links['flag-promote_video_to_main_gallery']['title'], 'demote') === FALSE)) || !$access)) {
+    unset($links['flag-promote_video_to_main_gallery']);
+  }
+  // Remove the 'revoke request to video gallery' if the content is already in the gallery.
+  if (isset($links['flag-promote_video_to_main_gallery']) && (((strpos($links['flag-promote_video_to_main_gallery']['title'], 'demote') !== FALSE)) || !$access)) {
+    unset($links['flag-request_video_to_gallery']);
+  }
+
+}

@@ -1,0 +1,5 @@
+; $Id:$
+name = Overlay Alerts
+description = "Enables the display of alert messages as JQuery overlays."
+version = 6.x-1.0
+core = 6.x

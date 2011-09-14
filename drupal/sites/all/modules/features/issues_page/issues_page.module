@@ -1,0 +1,3 @@
+<?php
+
+include_once('issues_page.features.inc');

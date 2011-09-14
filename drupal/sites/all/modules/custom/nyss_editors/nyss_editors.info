@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Editors
+description = Control the permissions of editors for NYSS.
+package = NYSS
+core = 6.x
+dependencies[] = nyss_senator

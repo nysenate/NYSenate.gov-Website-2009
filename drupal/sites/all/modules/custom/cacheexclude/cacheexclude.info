@@ -1,0 +1,10 @@
+; $Id: cacheexclude.info,v 1.2 2008/03/21 20:38:36 crell Exp $
+name = Cache Exclude
+description = Exclude certain pages from being cached.
+core=6.x
+; Information added by drupal.org packaging script on 2009-02-24
+version = "6.x-2.1"
+core = "6.x"
+project = "cacheexclude"
+datestamp = "1235500509"
+

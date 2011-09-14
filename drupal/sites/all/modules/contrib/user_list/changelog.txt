@@ -1,0 +1,12 @@
+
+2007-06-07
+update admin/build/block (old call to _node_names)
+
+2007-06-07
+fix content type names in user list
+fix $options in content type admin
+converted theme_style_add to drupal_add_css
+fixed links in admin settings screen
+added admin menu item
+added admin permission
+branch HEAD dev to 5.x

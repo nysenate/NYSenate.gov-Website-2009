@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Views
+description = Defines the custom default views.
+package = NYSS
+core = 6.x

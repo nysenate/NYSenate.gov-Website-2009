@@ -1,0 +1,8 @@
+;Id$
+name = OpenLeg Feeds Parser
+description = Provides a Feeds parser for the OpenLeg 2.0 API
+core = 6.x
+dependencies[] = feeds
+dependencies[] = location_feeds
+dependencies[] = querypath
+package = Feeds

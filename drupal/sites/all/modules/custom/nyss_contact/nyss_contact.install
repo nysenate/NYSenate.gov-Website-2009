@@ -1,0 +1,172 @@
+<?php
+// $Id$
+
+function nyss_contact_schema() {
+  $schema['nyss_contact'] = array(
+    'description' => t('Archives messages sent via "contact your senator" forms on NYSenate.gov.'),
+    'fields' => array(
+      'mid' => array(
+        'description' => t('A unique message ID number'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'source_form' => array(
+        'description' => t('The source_form for this message (indicates whether it was sent to an individual senator or to the full senate)'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The {user}.uid for the user sending the message.',
+      ),
+      'voter_registered' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Whether the message sender is a registered voter.',
+      ),
+      'first_name' => array(
+        'description' => t('Sender\'s first name, from the "Your first name" field in the contact form'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'last_name' => array(
+        'description' => t('Sender\'s last name, from the "Last name" field in the contact form'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'from_url' => array(
+        'description' => t('URL to the user profile page on NYSenate.gov'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'from_email' => array(
+        'description' => t('Sender\'s email address, from the "Your e-mail address" field in the contact form'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'address' => array(
+        'description' => t('Sender\'s street address, from the "Your street address" field'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'apartment' => array(
+        'description' => t('Sender\'s apartment number, from the "Apartment #" field'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'city' => array(
+        'description' => t('Sender\'s city'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'state' => array(
+        'description' => t('State'),
+        'type' => 'varchar',
+        'length' => '4',
+        'maxlength' => '16',
+        'not null' => TRUE,
+      ),
+      'zip' => array(
+        'description' => t('Sender\'s zip code'),
+        'type' => 'varchar',
+        'length' => '16',
+        'not null' => TRUE,
+      ),
+      'phone' => array(
+        'description' => t('Phone number'),
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+      ),
+      'to_name' => array(
+        'description' => t('Sender\'s name'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'to_nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The {node}.uid for the senator receiving the message.',
+      ),
+      'to_district_number' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The district number for the senator receiving the message.',
+      ),
+      'to_short_name' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'description' => 'The short name for the senator receiving the message, which defines the domain name for the senator\'s Bluebird instance.',
+      ),
+      'subject' => array(
+        'description' => t('Subject'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'message' => array(
+        'description' => 'The main body of the email message.',
+        'type' => 'blob',
+        'not null' => FALSE,
+        'default' => NULL
+      ),
+      'issues' => array(
+        'description' => t('Issues'),
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'to_email' => array(
+        'description' => t('Recipient\'s email address'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'submitted' => array(
+        'description' => t('Timestamp when the contact occurred'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('mid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function nyss_contact_install() {
+  drupal_install_schema('nyss_contact');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function nyss_contact_uninstall() {
+  drupal_uninstall_schema('nyss_contact');
+}
+
+function nyss_contact_update_6001() {
+  $ret = array();
+  $schema = nyss_contact_schema();
+  db_create_table($ret, 'nyss_contact', $schema['nyss_contact']);
+  return $ret;
+}

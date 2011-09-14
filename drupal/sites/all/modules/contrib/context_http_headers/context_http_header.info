@@ -1,0 +1,14 @@
+; $Id: context_http_header.info,v 1.1 2010/04/21 17:02:16 febbraro Exp $
+name = Context HTTP Header
+description = "Provide context access to the HTTP header."
+package = Context
+core = "6.x"
+dependencies[] = context
+
+
+; Information added by drupal.org packaging script on 2010-04-21
+version = "6.x-1.0"
+core = "6.x"
+project = "context_http_headers"
+datestamp = "1271870106"
+

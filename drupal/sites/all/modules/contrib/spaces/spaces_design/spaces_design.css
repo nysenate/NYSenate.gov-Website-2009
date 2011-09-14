@@ -1,0 +1,9 @@
+div.spaces-design-colorpicker div.form-item,
+div.spaces-design-colorpicker span.toggle-colorpicker { float:left; }
+
+div.spaces-design-colorpicker a.toggle-colorpicker {
+  padding:0px 5px;
+  cursor:pointer;
+  }
+
+div#colorpicker.hidden { display:none; }

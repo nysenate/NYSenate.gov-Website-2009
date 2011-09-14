@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Internal User
+description = Special handling for internal users of the website (identified by their IP numbers).
+package = NYSS
+core = 6.x
+dependencies[] = nyss_videosettings

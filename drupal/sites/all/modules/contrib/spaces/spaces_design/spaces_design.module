@@ -1,0 +1,199 @@
+<?php
+// $Id: spaces_design.module,v 1.1.2.5 2009/08/13 17:25:37 yhahn Exp $
+
+/**
+ * Implementation of hook_theme().
+ */
+function spaces_design_theme($existing, $type, $theme, $path) {
+  return array(
+    'spaces_design_logo' => array(),
+    'spaces_design_colorpicker' => array(),
+    'spaces_design' => array(
+      'template' => 'spaces-design',
+      'arguments' => array('color' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_spaces_settings().
+ */
+function spaces_design_spaces_settings() {
+  return array(
+    'logo' => array(
+      'class' => 'space_setting_logo',
+      'file' => drupal_get_path('module', 'spaces_design') .'/spaces_design.spaces.inc',
+    ),
+    'color' => array(
+      'class' => 'space_setting_color',
+      'file' => drupal_get_path('module', 'spaces_design') .'/spaces_design.spaces.inc',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_theme_registry_alter().
+ */
+function spaces_design_theme_registry_alter(&$theme_registry) {
+  if ($position = array_search('spaces_design_preprocess_page', $theme_registry['page']['preprocess functions'])) {
+    unset($theme_registry['page']['preprocess functions'][$position]);
+  }
+
+  // Find the earliest occurrence of a theme key in the registry, and
+  // insert spaces_design preprocessor prior to it.
+  global $theme_info, $base_theme_info;
+  $position = count($theme_registry['page']['preprocess functions']);
+  $namespaces = $base_theme_info + array($theme_info);
+  foreach ($namespaces as $info) {
+    $found = array_search("{$info->name}_preprocess_page", $theme_registry['page']['preprocess functions']);
+    if ($found < $position) {
+      $position = $found;
+    }
+  }
+  array_splice($theme_registry['page']['preprocess functions'], $position - 1, 0, 'spaces_design_preprocess_page');
+}
+
+/**
+ * Turn design choices into theme variables.
+ */
+function spaces_design_preprocess_page(&$vars) {
+  $space = spaces_get_space();
+  if (!empty($space->settings['color'])) {
+    $vars['body_classes'] .= " spaces-design";
+
+    // We add in spaces design styles in their own key to give themes
+    // who blow away/reset $vars['styles'] a chance to recover.
+    $vars['spaces_design_styles'] = theme('spaces_design', $space->settings['color']);
+    $vars['styles'] .= $vars['spaces_design_styles'];
+  }
+  if (!empty($space->settings['logo']['fid'])) {
+    $file = db_fetch_object(db_query('SELECT * FROM {files} f WHERE f.fid = %d', $space->settings['logo']['fid']));
+    if ($file->filepath && file_exists($file->filepath)) {
+      $vars['spaces_logo'] = theme('spaces_design_logo', $file->filepath);
+    }
+  }
+}
+
+/**
+ * Preprocessor for theme('spaces_design').
+ */
+function template_preprocess_spaces_design(&$vars) {
+  // Nothing to do for now
+}
+
+/**
+ * Make logo markup overridable.
+ */
+function theme_spaces_design_logo($filepath) {
+  return theme('imagecache', 'spaces-logo', $filepath);
+}
+
+/**
+ * Theme colorpicker element.
+ */
+function theme_spaces_design_colorpicker($element) {
+  // Add Farbtastic color picker
+  drupal_add_css('misc/farbtastic/farbtastic.css', 'module', 'all', FALSE);
+  drupal_add_js('misc/farbtastic/farbtastic.js');
+  drupal_add_js(drupal_get_path('module', 'spaces_design') .'/spaces_design.js');
+  drupal_add_css(drupal_get_path('module', 'spaces_design') .'/spaces_design.css');
+
+  $output = "<div class='spaces-design-colorpicker clear-block'>";
+  $output .= theme('textfield', $element);
+  $output .= "<a class='toggle-colorpicker'>". t('Choose color') ."</a>";
+  $output .= "</div>";
+  $output .= "<div id='colorpicker' class='hidden'></div>";
+  return $output;
+}
+
+/**
+ * Implementation of hook_imagecache_default_presets().
+ */
+function spaces_design_imagecache_default_presets() {
+  $presets = array();
+  $presets['spaces-logo'] = array (
+    'presetname' => 'spaces-logo',
+    'actions' => array (
+      0 => array (
+        'weight' => '0',
+        'module' => 'imagecache',
+        'action' => 'imagecache_deprecated_scale',
+        'data' => array (
+          'fit' => 'inside',
+          'width' => '300',
+          'height' => '60',
+        ),
+      ),
+    ),
+  );
+  return $presets;
+}
+
+/**
+ * Helper function that tests whether a given color string is valid.
+ * Currently doesn't do a particulaly hard check.
+ */
+function _spaces_design_validate_color($color) {
+  $color = trim($color);
+  // Find all colors in the stylesheet and the chunks in between.
+  // $style = preg_split('/(#[0-9a-f]{6}|#[0-9a-f]{3})/i', $style, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+  if (strlen($color) == 7) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Helper function that tests whether a given color is empty.
+ */
+function _spaces_design_color_is_empty($color) {
+  $color = trim($color);
+  if ($color == '' || $color == '#') {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Attempt to retrieve a suitable background color value from an image.
+ */
+function _spaces_design_image_autocolor($filepath) {
+  // Do additional handling post-save
+  $image = imageapi_image_open($filepath);
+  $toolkit = variable_get('imageapi_image_toolkit', 'imageapi_gd');
+
+  // Currently we only handle background color selection through the GD library.
+  $autocolor = '';
+  if ($toolkit == 'imageapi_gd' && !empty($image->resource)) {
+    $raw = array();
+    $raw['nw'] = imagecolorat($image->resource, 0, 0);
+    $raw['ne'] = imagecolorat($image->resource, $image->info['width'] - 1, 0);
+    $raw['se'] = imagecolorat($image->resource, $image->info['width'] - 1, $image->info['height'] - 1);
+    $raw['sw'] = imagecolorat($image->resource, 0, $image->info['height'] - 1);
+
+    $colors = array();
+    foreach ($raw as $k => $index) {
+      $rgb = imagecolorsforindex($image->resource, $index);
+
+      $color = array();
+      $color[] = str_pad(dechex($rgb['red']), 2, '0', STR_PAD_LEFT);
+      $color[] = str_pad(dechex($rgb['green']), 2, '0', STR_PAD_LEFT);
+      $color[] = str_pad(dechex($rgb['blue']), 2, '0', STR_PAD_LEFT);
+      $color = "#". implode('', $color);
+
+      $colors[$color] = $colors[$color] + 1;
+    }
+    $max = 1;
+    $excluded = array('#ffffff', '#000000');
+    foreach ($colors as $color => $count) {
+      $unpacked = _color_unpack($color, TRUE);
+      $hsl = _color_rgb2hsl($unpacked);
+
+      if ($count > $max && !in_array($color, $excluded) && $hsl[2] < .95 &&  $hsl[2] > .05) {
+        $autocolor = $color;
+      }
+    }
+  }
+  return $autocolor;
+}

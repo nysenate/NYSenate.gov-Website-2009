@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Senator Search
+description = Find a senator based on address by using shapefiles.
+package = NYSS
+core = 6.x

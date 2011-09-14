@@ -1,0 +1,245 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Tax rebate calculator.
+ *
+*/
+
+$path = drupal_get_path('module','rebate_calculator');
+
+function rebate_calculator_init() {
+  drupal_add_css(drupal_get_path('module', 'rebate_calculator') .'/rebate_calculator.css');
+}
+
+/**
+ * Implement hook_menu().
+ */
+function rebate_calculator_menu() {
+  $items = array();
+  $items['rebate_calculator/form'] = array(
+    'page callback' => 'rebate_calculator_form',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function rebate_calculator_base(&$form_state, $form_id='rebate-calculator-form', $suffix = "1") {
+  $values = $form_state['post'];
+  $family_income = str_replace(array('$', ' ', ','), '', $values["family_income_$suffix"]);
+  $tax_assessment = str_replace(array('$', ' ', ','), '', $values["tax_assessment_$suffix"]);
+  $threshold_1 = 120000;
+  $threshold_2 = 175000;
+  $threshold_3 = 250000;
+  $rebate = 0;
+  if ($family_income && $tax_assessment) {
+    $has_values = TRUE;
+    if ($family_income <= $threshold_1 && $tax_assessment > .07 * $family_income) {
+      $rebate = .3 * ($tax_assessment - (.07 * $family_income));
+    }
+    else if ($family_income <= $threshold_2 && $tax_assessment > .08 * $family_income) {
+      $rebate = .3 * ($tax_assessment - (.08 * $family_income));
+    }
+    else if ($family_income <= $threshold_3 && $tax_assessment > .09 * $family_income) {
+      $rebate = .3 * ($tax_assessment - (.09 * $family_income));
+    }
+  }
+  
+  $form["info_$suffix"] = array(
+    '#value' => '<p>' . t('Enter your family\'s household income and total property tax bill to calculate your estimated tax credit based on the !law.',
+      array(
+        '!law' => l(t('circuit breaker bill S6212-A'), 'http://open.nysenate.gov/legislation/api/1.0/html/bill/S6212A'),
+      )
+    ) . '</p>',
+    '#weight' => -5,
+  );
+  $form["family_income_$suffix"] = array(
+    '#type' => 'textfield',
+    '#title' => t('Family Income'),
+    '#size' => 10,
+    '#description' => t('Enter your family\'s gross income in dollars.'),
+  );
+  $form["tax_assessment_$suffix"] = array(
+    '#type' => 'textfield',
+    '#title' => t('Property tax bill'),
+    '#size' => 10,
+    '#description' => t('Enter the amount of your total property tax bill.'),
+  );
+  $form["submit_$suffix"] = array(
+    '#type' => 'submit',
+    '#value' => t('Calculate credit'),
+  );
+  if ($has_values) {
+    $rebate_string = t('Your estimated tax credit is !value', array('!value' => '$' . number_format($rebate,2)));
+  }
+    $form["rebate__$suffix"] = array(
+    '#value' => '<div class="rebate-result-' . $suffix . '">' . $rebate_string . '</div>',
+  );
+  $contact_assembly = t(
+    'The State Senate has passed this bill, and it is awaiting approval by the Assembly and Governor. !contact and urge them to pass this bill.', 
+    array(
+      '!contact' => l(t('Contact your Assemblymember'), 'http://assembly.state.ny.us/mem/'),
+    )
+  );
+  $form["contact_assembly_$suffix"] = array(
+    '#value' => '<div class="rebate-contact-assembly">' . $contact_assembly . '</div>',
+  );
+  $form['#redirect'] = FALSE;
+  $form['#prefix'] = '<div class="' . $form_id . '">';
+  $form['#suffix'] = '</div>';
+
+  $form['#suffix'] .= '<script language="JavaScript">
+  <!--
+    function CurrencyFormatted(amount) {
+      var i = parseFloat(amount);
+      if(isNaN(i)) { i = 0.00; }
+      var minus = "";
+      if(i < 0) { minus = "-"; }
+      i = Math.abs(i);
+      i = parseInt((i + .005) * 100);
+      i = i / 100;
+      s = new String(i);
+      if(s.indexOf('.') < 0) { s += ".00"; }
+      if(s.indexOf('.') == (s.length - 2)) { s += "0"; }
+      s = minus + s;
+      return s;
+    }
+
+    function CommaFormatted(amount)
+    {
+      var delimiter = ",";
+      var a = amount.split(".",2)
+      var d = a[1];
+      var i = parseInt(a[0]);
+      if(isNaN(i)) { return ""; }
+      var minus = "";
+      if(i < 0) { minus = "-"; }
+      i = Math.abs(i);
+      var n = new String(i);
+      var a = [];
+      while(n.length > 3)
+      {
+        var nn = n.substr(n.length-3);
+        a.unshift(nn);
+        n = n.substr(0,n.length-3);
+      }
+      if(n.length > 0) { a.unshift(n); }
+      n = a.join(delimiter);
+      if(d.length < 1) { amount = n; }
+      else if(d.length == 1) { amount = n + "." + d + "0"; }
+      else { amount = n + "." + d; }
+      amount = minus + amount;
+      return amount;
+    }
+
+    $(document).ready(function(){
+      $("#' . $form_id . ' :input").change(function(){
+        var family_income = Number($("#' . $form_id . ' #edit-family-income-' . $suffix . '").val().replace(/[^0-9\.]+/g,""));
+        var tax_assessment = Number($("#' . $form_id . ' #edit-tax-assessment-' . $suffix . '").val().replace(/[^0-9\.]+/g,""));
+        var threshold_1 = 120000, threshold_2 = 175000, threshold_3 = 250000;
+        var rebate = 0;
+        has_values = 0;
+        if (family_income && tax_assessment) {
+          has_values = 1;
+          if (family_income <= threshold_1 && tax_assessment > .07 * family_income) {
+            rebate = .3 * (tax_assessment - (.07 * family_income));
+          }
+          else if (family_income <= threshold_2 && tax_assessment > .08 * family_income) {
+            rebate = .3 * (tax_assessment - (.08 * family_income));
+          }
+          else if (family_income <= threshold_3 && tax_assessment > .09 * family_income) {
+            rebate = .3 * (tax_assessment - (.09 * family_income));
+          }
+        }
+        s = CurrencyFormatted(rebate);
+        s = CommaFormatted(s);
+        if (has_values) {
+          $("#' . $form_id . ' .rebate-result-' . $suffix . '").html("Your estimated tax credit is $" + s + ".");
+        }
+        else {
+          $("#' . $form_id . ' .rebate-result-' . $suffix . '").html("");
+        }
+        return false;
+      }).change();
+      $("#' . $form_id . ' :submit").click(function(event){
+        return false;
+      });
+    });
+  -->
+  </script>';
+  return $form;
+}
+
+function rebate_calculator_form(&$form_state) {
+  return rebate_calculator_base($form_state, 'rebate-calculator-form', "1");
+}
+
+function rebate_calculator_form_embed(&$form_state) {
+  return rebate_calculator_base($form_state, 'rebate-calculator-form-embed', "2");
+}
+
+/**
+ * Implementation of hook_block().
+ *
+ * This hook both declares to Drupal what blocks are provided by the module, and
+ * generates the contents of the blocks themselves.
+ */
+function rebate_calculator_block($op = 'list', $delta = '', $edit = array()) {
+  // The $op parameter determines what piece of information is being requested.
+  switch ($op) {
+    case 'list':
+      // If $op is "list", we just need to return a list of block descriptions.
+      // This is used to provide a list of possible blocks to the administrator;
+      // end users will not see these descriptions.
+      $blocks[0] = array(
+        'info'       => t('Tax credit calculator'),
+      );
+      return $blocks;
+    case 'view':
+      // If $op is "view", then we need to generate the block for display
+      // purposes. The $delta parameter tells us which block is being requested.
+      switch ($delta) {
+        case 0:
+          // The subject is displayed at the top of the block. Note that it
+          // should be passed through t() for translation.
+          $block['subject'] = t('Tax credit calculator');
+          // The content of the block is typically generated by calling a custom
+          // function.
+          $block['content'] = drupal_get_form('rebate_calculator_form');
+          break;
+      }
+      return $block;
+  }
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function rebate_calculator_filter($op, $delta = 0, $format = -1, $text = '') {
+  switch ($op) {
+    case 'list':
+      return array(0 => t('Tax credit calculator filter'));
+
+    case 'description':
+      return t('Enables insertion of tax credit calculators into node content.'); 
+
+    case 'process':
+      $replacement = '<div class="rebate-calculator-insert">
+      <h3>Tax Credit Calculator</h3>
+      ' . drupal_get_form('rebate_calculator_form_embed') . '
+      </div>';
+      $preg = '|\[\[tax\s*credit\s+calculator\]\]|i';
+      if (preg_match_all($preg, $text, $match)) {
+        foreach($match[0] as $pattern_matched) {
+          $text = str_replace($pattern_matched, $replacement, $text);
+        }
+      }
+//      $text = str_replace('[[tax credit calculator]]', $replacement, $text);
+      return $text; 
+    default:
+      return $text;
+  }
+}
+

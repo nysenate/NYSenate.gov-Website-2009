@@ -1,0 +1,297 @@
+# $Id$
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  conditional_fields.module: n/a
+#  conditional_fields.info: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2009-11-28 18:22+0100\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: conditional_fields.module:24
+msgid "These settings only apply to the conditional fields of this content type."
+msgstr ""
+
+#: conditional_fields.module:27
+msgid "The Conditional Fields module allows to set fields with allowed values as \"controlling fields\" for other fields and groups. When a field or group is \"controlled\", it will only be available for editing and displayed if the selected values of the controlling field match the \"trigger values\" assigned to it. You can, for example, make a custom \"article teaser\" field that is shown only if a \"Has teaser\" checkbox is checked."
+msgstr ""
+
+#: conditional_fields.module:28
+msgid "When editing a node, the controlled fields are dynamically shown and hidden with javascript."
+msgstr ""
+
+#: conditional_fields.module:29
+msgid "On node view, the controlled fields which were left untriggered are hidden."
+msgstr ""
+
+#: conditional_fields.module:30
+msgid "Once the module is activated, a new set of options will appear in the editing form of cck fields, from where you can select which of the allowed values available of candidate \"controlling\" fields will make the field \"controlled\". If <em>- Not controlling -</em> or no value is selected, the field will be shown as usual."
+msgstr ""
+
+#: conditional_fields.module:31
+msgid "These are the requisites to make a field controllable:"
+msgstr ""
+
+#: conditional_fields.module:33
+msgid "The controlling field widget must be single or multiple select list, radio buttons or checkboxes."
+msgstr ""
+
+#: conditional_fields.module:34
+msgid "The controlling field must have allowed values."
+msgstr ""
+
+#: conditional_fields.module:35
+msgid "If the controlled field is in a group, the controlling field must be in the same group."
+msgstr ""
+
+#: conditional_fields.module:36
+msgid "If you want to make a group controllable, the controlling field should not be inside a group."
+msgstr ""
+
+#: conditional_fields.module:38
+msgid "There is also a \"Conditional fields\" settings tab in every content type admin page."
+msgstr ""
+
+#: conditional_fields.module:39
+msgid "The <a href=\"@handbook\">Conditional Fields Handbook</a> contains further explanations and examples."
+msgstr ""
+
+#: conditional_fields.module:82
+msgid "User Interface options"
+msgstr ""
+
+#: conditional_fields.module:88
+msgid "Don't use javascript. Fields are only hidden on node view."
+msgstr ""
+
+#: conditional_fields.module:89
+msgid "Hide untriggered fields."
+msgstr ""
+
+#: conditional_fields.module:90
+msgid "Disable untriggered fields."
+msgstr ""
+
+#: conditional_fields.module:93
+msgid "Choose the desired javascript behaviour in node editing forms."
+msgstr ""
+
+#: conditional_fields.module:98
+msgid "Animation"
+msgstr ""
+
+#: conditional_fields.module:99
+msgid "These settings have effect only if you select the 'Hide untriggered fields' option above."
+msgstr ""
+
+#: conditional_fields.module:103;410
+msgid "Type"
+msgstr ""
+
+#: conditional_fields.module:106
+msgid "No animation"
+msgstr ""
+
+#: conditional_fields.module:107
+msgid "Slide down"
+msgstr ""
+
+#: conditional_fields.module:108
+msgid "Fade"
+msgstr ""
+
+#: conditional_fields.module:113
+msgid "Speed"
+msgstr ""
+
+#: conditional_fields.module:114
+msgid "The speed at which the animation is performed. Slow = 600ms; Normal = 400ms; Fast = 200ms."
+msgstr ""
+
+#: conditional_fields.module:117
+msgid "Slow"
+msgstr ""
+
+#: conditional_fields.module:118
+msgid "Normal"
+msgstr ""
+
+#: conditional_fields.module:119
+msgid "Fast"
+msgstr ""
+
+#: conditional_fields.module:124
+msgid "Orphaned controlled fields settings"
+msgstr ""
+
+#: conditional_fields.module:125
+msgid "Configure the visibility/editability of controlled fields whose controlling fields are not visible/editable."
+msgstr ""
+
+#: conditional_fields.module:129
+msgid "Hide"
+msgstr ""
+
+#: conditional_fields.module:129
+msgid "Show only if triggered"
+msgstr ""
+
+#: conditional_fields.module:129
+msgid "Show"
+msgstr ""
+
+#: conditional_fields.module:132
+msgid "On node view"
+msgstr ""
+
+#: conditional_fields.module:138
+msgid "On node edit"
+msgstr ""
+
+#: conditional_fields.module:144
+msgid "Reset untriggered fields to default values"
+msgstr ""
+
+#: conditional_fields.module:145
+msgid "Select this box to reset untriggered controlled fields to their default values when saving a node."
+msgstr ""
+
+#: conditional_fields.module:150
+msgid "Administrators see all fields"
+msgstr ""
+
+#: conditional_fields.module:151
+msgid "Select this box to let users with the <a href=\"@access-control-page\">administer conditional fields</a> permission to view all controlled fields of a node."
+msgstr ""
+
+#: conditional_fields.module:156
+msgid "Delete"
+msgstr ""
+
+#: conditional_fields.module:157
+msgid "Delete all conditional fields configured for this content type. This will delete the conditional fields settings, not the fields themselves."
+msgstr ""
+
+#: conditional_fields.module:162
+msgid "Save"
+msgstr ""
+
+#: conditional_fields.module:179
+msgid "Conditional fields options for this content type saved."
+msgstr ""
+
+#: conditional_fields.module:183
+msgid "All configured conditional fields for this content type have been deleted."
+msgstr ""
+
+#: conditional_fields.module:280
+msgid "Change basic information"
+msgstr ""
+
+#: conditional_fields.module:391
+msgid "Below is a list of all fields and groups controlled by this field. If you want to make this field controllable, you have to clear the settings for each controlled field."
+msgstr ""
+
+#: conditional_fields.module:398
+msgid "group"
+msgstr ""
+
+#: conditional_fields.module:399
+msgid "<a href=\"@edit-group\">edit</a>"
+msgstr ""
+
+#: conditional_fields.module:405
+msgid "field"
+msgstr ""
+
+#: conditional_fields.module:406
+msgid "<a href=\"@edit-field\">edit</a>"
+msgstr ""
+
+#: conditional_fields.module:410
+msgid "Name"
+msgstr ""
+
+#: conditional_fields.module:410
+msgid "Trigger values"
+msgstr ""
+
+#: conditional_fields.module:410
+msgid "Options"
+msgstr ""
+
+#: conditional_fields.module:417
+msgid "Choose which allowed values of available controlling fields will trigger this @context, making it visible both in node editing and view. If no value is set, the @context will be always visible. Only fields and groups within the same group as this one, and with <em>Allowed values</em> set, are available for control."
+msgstr ""
+
+#: conditional_fields.module:425
+msgid "- Not controlling -"
+msgstr ""
+
+#: conditional_fields.module:440
+msgid "<a href=\"@edit-field\">Edit the allowed values</a> of %field-name."
+msgstr ""
+
+#: conditional_fields.module:459
+msgid "Conditional fields settings"
+msgstr ""
+
+#: conditional_fields.module:508
+msgid "You cannot select more than one controlling field."
+msgstr ""
+
+#: conditional_fields.module:513
+msgid "You cannot select 'Not controlling' and other values at the same time."
+msgstr ""
+
+#: conditional_fields.module:520
+msgid "If you changed or removed any allowed value from the field, you might have to review its controlled fields and fieldgroups settings."
+msgstr ""
+
+#: conditional_fields.module:750;759;794
+msgid "!name field is required."
+msgstr ""
+
+#: conditional_fields.module:915
+msgid "You can't change the parent group of a conditional field."
+msgstr ""
+
+#: conditional_fields.module:1167
+msgid "<div class=\"description\">Controlled by <em>@controlling</em></div>"
+msgstr ""
+
+#: conditional_fields.module:1170
+msgid "<div class=\"description\">Controlling <em>@controlled</em></div>"
+msgstr ""
+
+#: conditional_fields.module:71
+msgid "administer conditional fields"
+msgstr ""
+
+#: conditional_fields.module:55
+msgid "Conditional fields"
+msgstr ""
+
+#: conditional_fields.info:0
+msgid "Conditional Fields"
+msgstr ""
+
+#: conditional_fields.info:0
+msgid "Content fields and groups visibility based on the values of user defined 'trigger' fields."
+msgstr ""
+
+#: conditional_fields.info:0
+msgid "CCK"
+msgstr ""
+

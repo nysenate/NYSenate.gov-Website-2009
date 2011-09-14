@@ -1,0 +1,5 @@
+; $Id: render.info,v 1.5 2008/10/25 12:46:34 sun Exp $
+name = Dynamic Rendering
+description = Administrative interface for various CSS/JS-based rendering technologies.
+package = User interface
+core = 6.x

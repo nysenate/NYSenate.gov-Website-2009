@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Committee
+description = Manage information about senate committees.
+package = NYSS
+core = 6.x
+dependencies[] = nyss_senator

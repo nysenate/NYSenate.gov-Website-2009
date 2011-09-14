@@ -1,0 +1,51 @@
+<?php
+
+function advuser_install() {
+  variable_set('advuser_new_notify', FALSE);
+  variable_set('advuser_new_subject', t('[%site] has a new user (%user_name).'));
+  variable_set('advuser_new_mail', t(
+"=====  User Information:  =====
+%user_name created on %user_created with email address %user_email and status of %user_status.  The user prefers a timezone of %user_timezone, language of %user_language and theme of %user_theme.
+
+=====  User Administration:  =====
+%uri
+
+=====  Investigate User:  =====
+Yahoo search  %user_email: %yahoo_user 
+Google search %user_email: %google_user
+
+--
+%site"));
+
+  variable_set('advuser_modify_notify', FALSE);
+  variable_set('advuser_modify_subject', t('[%site] user (%user_name) modified their account.'));
+  variable_set('advuser_modify_mail', t(
+"=====  User Information:  =====
+%user_name created on %user_created with email address %user_email and status of %user_status.  The user prefers a timezone of %user_timezone, language of %user_language and theme of %user_theme.
+
+=====  User Administration:  =====
+%uri
+
+=====  Investigate User:  =====
+Yahoo search  %user_email: %yahoo_user 
+Google search %user_email: %google_user
+
+--
+%site"));
+
+  variable_set('advuser_listno', 50);
+  variable_set('advuser_profile_fields', NULL);
+}
+
+function advuser_uninstall() {
+  $delete_variables = "DELETE FROM {variable} WHERE name LIKE 'ADVUSER_%'";
+  $remove_system = "DELETE FROM {system} WHERE name = 'advuser'";
+  db_query($delete_variables);
+  cache_clear_all('variables', 'cache');
+
+  // Allow the user to remove the module from the file system but that
+  // removal must happen before the module list is displayed again.
+  db_query($remove_system);
+}
+
+// vim:ft=php:sts=2:sw=2:ts=2:et:ai:sta:ff=unix

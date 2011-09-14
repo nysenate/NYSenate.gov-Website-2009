@@ -1,0 +1,196 @@
+#
+# Swedish translation of Drupal (legal)
+# Copyright 2008 Magnus Gunnarsson <seals@passagen.se>
+# Generated from files:
+#  legal.module,v 1.19 2008/05/12 00:12:41 MegaGrunt
+#  legal.info,v 1.4 2008/05/12 00:12:41 MegaGrunt
+#  legal.install,v 1.4 2008/05/12 00:12:41 MegaGrunt
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Legal 6.x\n"
+"POT-Creation-Date: 2008-05-28 01:43+0200\n"
+"PO-Revision-Date: 2008-05-28 01:47+0100\n"
+"Last-Translator: Magnus Gunnarsson <seals@passagen.se>\n"
+"Language-Team: drupalsverige.\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"X-Poedit-Language: Swedish\n"
+"X-Poedit-Country: SWEDEN\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+#: legal.module:12
+msgid "Display a Terms & Conditions statement on the registration page, require visitor to accept T&C to register."
+msgstr "Visa en villkorstext på registreringssidan och kräv att användaren godkänner denna för att registrera sig. "
+
+#: legal.module:13
+msgid "When a user creates an account they are required to accept your Terms & Conditions to complete their registration."
+msgstr "När en användare skapar ett konto måste de godkänna dina villkor för att fullborda registreringen."
+
+#: legal.module:16
+msgid "Display a Terms & Conditions statement on the registration page, require visitor to accept the T&C to register. "
+msgstr "Visa en villkorstext på registreringssidan och kräv att användaren godkänner denna för att registrera sig. "
+
+#: legal.module:17
+msgid "A !page displaying your T&C will be automatically created, access to this page can be set via the !access administration page."
+msgstr "En sida som visar dina villkor kommer automatiskt att skapas. Åtkomsten till denna sida kan anpassas via administrationssidan !access."
+
+#: legal.module:101
+msgid "Terms and Conditions of Use"
+msgstr "Allmänna villkor för användning"
+
+#: legal.module:117;177;272
+msgid "Terms & Conditions"
+msgstr "Allmänna villkor"
+
+#: legal.module:143
+msgid "<strong>Accept</strong> Terms & Conditions of Use"
+msgstr "<strong>Jag godkänner</strong> dessa villkor"
+
+#: legal.module:179
+msgid "Your Terms & Conditions"
+msgstr "Dina allmänna villkor"
+
+#: legal.module:189
+msgid "Display Style"
+msgstr "Visningstyp"
+
+#: legal.module:191
+msgid "Scroll Box"
+msgstr "Rullista"
+
+#: legal.module:191
+msgid "Scroll Box (CSS)"
+msgstr "Rullista (CSS)"
+
+#: legal.module:191
+msgid "HTML Text"
+msgstr "HTML-text"
+
+#: legal.module:192
+msgid "How terms & conditions should be displayed to users."
+msgstr "Hur villkorstexten skall visas för användarna."
+
+#: legal.module:199
+msgid "Additional Checkboxes"
+msgstr "Ytterligare kryssrutor"
+
+#: legal.module:200
+msgid "Each field will be shown as a checkbox which the user must tick to register."
+msgstr "Varje fält kommer att visas som en kryssruta som användaren måste kryssa i för att kunna registrera sig."
+
+#: legal.module:213
+msgid "Label"
+msgstr "Etikett"
+
+#: legal.module:232
+msgid "Explain Changes"
+msgstr "Förklaring av förändring"
+
+#: legal.module:233
+msgid "Explain what changes were made to the T&C since the last version. This will only be shown to users who accepted a previous version. Each line will automatically be shown as a bullet point."
+msgstr "Förklara vilka förändringar som gjorts i villkorstexten sedan förra versionen. Detta visas bara för användare som redan har godkänt en tidigare version. Varje rad kommer automatiskt att visas som en punkt i en lista."
+
+#: legal.module:240
+msgid "Changes"
+msgstr "Ändringar"
+
+#: legal.module:247;307;338
+msgid "Preview"
+msgstr "Förhandsvisa"
+
+#: legal.module:252;580
+msgid "Save"
+msgstr "Spara"
+
+#: legal.module:300
+msgid "Terms & Conditions must be entered."
+msgstr "Allmänna villkor måste anges."
+
+#: legal.module:311
+msgid "Display setting has been saved."
+msgstr "Visningsinställningen har sparats"
+
+#: legal.module:317
+msgid "Terms & Conditions have been saved."
+msgstr "De allmänna villkoren har sparats."
+
+#: legal.module:327
+msgid "Terms & Conditions will not be shown to users, as no T&C have been saved."
+msgstr "Allmänna villkor kommer inte att visas för användarna eftersom ingen villkorstext har sparats."
+
+#: legal.module:329
+msgid "Current Version"
+msgstr "Aktuell version"
+
+#: legal.module:329
+msgid "Version ID:"
+msgstr "ID för version:"
+
+#: legal.module:329
+msgid "Last saved:"
+msgstr "Senast sparad:"
+
+#: legal.module:592
+msgid "User ID cannot be identified."
+msgstr "ID för användaren kan inte identifieras."
+
+#: legal.module:622
+msgid "To continue to use this site please read the Terms & Conditions below, and complete the form to confirm your acceptance."
+msgstr "För att fortsätta använda denna webbplats måste du läsa igenom de allmänna villkoren nedan och fylla i formuläret för att bekräfta att du accepterar dem."
+
+#: legal.module:691
+msgid "Changes List"
+msgstr "Lista över ändringar"
+
+#: legal.module:692
+msgid "Changes to the Terms & Conditions since last accepted:"
+msgstr "Förändringar som har gjorts till de allmänna villkoren sedan de senast godkändes:"
+
+#: legal.module:605;0
+msgid "legal"
+msgstr "legal"
+
+#: legal.module:605
+msgid "%name accepted T&C version %tc_id."
+msgstr "%name accepterade T&C version %tc_id."
+
+#: legal.module:26
+msgid "administer Terms and Conditions"
+msgstr "administrera allmänna villkor"
+
+#: legal.module:26
+msgid "view Terms and Conditions"
+msgstr "visa allmänna villkor"
+
+#: legal.module:44
+#: legal.info:0
+msgid "Legal"
+msgstr "Juridik"
+
+#: legal.module:48
+#: legal.info:0
+msgid "Display Terms and Conditions statement on the registration page."
+msgstr "Visa en villkorstext på registreringssidan."
+
+#: legal.module:51;57
+msgid "Terms and Conditions"
+msgstr "Allmänna villkor"
+
+#: legal.install:11
+msgid "Legal module installed successfully."
+msgstr "Installationen av modulen Legal lyckades."
+
+#: legal.install:14
+msgid "Table installation for the Legal module was unsuccessful. The tables may need to be installed by hand. See legal.install file for a list of the installation queries."
+msgstr "Installation av tabeller för modulen Legal misslyckades. Tabellerna kan behöva installeras för hand. Läs mer i filen legal.install för en lista över installationens databasfrågor."
+
+#~ msgid "Terms & Conditions must be accepted."
+#~ msgstr "Villkor måste accepteras."
+#~ msgid "user"
+#~ msgstr "användare"
+#~ msgid "Session opened for %name."
+#~ msgstr "Session startad för %name."
+

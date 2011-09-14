@@ -1,0 +1,74 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Internal Users
+ *
+ *  This module controls access to videos for internal users of the NYSS website.
+ *
+ */
+
+/**
+ * Implementation of hook_theme()
+ */
+function nyss_internalusers_theme() {
+  return array(
+    'nyss_internalusers_message' => array(
+      'arguments' => array(),
+    ),
+  );
+}
+
+function theme_nyss_internalusers_message() {
+  $replacements1 = array(
+    '!realplayervideo' => l(t('RealPlayer Video'), 'http://senreal2.senate.state.ny.us/ramgen/sennettv.smil', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!realplayeraudio' => l(t('RealPlayer Audio Stream'), 'http://senreal2.senate.state.ny.us/ramgen/senaudch.smil', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+  );
+  $replacements2 = array(
+    '!livestream' => l(t('NYSenate on Livestream.com'), 'http://www.livestream.com/nysenate', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!nysenate2' => l(t('NY Senate 2'), 'http://www.livestream.com/nysenate2', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!nysenate3' => l(t('NY Senate 3'), 'http://www.livestream.com/nysenate3', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!nysenate4' => l(t('NY Senate 4'), 'http://www.livestream.com/nysenate4', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!rulesreform' => l(t('Rules Reform and Administration'), 'http://www.livestream.com/rulesreformandadministration', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+  );
+  $replacements3 = array(
+    '!youtube' => l(t('YouTube'), 'http://www.youtube.com/nysenate', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!bliptv' => l(t('Blip.tv'), 'http://nysenate.blip.tv/', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!uncut1' => l(t('YouTube'), 'http://www.youtube.com/nysenateuncut', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+    '!uncut2' => l(t('Blip.tv'), 'http://nysenateuncut.blip.tv/', array('absolute' => TRUE, 'attributes' => array('target' => '_blank'))),
+  );
+  $output = '<p>' . t('We have detected that you are visiting NYSenate.gov from the Senate network.') . "</p>\n";
+  $output .=  '<h3>' . t('To watch Senate session live, select:<br />!realplayervideo or !realplayeraudio.', $replacements1) . "</h3>\n";
+  $output .=  '<p>' . t("(RealPlayer delivers high-quality video and audio to hundreds of Senate users simultaneously across the Senate's own network. " . 
+      "So you won't have to compete with the general public on the Internet to catch Senate events, and Internet slowdowns or outages won't affect you.)") . "</p>\n";
+  if (nyss_videosettings_allow_internal_livestream()) {
+    $output .=  '<p>' . t('If you are looking for a Committee hearing or an other event that is not streamed via Real, visit !livestream (alternate Livestream channels: !nysenate2, !nysenate3, !nysenate4, or !rulesreform). ', $replacements2);
+    $output .= t('Also, you can visit our NYSenate Clips on !youtube or !bliptv or our NYSenate Uncut on !uncut1 or !uncut2.', $replacements3) . '</p>';
+  }
+  return $output;
+}
+
+/**
+ * Test whether the current user is internal or not, based on their IP number
+ * Return value is Boolean
+ */
+function nyss_internalusers_is_internal() {
+  $ip=ip_address();
+  if (substr($ip, 0, 9) == '63.118.56' || substr($ip, 0, 9) == '63.118.57') {
+    return TRUE;
+  }
+/* THIS IP RANGE IS FOR SENATE VISITORS. PROBABLY NOT INTERNAL USERS
+  if (substr($ip, 0, 10) == '216.136.44' && strlen($ip) == 13 && substr($ip, 11, 2) >= '82' && substr($ip, 11, 2) <= '94') {
+    return TRUE;
+  } */
+/*  if ($ip == '127.0.0.1') {
+    return TRUE;
+  } */
+  return FALSE;
+}
+
+function nyss_internalusers_show_ip() {
+  return ip_address();
+}
+

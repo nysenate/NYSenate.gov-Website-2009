@@ -1,0 +1,12 @@
+; $Id: media_video_flotsam.info,v 1.2 2010/08/02 02:31:27 alexua Exp $ 
+name = Media: Video Flotsam
+description = Legacy Embedded Video Field providers that were removed from Emfield, but don't have their own Media modules.
+core = 6.x
+dependencies[] = emvideo
+package = Media
+; Information added by drupal.org packaging script on 2010-12-08
+version = "6.x-1.2"
+core = "6.x"
+project = "media_video_flotsam"
+datestamp = "1291844442"
+

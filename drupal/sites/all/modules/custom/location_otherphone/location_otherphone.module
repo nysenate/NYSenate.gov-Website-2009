@@ -1,0 +1,73 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Add other phone number fields to Location address.
+ */
+
+/**
+ * Implementation of hook_locationapi().
+ */
+function location_otherphone_locationapi(&$location, $op, $a3 = NULL, $a4 = NULL) {
+  switch ($op) {
+    case 'fields':
+      return array('otherphone' => t('Other phone number'));
+
+    case 'defaults':
+      return array(
+        'otherphone' => array('default' => '', 'collect' => 0, 'weight' => 25),
+      );
+
+    case 'field_expand':
+      if ($a3 == 'otherphone') {
+        return array(
+          '#type' => 'textfield',
+          '#title' => t('Other phone number'),
+          '#size' => 31,
+          '#maxlength' => 31,
+          '#description' => NULL,
+          '#required' => ($a4 == 2),
+          '#default_value' => $location,
+        );
+      }
+      break;
+
+    case 'save':
+      db_query('DELETE FROM {location_otherphone} WHERE lid = %d', $location['lid']);
+      if (!empty($location['otherphone'])) {
+        db_query("INSERT INTO {location_otherphone} (lid, otherphone) VALUES (%d, '%s')", $location['lid'], $location['otherphone']);
+      }
+      break;
+
+    case 'load':
+      $fields = array('otherphone' => '');
+      if ($row = db_fetch_object(db_query('SELECT otherphone FROM {location_otherphone} WHERE lid = %d', $location['lid']))) {
+        $fields['otherphone'] = $row->otherphone;
+      }
+      return $fields;
+
+    case 'delete':
+      db_query('DELETE FROM {location_otherphone} WHERE lid = %d', $location['lid']);
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function location_otherphone_views_api() {
+  return array(
+    'api' => 2,
+  );
+}
+
+/**
+ * Implementation of hook_token_list().
+ */
+function location_otherphone_token_list($type = 'all') {
+  if ($type == 'node' || $type == 'user' || $type == 'all') {
+    $tokens['location']['location-otherphone_N'] = t('Location other phone number (If there are multiple locations per node, N is the iteration, starting with 0)');
+    return $tokens;
+  }
+}

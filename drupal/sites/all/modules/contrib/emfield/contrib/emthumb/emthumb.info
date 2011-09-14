@@ -1,0 +1,11 @@
+name = Embedded Media Thumbnail
+description = Allows custom thumbnails for Embedded Media Fields.
+dependencies[] = emfield
+package = Media
+core = 6.x
+; Information added by drupal.org packaging script on 2011-05-06
+version = "6.x-2.5"
+core = "6.x"
+project = "emfield"
+datestamp = "1304705515"
+

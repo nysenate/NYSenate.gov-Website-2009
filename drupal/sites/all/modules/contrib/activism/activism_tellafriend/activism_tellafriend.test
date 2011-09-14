@@ -1,0 +1,102 @@
+<?php
+// $Id: activism_tellafriend.test,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * SimpleTests for activism_tellafriend.module.
+ *
+ * @todo Can't test sending of the Tell a Friend e-mail message.
+ */
+
+class ActivismTellaFriendTestCase extends DrupalWebTestCase {
+  function getInfo() {
+    return array(
+      'name' => t('Tell a Friend'),
+      'description' => t('Functionality and unit tests for activism_tellafriend.module.'),
+      'group' => t('Activism'),
+    );
+  }
+
+  function setUp() {
+    parent::setUp('activism', 'activism_tellafriend', 'token');
+    $this->admin_user   = $this->drupalCreateUser(array('administer activism', 'create campaign content', 'edit own campaign content', 'delete own campaign content'));
+    $this->allowed_user = $this->drupalCreateUser(array('create campaign content', 'edit own campaign content', 'delete own campaign content'));
+    $this->normal_user  = $this->drupalCreateUser(array('access content'));
+  }
+
+  /**
+   * Commence teh testing of everything, bub.
+   */
+  function testActivismTellaFriendEverything() {
+    $testable_tokens = // used in TAF mail configuration.
+     'MARKER: Sender first name: [activism_tellafriend-sender-first-name]
+      MARKER: Sender last name: [activism_tellafriend-sender-last-name]
+      MARKER: Sender mail: [activism_tellafriend-sender-mail]
+      MARKER: Recipient name: [activism_tellafriend-recipient-name]
+      MARKER: Recipient mail: [activism_tellafriend-recipient-mail]
+      MARKER: Global site name: [site-name]';
+    $edit = array(
+      'type'                              => 'campaign',
+      'uid'                               => $this->allowed_user->uid,
+      'body'                              => $this->randomName(32),
+      'title'                             => $this->randomName(8),
+      'activism_cta_module'               => 'activism_tellafriend',
+      'activism_tellafriend_mail_subject' => 'Help us [activism_tellafriend-recipient-name]!',
+      'activism_tellafriend_mail_header'  => str_replace('MARKER', 'HEADER', $testable_tokens),
+      'activism_tellafriend_mail_footer'  => str_replace('MARKER', 'FOOTER', $testable_tokens),
+      'activism_tellafriend_mail_header_format' => FILTER_FORMAT_DEFAULT,
+      'activism_tellafriend_mail_footer_format' => FILTER_FORMAT_DEFAULT,
+    );
+
+    $node = $this->drupalCreateNode($edit);
+    $node = node_load($node->nid, NULL, TRUE);
+    foreach ($edit as $key => $value) { // test that all our...
+      if (strpos($key, 'activism_tellafriend_mail') !== FALSE) { // IO is properly working. elementary, but worthy nonetheless.
+        $this->assertEqual($node->$key, $value, t("@key was properly set on node creation and loaded successfully.", array('@key' => $key)));
+      }
+    }
+
+    // ensure we're on campaign config tab.
+    $this->drupalLogin($this->allowed_user);
+    $this->drupalGet('node/' . $node->nid . '/activism_cta');
+    $this->assertRaw(t('Tell a Friend e-mail configuration'), t("Tell a Friend configuration exists on campaign's Call to action tab."));
+
+    // and that the call to action form properly shows on the node.
+    $this->drupalGet('node/' . $node->nid); // NP: 'Renegade Master (Fatboy Slim Old Skool Mix) (Wildchild)'.
+    $this->assertRaw('<fieldset><legend>' . t('Tell a Friend') . '</legend>', t("Tell a Friend call to action form exists on node view."));
+    $this->assertNoText('activism_tellafriend', t("'activism_tellafriend' doesn't appear in end-user text on node view."));
+
+    // submit TAF.
+    $post = array(
+      'activism_signup_first_name'        => 'Morbus',
+      'activism_signup_last_name'         => 'Iff',
+      'activism_signup_mail'              => 'morbus@example.com',
+      'activism_tellafriend_recipient[0][activism_tellafriend_recipient_name]' => 'Imam',
+      'activism_tellafriend_recipient[0][activism_tellafriend_recipient_mail]' => 'imam@example.com',
+      'activism_tellafriend_mail_body'    => "I'm the mail's body and that's the bottom line cos Stone Cold said so.",
+    );
+    $this->drupalPost('node/' . $node->nid, $post, 'Send this message');
+    $this->assertRaw(t('E-mail sent to %name <%mail> successfully.', array('%name' => $post['activism_tellafriend_recipient[0][activism_tellafriend_recipient_name]'], '%mail' => $post['activism_tellafriend_recipient[0][activism_tellafriend_recipient_mail]'])), t('Message stating success of Tell a Friend mail sending displayed.'));
+
+    $post['node'] = $node; // test the result of the drupal_mail() specifically.
+    $post['activism_tellafriend_recipient_name'] = $post['activism_tellafriend_recipient[0][activism_tellafriend_recipient_name]'];
+    $post['activism_tellafriend_recipient_mail'] = $post['activism_tellafriend_recipient[0][activism_tellafriend_recipient_mail]'];
+    $mail_result = drupal_mail('activism_tellafriend', 'activism_toldafriend', $post['activism_tellafriend_recipient_mail'], language_default(), $post, $post['activism_signup_mail']);
+    $this->assertEqual($mail_result['to'], $post['activism_tellafriend_recipient_mail'], t('drupal_mail() properly set the To: header of the mail.'));
+    $this->assertEqual($mail_result['from'], $post['activism_signup_mail'], t('drupal_mail() properly set the From: header of the mail.'));
+    $this->assertEqual($mail_result['subject'], "Help us $post[activism_tellafriend_recipient_name]!", t('drupal_mail() properly set the Subject: header of the mail, with token substitution.'));
+    $this->assertTrue(strpos($mail_result['body'], 'HEADER: '), t('The Tell a Friend mail header appears in the body of the mail.'));
+    $this->assertTrue(strpos($mail_result['body'], $post['activism_tellafriend_mail_body']), t("The submitting user's mail message appears in the body of the mail."));
+    $this->assertTrue(strpos($mail_result['body'], 'FOOTER: '), t('The Tell a Friend mail footer appears in the body of the mail.'));
+
+    // ensure token replacements are working.
+    foreach (array('HEADER', 'FOOTER') as $marker) {
+      $this->assertTrue(strpos($mail_result['body'], "$marker: Sender first name: $post[activism_signup_first_name]"), t('Sender first name token properly replaced in mail @marker.', array('@marker' => drupal_strtolower($marker))));
+      $this->assertTrue(strpos($mail_result['body'], "$marker: Sender last name: $post[activism_signup_last_name]"), t('Sender last name token properly replaced in mail @marker.', array('@marker' => drupal_strtolower($marker))));
+      $this->assertTrue(preg_match("/$marker: Sender mail: $post[activism_signup_mail]/", strip_tags($mail_result['body'])), t('Sender e-mail address token properly replaced in mail @marker.', array('@marker' => drupal_strtolower($marker))));
+      $this->assertTrue(strpos($mail_result['body'], "$marker: Recipient name: $post[activism_tellafriend_recipient_name]"), t('Recipient name token properly replaced in mail @marker.', array('@marker' => drupal_strtolower($marker))));
+      $this->assertTrue(preg_match("/$marker: Recipient mail: $post[activism_tellafriend_recipient_mail]/", strip_tags($mail_result['body'])), t('Recipient e-mail address token properly replaced in mail @marker.', array('@marker' => drupal_strtolower($marker))));
+      $this->assertTrue(strpos($mail_result['body'], "$marker: Global site name: Drupal"), t('Global site name token properly replaced in mail @marker.', array('@marker' => drupal_strtolower($marker))));
+    }
+  }
+}

@@ -1,0 +1,7 @@
+; $Id:$
+name = NYSS OpenData
+description = Open Data Form Processing.
+package = NYSS
+core = 6.x
+dependencies[] = date
+dependencies[] = date_popup

@@ -1,0 +1,1192 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Senator
+ *
+ *  This module determines whether a page belongs to a certain senator.
+ */
+
+define('NYSS_OPENLEG_PATH', 'http://open.nysenate.gov/legislation/');
+
+/**
+ *  Implements hook_init().
+ */
+function nyss_senator_init() {
+  // Determine what Senator, if any, this page belongs to.
+  $senator = nyss_senator();
+  if ($senator) {
+    context_set('nyss', 'content_type', 'senator');
+    context_set('nyss', 'senator', $senator);
+    if ($senator->field_status[0]['value']) {
+      drupal_set_message(nyss_senator_inactive_message($senator), 'popup');
+    }
+  }
+}
+
+/**
+ *  This is called when determining a menu argument from %nyss_senator.
+ *
+ *  @param $senator
+ *    The string in the URL.
+ *  @return
+ *    Either the corresponding senator's node, or FALSE.
+ */
+function nyss_senator_load($senator) {
+  return nyss_senator_node_from_title($senator);
+}
+
+/**
+ *  Implements hook_menu().
+ */
+function nyss_senator_menu() {
+  $items = array();
+
+  $items['senator/%nyss_senator/contact'] = array(
+    'title' => "Senator's Contact Information",
+    'page callback' => 'nyss_senator_contact_page',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['senator/%nyss_senator/legislation'] = array(
+    'title' => "Senator's legislation",
+    'page callback' => 'nyss_senator_legislation_page',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['nyss_senator/autocomplete_location_name'] = array(
+    'access arguments' => array('access content'),
+    'page callback' => '_nyss_senator_autocomplete_location_name',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/nyss/nyss/senators'] = array(
+    'title' => 'Senators',
+    'description' => 'Specify settings to control display of Senator information.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_senators_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Form builder. Configure settings for handling video offline and high-traffic conditions.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function nyss_senators_settings() {
+  $form['nyss_senators_spotlight_rotation'] = array(
+    '#type' => 'radios',
+    '#title' => t('Rotate Senator Spotlight Feature'),
+    '#options' => array(
+      t('With every page refresh'), 
+      t('Once per day'),
+    ),
+    '#default_value' => variable_get('nyss_senators_spotlight_rotation', 0),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ *  Implements hook_block().
+ */
+function nyss_senator_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+     case 'list':
+      return array(
+        'senator_spotlight' => array(
+          'info' => t('Senator Spotlight'),
+        ),
+      );
+    case 'view':
+      switch ($delta) {
+        case 'senator_spotlight':
+          $senator = nyss_senator_current();
+          return array(
+            'subject' => t('Senator Spotlight'),
+            'content' => theme('nyss_senator_spotlight', $senator),
+          );
+          break;
+      }
+  }
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_senator_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items['nyss_senator_contact_page'] = array(
+    'arguments' => array(
+      'senator' => NULL,
+    ),
+    'template' => 'nyss_senator_contact_page',
+  );
+  $items['nyss_senator_social_buttons'] = array(
+    'arguments' => array(
+      'nid' => NULL,
+    ),
+  );
+  $items['nyss_senator_last_name_for_listing'] = array(
+    'arguments' => array(
+      'output' => NULL,
+      'row' => NULL,
+    ),
+  );
+  $items['nyss_senator_social_buttons_no_text'] = array(
+    'arguments' => array(
+      'output' => NULL,
+      'row' => NULL,
+    ),
+  );
+  $items['nyss_senator_spotlight'] = array(
+    'arguments' => array(
+      'senator' => NULL,
+    ),
+    'template' => 'nyss_senator_spotlight',
+  );
+  $items['nyss_senator_primary_menu'] = array(
+    'arguments' => array(
+      'links' => NULL,
+      'toplevel' => FALSE,
+    ),
+  );
+  $items['nyss_senator_menu_item'] = array(
+    'arguments' => array(
+      'mlid' => NULL,
+      'path' => NULL,
+      'text' => NULL,
+      'submenu' => NULL,
+    ),
+    'template' => 'nyss_senator_menu_item',
+  );
+  return $items;
+}
+
+/**
+ *  Callback for senator/[title]/contact.
+ *  Displays a page for a senator's contact information
+ *  and a contact form.
+ *
+ *  @param $senator
+ *    The senator's node.
+ *  @return
+ *    The page output.
+ */
+function nyss_senator_contact_page($senator) {
+  // drupal_set_message($senator->title);
+  if (substr($senator->title, -7) == 'Martins' || substr($senator->title, -6) == 'Skelos') {
+    drupal_set_title(t("@senator' Contact Information", array('@senator' => $senator->title)));
+  } else {
+    drupal_set_title(t("@senator's Contact Information", array('@senator' => $senator->title)));
+  }
+  return theme('nyss_senator_contact_page', $senator);
+}
+
+/**
+ *  Callback for senator/[title]/legislation.
+ *
+ *  @param $senator
+ *    The senator's node.
+ *  @return
+ *    The page output.
+ */
+function nyss_senator_legislation_page($senator) {
+  if (substr($senator->title, -7) == 'Martins' || substr($senator->title, -6) == 'Skelos') {
+    drupal_set_title(t("@senator' Legislation", array('@senator' => $senator->title)));
+  } else {
+    drupal_set_title(t("@senator's Legislation", array('@senator' => $senator->title)));
+  }
+  
+  $sponsor = nyss_senator_sponsorkeyword();
+  $output = '';
+  
+  // Use a little trickery to fool Drupal's pager, as per http://acquia.com/blog/sneaky-drupal-pagers
+  $page = isset($_GET['page']) ? $_GET['page'] : 0;
+  $items_per_page = 20;
+  $output .= '<div id="leginfo">';
+  $output .= '<p>' . t('You are viewing legislation sponsored by ') . $senator->title .'.<br />' . t('To view all legislation, visit the !sitelink.', array('!sitelink' => l('NY Senate Open Legislation Site', 'http://open.nysenate.gov'))) .'</p>';
+  $output .= theme('openleg_sponsor_legislation', $sponsor, $page+1, $items_per_page, OPENLEG_ROOT);
+  $GLOBALS['pager_page_array'][] = $page; //what page you are on
+  $GLOBALS['pager_total'][] = $page+2; // total number of pages
+  $output .= '<div class="openleg-pager">' . theme('pager', NULL, $items_per_page) . '</div>';
+  $output .= '</div>';
+  return $output;
+}
+
+/**
+ *  The portal to a senator's legislation.
+ *
+ *  This will be displayed in an iframe, and simply redirects to the
+ *  legislation portal, keyed to that senator's district.
+ *
+ *  @param $senator
+ *    The senator's node.
+ *  @return
+ *    It exits upon printing the page output.
+ */
+/*
+// This function is deprecated and can be deleted if no one has noticed it
+// missing and complained by August 1, 2011. -- Sheldon
+
+function nyss_senator_legislation_iframe_page($senator) {
+  if (!$senator->field_senators_district[0]['nid']) {
+    return drupal_not_found();
+  }
+  $district = node_load($senator->field_senators_district[0]['nid']);
+  $district_number = $district->field_district_number[0]['value'];
+  print <<<IFRAME
+<Body onLoad="submit_load()">
+
+<Script language="javascript">
+
+  function submit_load()
+  {
+      document.load.submit();
+  }
+
+</script>
+
+<form name="load" method="post" action="http://public.leginfo.state.ny.us/distsen.cgi">
+
+  <input type=hidden name="referer" value="http://www.nyssenate$district_number.com">
+
+</form>
+</body>
+IFRAME;
+  exit();
+}
+*/
+
+/**
+ *  What senator does this page belong to?
+ *
+ *  If a page view or content belongs to a specific senator, this will return
+ *  the node for that senator, or FALSE if it doesn't belong to any senator.
+ *
+ *  @param $node
+ *    (optional) A node to see if it's related to a specific senator. If $node
+ *    is not provided, then it defaults to the senator associated with a page.
+ *
+ *  @return
+ *    The Senator's node, or FALSE.
+ */
+function nyss_senator($node = NULL) {
+  static $page_senator;
+
+  // Create the static cache for future reference.
+  if (is_null($node)) {
+    if (is_null($page_senator)) {
+      // Our default state.
+      $senator = FALSE;
+
+      if (arg(0) == 'node' && ($nid = arg(1)) && is_numeric($nid)) {
+        $node = node_load(array('nid' => $nid, 'status' => 1));
+      }
+      else if (arg(0) == 'node' && (arg(1) == 'add') && ($nid = arg(3)) && is_numeric($nid)) {
+        $node = node_load($nid);
+      }
+      elseif (arg(0) == 'senator' && arg(1)) {
+        $node = nyss_senator_node_from_title(arg(1));
+      }
+      elseif (arg(0) == 'search' && arg(1) == 'nyss_search') {
+        $node = node_load($_SESSION['sen_nid']);
+      }
+
+      $page_senator = nyss_senator_node($node);
+    }
+    return $page_senator;
+  }
+
+  return nyss_senator_node($node);
+}
+
+/**
+ *  What committee does this page belong to?
+ *
+ *  If a page view or content belongs to a specific senator, this will return
+ *  the node for that senator, or FALSE if it doesn't belong to any senator.
+ *
+ *  @return
+ *    The Committees' node, or FALSE.
+ */
+function nyss_senator_committee() {
+  return context_get('nyss', 'committee');
+}
+
+/**
+ *  Is the current page a committee's home page?
+ *
+ *  @return
+ *    Boolean
+ */
+function nyss_senator_committee_home() {
+  return nyss_committee_home();
+}
+
+/**
+ *  Retrives the senator node from a given title from a URL.
+ *  @param $title
+ *    The title from the URL.
+ *  @return
+ *    The corresponding senator node object.
+ */
+function nyss_senator_node_from_title($title, $reset=FALSE) {
+  static $titles;
+  if (!isset($titles[$title]) || $reset) {
+    $results = cache_get('nyss_senator_title:' . $title, 'cache_nyss_misc');
+    if (!empty($results->data) && time() < $results->expire) {
+      $titles[$title] = $results->data;
+      return $results->data;
+    }
+    $titles[$title] = '';
+
+    // First look for a match from the URL alias
+    if (($source = drupal_lookup_path('source', "senator/$title")) && substr($source, 0, 5) == "node/") {
+      $titles[$title] = node_load(substr($source, 5));
+    }
+    // Then try to find a path from $node->field_path[0]
+    else {
+      $nid = db_result(db_query_range(db_rewrite_sql("SELECT n.nid FROM {node} n INNER JOIN {content_type_senator} s ON s.vid = n.vid AND s.field_path_value = '%s' AND n.status = 1"), $title, 0, 1));
+      if ($nid) {
+        $titles[$title] = node_load($nid);
+      }
+    }
+
+    // If we don't have a match from the field_path, then match for $node->title.
+    if (!$titles[$title]) {
+      $nid = db_result(db_query_range(db_rewrite_sql("SELECT n.nid FROM {node} n WHERE REPLACE(LOWER(n.title),'/','') = '%s' AND n.status = 1"), str_replace(array('_', '-', '/'), array(' ', ' ', ''), $title), 0, 1));
+      if ($nid) {
+        $titles[$title] = $titles[$title] ? $titles[$title] : node_load($nid);
+      }
+    }
+    cache_set('nyss_senator_title:' . $title, $titles[$title], 'cache_nyss_misc', time() + 3600);
+  }
+
+  return $titles[$title];
+}
+
+/**
+ *  This will return the senator associated with the node.
+ *
+ *  @param $node
+ *    The node referencing the senator, or a senator's node.
+ *  @param $reset
+ *    (optional) If TRUE, then reset the static variable.
+ *  @return
+ *    The senator node referenced by the node.
+ */
+function nyss_senator_node($node, $reset = FALSE) {
+  static $senators;
+  if (!$node) {
+    return NULL;
+  }
+  if (is_numeric($node)) {
+    $node = node_load($node);
+  }
+
+  // Reset our static array.
+  if (is_null($senators) || $reset) {
+    $senators = array();
+  }
+
+  // We cache the senators nodes.
+  if (!isset($senators[$node->nid])) {
+    $senators[$node->nid] = FALSE;
+
+    if ($node->type == 'senator') {
+      // If we're given a senator's node, then return it.
+      $senators[$node->nid] = $node;
+    }
+    else if ($node->type == 'district') {
+      // Reverse lookup for the senator referencing that district.
+      $nid = db_result(db_query_range(db_rewrite_sql("SELECT n.nid FROM {node} n INNER JOIN {content_type_senator} f ON f.field_senators_district_nid = %d AND f.vid = n.vid WHERE n.status = 1 ORDER BY n.created DESC"), $node->nid, 0, 1));
+      if ($nid) {
+        $senator = node_load($nid);
+        if ($senator->type == 'senator') {
+          // If the referenced node is a valid senator, then bingo.
+          $senators[$node->nid] = $senator;
+        }
+      }
+    }
+    else if (isset($node->field_senator) && $node->field_senator[0]['nid']) {
+      // Check if the node references a senator.
+      $senator = node_load($node->field_senator[0]['nid']);
+      if ($senator->type == 'senator') {
+        // If the referenced node is a valid senator, then bingo.
+        $senators[$node->nid] = $senator;
+      }
+    }
+  }
+  return $senators[$node->nid];
+}
+
+/**
+ *  This will return the committee associated with the node.
+ *
+ *  @param $node
+ *    The node referencing the committee, or a committee's node.
+ *  @param $reset
+ *    (optional) If TRUE, then reset the static variable.
+ *  @return
+ *    The committee node referenced by the node.
+ */
+function nyss_senator_committee_node($node, $reset = FALSE) {
+  return nyss_committee_node($node, $reset);
+}
+
+/**
+ *  Returns the senator associated with the node.
+ *
+ *  @return Array
+ *    The committees that a senator is a part of.
+ */
+function nyss_senator_get_committees($reset = FALSE) {
+  static $committees;
+  if (!empty($committees) && !$reset) {
+    return $committees;
+  }
+
+  if (!context_isset('nyss', 'senator')) {
+    return FALSE;
+  }
+  $senator = context_get('nyss', 'senator');
+  $committees = array();
+  $sql = "SELECT DISTINCT(n.nid) AS nid, n.title FROM {node} n 
+    LEFT JOIN content_field_multi_senator node_data_field_multi_senator ON n.vid = node_data_field_multi_senator.vid
+    WHERE node_data_field_multi_senator.field_multi_senator_nid = %d";
+  $results = db_query($sql, $senator->nid);
+  while ($committee = db_fetch_object($results)) {
+    $committees[$committee->nid] = array('nid' => $committee->nid, 'title' => $committee->title, 'chair' => 0);
+  }
+
+  $results = db_query('SELECT n.nid, n.title, tc.field_pseudochair_value FROM {node} n INNER JOIN `content_type_committee` tc ON tc.vid = n.vid INNER JOIN {content_field_chairs} fc ON fc.vid = n.vid
+      WHERE fc.field_chairs_nid = %d AND n.type = "committee" AND n.status = 1 AND (tc.field_pseudochair_value IS NULL OR tc.field_pseudochair_value = 0)', $senator->nid);
+  while ($committee = db_fetch_object($results)) {
+    $committees[$committee->nid] = array('nid' => $committee->nid, 'title' => $committee->title, 'chair' => 1);
+  }
+
+  // If the senator has any committees cool then return them.
+  uasort($committees, 'nyss_senator_sort_committees');
+  return $committees;
+}
+
+/**
+ *  Sort the committee array by committee title.
+ */
+function nyss_senator_sort_committees($a, $b) {
+  if ($a['title'] == $b['title']) {
+    return 0;
+  }
+  return ($a['title'] < $b['title']) ? -1 : 1;
+}
+
+/**
+ *  Format a senator's name for a URL.
+ *
+ *  Replaces all spaces with hyphens.
+ *
+ *  @param $senator
+ *    The senator node.
+ *  @return
+ *    The transposed title.
+ */
+function nyss_senator_title_to_url($senator = NULL) {
+  if (is_null($senator)) {
+    if (!context_isset('nyss', 'senator')) {
+      return '';
+    }
+    $senator = context_get('nyss', 'senator');
+  }
+  $name = (isset($senator->field_path[0]['value']) && $senator->field_path[0]['value'] != '' && $senator->field_path[0]['value'] != '[senator]') ? $senator->field_path[0]['value'] : $senator->title;
+  return nyss_senator_cleanstring(strtolower($name));
+}
+
+/**
+ *  Implements hook_nodeapi().
+ */
+function nyss_senator_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  if ($node->type == 'senator') {
+    switch ($op) {
+      case 'presave':
+        // When submitting a senator's node, we need to set the field_path to default if needed.
+        // Replace '' with [senator] first.
+        $node->field_path[0]['value'] = $node->field_path[0]['value'] ? $node->field_path[0]['value'] : '[senator]';
+
+        // Replace [senator] with the node title.
+        $node->field_path[0]['value'] = str_replace('[senator]', $node->title, $node->field_path[0]['value']);
+
+        // Replace spaces, etc. with the pathauto separator.
+        $node->field_path[0]['value'] = nyss_senator_cleanstring(strtolower($node->field_path[0]['value']));
+      case 'delete':
+        variable_set('nyss_senator_nids', FALSE); // reset the array of senator node IDs used for the front page carousel
+        break;
+      case 'insert':
+      case 'update':
+        // Make a best guess for the Senator's last name (used for sorting).
+        if (!$node->field_last_name[0]['value']) {
+          preg_match('@(.+) ([^ ]+)$@i', $node->title, $matches);
+          $node->field_last_name[0]['value'] = $matches[2] .', '. $matches[1];
+        }
+        nyss_senator_content_links($node, TRUE); // reset the cache for the Senator's custom menu
+        cache_clear_all('nyss_senator_title:', 'cache_nyss_misc', TRUE); // reset the cache for senator titles
+        cache_clear_all('nyss_senator_menu:', 'cache_nyss_misc', TRUE); // reset the cache for senator menus
+        variable_set('nyss_senator_nids', FALSE); // reset the array of senator node IDs used for the front page carousel
+        break;
+    }
+  }
+}
+
+/**
+ * Clean up a string value provided by a module.
+ *
+ * Resulting string contains only alphanumerics and separators.
+ * NOTE: This function is a modified version of pathauto_cleanstring()
+ *
+ * @param $string
+ *   A string to clean.
+ * @param $clean_slash
+ *   Whether to clean slashes from the given string.
+ * @return
+ *   The cleaned string.
+ */
+function nyss_senator_cleanstring($string, $clean_slash = TRUE) {
+  _pathauto_include(); // Is this line necessary? 
+//contrib/pathauto/pathauto.inc
+  // Default words to ignore
+  $ignore_words = array(
+    'a', 'an', 'as', 'at', 'before', 'but', 'by', 'for', 'from', 'is', 'in',
+    'into', 'like', 'of', 'off', 'on', 'onto', 'per', 'since', 'than', 'the',
+    'this', 'that', 'to', 'up', 'via', 'with',
+  );
+
+  // Replace or drop punctuation based on user settings
+  $separator = variable_get('pathauto_separator', '-');
+  $output = $string;
+  $punctuation = pathauto_punctuation_chars();
+  foreach ($punctuation as $name => $details) {
+    $action = variable_get('pathauto_punctuation_'. $name, 0);
+    // 2 is the action for "do nothing" with the punctuation
+    if ($action != 2) {
+      // Slightly tricky inline if which either replaces with the separator or nothing
+      $output = str_replace($details['value'], ($action ? $separator : ''), $output);
+    }
+  }
+
+  // If something is already urlsafe then don't remove slashes
+  if ($clean_slash) {
+    $output = str_replace('/', '', $output);
+  }
+  // Optionally remove accents and transliterate
+  if (variable_get('pathauto_transliterate', FALSE)) {
+    static $i18n_loaded = false;
+    static $translations = array();
+
+    if (!$i18n_loaded) {
+      $path = drupal_get_path('module', 'pathauto');
+      if (is_file($path .'/i18n-ascii.txt')) {
+        $translations = parse_ini_file($path .'/i18n-ascii.txt');
+      }
+      $i18n_loaded = true;
+    }
+
+    $output = strtr($output, $translations);
+  }
+  // Reduce to the subset of ASCII96 letters and numbers
+  if (variable_get('pathauto_reduce_ascii', FALSE)) {
+    $pattern = '/[^a-zA-Z0-9\/]+/ ';
+    $output = preg_replace($pattern, $separator, $output);
+  }
+
+/* This code is what deleted the "a" in Senator John A. DeFrancisco's path. Bad bad bad.
+  // Get rid of words that are on the ignore list
+  $ignore_re = '\b'. preg_replace('/,/', '\b|\b', variable_get('pathauto_ignore_words', $ignore_words)) .'\b';
+
+  if (function_exists('mb_eregi_replace')) {
+    $output = mb_eregi_replace($ignore_re, '', $output);
+  }
+  else {
+    $output = preg_replace("/$ignore_re/i", '', $output);
+  }
+*/
+  // Always replace whitespace with the separator.
+  $output = preg_replace('/\s+/', $separator, $output);
+
+  // In preparation for pattern matching,
+  // escape the separator if and only if it is not alphanumeric.
+  if (isset($separator)) {
+    $seppattern = '\\'. $separator;
+
+    // Trim any leading or trailing separators (note the need to
+    $output = preg_replace("/^$seppattern+|$seppattern+$/", '', $output);
+
+    // Replace trailing separators around slashes.
+    $output = preg_replace("/$seppattern\/|\/$seppattern/", "/", $output);
+
+    // Replace multiple separators with a single one
+    $output = preg_replace("/$seppattern+/", "$separator", $output);
+  }
+
+  // Enforce the maximum component length
+  $maxlength = min(variable_get('pathauto_max_component_length', 100), 128);
+  $output = drupal_substr($output, 0, $maxlength);
+
+  return $output;
+}
+
+
+/**
+ *  Get the keyword to be used for the "SPONSOR" in open_leg
+ */
+function nyss_senator_sponsorkeyword($senator = NULL) {
+  if (is_null($senator)) {
+    if (!context_isset('nyss', 'senator')) {
+      return '';
+    }
+    $senator = context_get('nyss', 'senator');
+  }
+  $senator_name_part = trim(array_shift(explode(',', strtoupper($senator->title))));
+  $senatorname = explode(' ', strtoupper($senator_name_part));
+  $count = count($senatorname);
+  $last = $senatorname[$count - 1];
+  if (in_array($last, array('JR', 'JR.', 'SR', 'SR.', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'))) {
+    $last = $senatorname[$count - 2];
+  }
+  return $last;
+}
+
+/**
+ *  Return the link to display to OpenLeg calendar info on committee pages.
+ */
+function nyss_senator_committee_openleg_meetings_link() {
+  return nyss_committee_openleg_meetings_link();
+}
+
+/**
+ *  Return the array of event types which the user is allowed to create
+ *
+ * @return
+ *   An associative array.
+ */
+function nyss_senator_meeting_allowed_types() {
+  global $user;
+  $types = nyss_event_types();
+  if (user_access('administer nodes') || in_array('Web Editor', $user->roles) || in_array('Web Editor+', $user->roles) || ($user->uid == 1)) {
+    return $types;
+  }
+  unset($types[2]); // disallow creation of sessions
+  return $types;
+}
+
+/**
+ *  Return the event title, prefixed by the event sub-type
+ *
+ * @param $node
+ *   The event node, or a node ID
+ * @return
+ *   The title string.
+ * DEPRECATED -- replaced by theme('nyss_event_prefixed_title')
+ */
+function nyss_senator_meeting_prefixed_title($node) {
+  return theme('nyss_event_prefixed_title', $node);
+}
+
+/*
+ * Return custom Google Analytics code for a specific Senator
+ *
+ * @param $nid
+ *   The senator's node ID
+ * @return
+ *   The custom GA code
+ */
+function nyss_senator_analytics($nid) {
+  $senTracker = array(
+    '81' =>  'UA-9707700-40',
+    '87' =>  'UA-9707700-15',
+    '89' =>  'UA-9707700-22',
+    '91' =>  'UA-9707700-21',
+    '93' =>  'UA-9707700-36',
+    '95' =>  'UA-9707700-54',
+    '97' =>  'UA-9707700-2',
+    '99' =>  'UA-9707700-57',
+    '101' => 'UA-9707700-10',
+    '103' => 'UA-9707700-37',
+    '105' => 'UA-9707700-48',
+    '107' => 'UA-9707700-1',
+    '109' => 'UA-9707700-43',
+    '111' => 'UA-9707700-49',
+    '113' => 'UA-9707700-55',
+    '115' => 'UA-9707700-25',
+    '117' => 'UA-9707700-26',
+    '119' => 'UA-9707700-51',
+    '121' => 'UA-9707700-11',
+    '123' => 'UA-9707700-44',
+    '125' => 'UA-9707700-50',
+    '147' => 'UA-9707700-58',
+    '198' => 'UA-9707700-9',
+    '200' => 'UA-9707700-12',
+    '201' => 'UA-9707700-20',
+    '202' => 'UA-9707700-24',
+    '203' => 'UA-9707700-63',
+    '204' => 'UA-9707700-46',
+    '205' => 'UA-9707700-41',
+    '206' => 'UA-9707700-3',
+    '207' => 'UA-9707700-6',
+    '208' => 'UA-9707700-39',
+    '209' => 'UA-9707700-4',
+    '210' => 'UA-9707700-62',
+    '211' => 'UA-9707700-60',
+    '212' => 'UA-9707700-56',
+    '213' => 'UA-9707700-59',
+    '214' => 'UA-9707700-31',
+    '215' => 'UA-9707700-52',
+    '216' => 'UA-9707700-8',
+    '217' => 'UA-9707700-18',
+    '218' => 'UA-9707700-32',
+    '220' => 'UA-9707700-5',
+    '221' => 'UA-9707700-27',
+    '222' => 'UA-9707700-33',
+    '223' => 'UA-9707700-16',
+    '224' => 'UA-9707700-61',
+    '225' => 'UA-9707700-53',
+    '226' => 'UA-9707700-42',
+    '227' => 'UA-9707700-34',
+    '228' => 'UA-9707700-13',
+    '229' => 'UA-9707700-14',
+    '230' => 'UA-9707700-19',
+    '231' => 'UA-9707700-29',
+    '232' => 'UA-9707700-17',
+    '233' => 'UA-9707700-45',
+    '234' => 'UA-9707700-23',
+    '235' => 'UA-9707700-35',
+    '237' => 'UA-9707700-38',
+    '238' => 'UA-9707700-30',
+    '239' => 'UA-9707700-28',
+    '988' => 'UA-9707700-47',
+    '42181' => 'UA-9707700-64', // José Peralta
+    '75586' => 'UA-9707700-65', // Avella
+    '74991' => 'UA-9707700-66', // Ball
+    '75566' => 'UA-9707700-67', // Carlucci
+    '75556' => 'UA-9707700-68', // Espaillat
+    '75006' => 'UA-9707700-69', // Gallivan
+    '75011' => 'UA-9707700-70', // Grisanti
+    '75581' => 'UA-9707700-71', // Kennedy
+    '74986' => 'UA-9707700-72', // Martins
+    '75001' => 'UA-9707700-73', // O'Mara
+    '74996' => 'UA-9707700-74', // Ritchie
+    '75571' => 'UA-9707700-75', // Rivera
+    '74981' => 'UA-9707700-76', // Zeldin
+  );
+
+  $output  = '<script type="text/javascript">';
+  $output .= 'var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." :';
+  $output .= '"http://www.");';
+  $output .= 'document.write(unescape("%3Cscript src=\'" + gaJsHost +';
+  $output .= '"google-analytics.com/ga.js\' type=\'text/javascript\'%3E%3C/script%3E"));';
+  $output .= '</script>';
+  $output .= '<script type="text/javascript">';
+  $output .= 'try {';
+  $output .= 'var pageTracker = _gat._getTracker("'. $senTracker[$nid] .'");';
+  $output .= 'pageTracker._trackPageview();';
+  $output .= '} catch(err) {}</script>';
+
+  return $output;
+}
+
+/**
+ *  Implement hook_link_alter
+ *  
+ *  Disable senator-specific flag links for content that does not have a related senator.
+ */
+function nyss_senator_link_alter(&$links, $node) {
+  $senator = nyss_senator_node($node);
+  if (!$senator) {
+    unset($links['flag-senator_tabs']);
+    unset($links['flag-senator_featured_video']);
+    unset($links['flag-senator_carousel']);
+    unset($links['flag-senator_no_gallery']);
+    unset($links['flag-senator_no_promote']);
+    unset($links['flag-senator_exclude_newsroom']);
+  }
+}
+
+/**
+ *  Build a menu tree of the senator's field_navigation links with a submenu under "Newsroom."
+ *  @param $senator
+ *    A senator's node
+ *  @return
+ *    An array structured like a menu tree that can be themed by theme_nice_menus_primary_links.
+ */
+function nyss_senator_build_menu($senator, $reset = FALSE) {
+  static $senator_menus;
+  if (!isset($senator_menus[$senator->nid]) || $reset) {
+    $results = cache_get('nyss_senator_menu:' . $senator->nid, 'cache_nyss_misc');
+    if (!empty($results->data)) {
+      $senator_menus[$senator->nid] = $results->data;
+      return $results->data;
+    }
+    $senator_menus[$senator->nid] = '';
+
+    $links = array();
+    foreach ($senator->field_navigation as $count => $link) {
+      // Make our custom URL replacements: [senator] with the senator's path, and [district] with the link to the district node.
+      $link['url'] = str_replace('[senator]', $senator->field_path[0]['value'], $link['url']);
+      if ($senator->field_senators_district[0]['nid']) {
+        $link['url'] = str_replace('[district]', 'node/'. $senator->field_senators_district[0]['nid'], $link['url']);
+      }
+      if ($link['title'] == t('Newsroom')) {
+        $link['sublinks'] = nyss_senator_content_links($senator);
+      }
+      $links[$count] = $link;
+    }
+    $senator_menus[$senator->nid] = theme('nyss_senator_primary_menu', $links, TRUE);
+    cache_set('nyss_senator_menu:' . $senator->nid, $senator_menus[$senator->nid], 'cache_nyss_misc');
+  }
+  return $senator_menus[$senator->nid];
+}
+
+/**
+ *  Create a nice menu for a Senator's page
+ *  @param $links
+ *    An associative array of links of the form:
+ *    array(
+ *      'mlid1' => array('url' => 'node/1234', 'title' => t('Menu item title'), ),
+ *      'mlid2' => array('url' => 'http://www.other_path.com', 'title' => t('Another menu item title'), ),
+ *      ...
+ *    )
+ *    where 'mlid1', 'mlid2', etc. are menu link IDs. Any string should work as an mlid,
+ *    but for consistency with Drupal's menu trees, unique integers might be better.
+ *    Each element in the sub-array can also contain a nested 'sublinks' element consisting
+ *    of an array with the same structure, e.g.,
+ *      'mlid3' => array(
+ *      'url' => 'yet_another_path',
+ *        'title' => t('Yet another menu item title'),
+ *        'sublinks' => array(
+ *            'mlid3.1' => array('url' => 'subpath', 'title' => t('Menu subitem title'), ),
+ *            'mlid3.2' => array('url' => 'another_subpath', 'title' => t('Another menu subitem title'), ),
+ *        ),
+ *      ),
+ *  @return
+ *    HTML of a menu tree like the HTML that would be created by theme_nice_menus_primary_links.
+ */
+function theme_nyss_senator_primary_menu($links, $toplevel=FALSE) {
+  if ($toplevel) {
+    $output = '<ul class="nice-menu nice-menu-down" id="nice-menu-0">' . "\n";
+  } else {
+    $output = "<ul>\n";
+  }
+  foreach ($links as $mlid => $link) {
+    $mlid = $mlid;
+    $path = $link['url'];
+    $text = $link['title'];
+    $submenu = NULL;
+    if (isset($link['sublinks']) && is_array($link['sublinks'])) {
+      $submenu = theme('nyss_senator_primary_menu', $link['sublinks']);
+    }
+    $output .= theme('nyss_senator_menu_item', $mlid, $path, $text, $submenu);
+  }
+  return $output . "</ul>";
+}
+
+/**
+ *  Link to the content types associated with an individual senator.
+ *  @param $senator
+ *    A senator's node
+ *  @return
+ *    An array of links of the form
+ *      array(
+ *        blog => array( 'url' => 'senator/senator-name/content/blog', 'Blog entries', ),
+ *        stories => array( 'url' => 'senator/senator-name/content/story', 'Constituent stories', ),
+ *        ...
+ *      )
+ */
+function nyss_senator_content_links($senator, $reset = FALSE) {
+  static $senator_content_links;
+  $pathname = nyss_senator_title_to_url($senator);
+  if (!isset($senator_content_links[$pathname]) || $reset) {
+    if (!$reset && ($cache = cache_get('nyss_senator_menu:' . $pathname, 'cache')) && !empty($cache->data) && time() < $cache->expire) {
+      $links = $cache->data;
+    }
+    else {
+      $node_types = node_get_types();
+      $links = array();
+      $types = array();
+      foreach ($node_types as $type => $info) {
+        $sql = "SELECT COUNT(node.nid) AS nid FROM {node} node 
+          LEFT JOIN {content_field_senator} node_data_field_senator ON node.vid = node_data_field_senator.vid
+          INNER JOIN {node} node_node_data_field_senator ON node_data_field_senator.field_senator_nid = node_node_data_field_senator.nid
+          WHERE (node.status <> 0) AND (node_node_data_field_senator.title = '%s') AND (node.type = '%s')";
+        if ($count = db_result(db_query($sql, $senator->title, $type))) {
+          $types[$type] = trim(nyss_misc_content_name_plural($type));
+        }
+      }
+      natcasesort($types);
+      foreach ($types as $type => $name) {
+        $links[$type] = array(
+          'url' => "senator/$pathname/content/$type",
+          'title' => $name,
+        );
+      }
+      cache_set('nyss_senator_menu:' . $pathname, $links, 'cache', time() + (60 * 20));
+    }
+    $senator_content_links[$pathname] = $links;
+  }
+  return $senator_content_links[$pathname];
+}
+
+/**
+ * Implementation of hook_form_alter()
+ */
+function nyss_senator_form_alter(&$form, $form_state, $form_id) {
+  if ( $form['#id'] == 'node-form' && $form['type']['#value'] == 'senator' ) {
+    /* If it's an event editing form, change the function that returns the list of meeting types so we can
+     * restrict the list by editors' permissions.
+     */
+    $form['#after_build'][] = 'nyss_senator_after_build';
+    // Munge together the locations fieldset with the contact information fieldset
+    $form['group_contact_information']['locations'] = $form['locations'];
+    $form['group_contact_information']['locations']['#type'] = 'markup';
+    $form['group_contact_information']['locations']['#parents'] = array('locations');
+    unset($form['locations']);
+  }
+}
+
+/**
+ * Implementation of hook_locationapi().
+ */
+function nyss_senator_locationapi(&$obj, $op, $a3 = NULL, $a4 = NULL, $a5 = NULL) {
+  switch ($op) {
+    case 'field_expand':
+      switch ($a3) {
+        case 'name':
+          return array(
+            '#type'           => 'textfield',
+            '#title'          => t('Location name'),
+            '#autocomplete_path' => 'nyss_senator/autocomplete_location_name/',
+            '#default_value'  => $obj,
+            '#size'           => 64,
+            '#maxlength'      => 255,
+            '#description'    => t('e.g. a place of business, venue, meeting point'),
+            '#attributes'     => NULL,
+            '#required'       => ($a4 == 2),
+          );
+          break;
+    }
+  }
+}
+
+/**
+ * Create a list of location names.
+ *
+ * @param $string
+ *   String (optional). The location name typed by user
+ * @return
+ *   Javascript array. List of location names
+ */
+function _nyss_senator_autocomplete_location_name($string = '') {
+  $location_names = array();
+  $location_names['Albany Office'] = t('Albany Office');
+  $location_names['District Office'] = t('District Office');
+  $location_names['Mobile Office'] = t('Mobile Office');
+  $location_names['Satellite Office'] = t('Satellite Office');
+  echo drupal_to_js($location_names);
+  return;
+}
+
+/**
+ * A helper function used to customize the senator add/edit form after the form build.
+ *
+ * @param $form
+ *   An associative array containing the structure of the form.
+ * @param $form_state
+ *   A keyed array containing the current state of the form. If the user
+ *   submitted the form by clicking a button with custom handler functions
+ *   defined, those handlers will be stored here.
+ */
+function nyss_senator_after_build($form, &$form_state) {
+  $form['group_editors']['field_status']['value']['#options'][''] = t('Active');
+  return $form;
+}
+
+/**
+ * Return a status qualifier to be added to a senator's title,
+ * for a senator who is not currently active (typically, either an
+ * incoming or former senator).
+ *
+ * @param $senator
+ *   A node object of content type senator.
+ */
+function nyss_senator_status_for_title($senator) {
+  if ($senator->field_status[0]['value']) {
+    if ($senator->field_status[0]['value'] == 'incoming') {
+      return t(' (Incoming)');
+    }
+    else {
+      return t(' (Former)');
+    }
+  }
+  return '';
+}
+
+/**
+ * A status message to be associated with a senator who is not currently active 
+ * (typically, either an incoming or former senator).
+ *
+ * @param $senator
+ *   A node object of content type senator.
+ */
+function nyss_senator_inactive_message($senator) {
+  if ($senator->field_status[0]['value']) {
+    if ($senator->field_status_explanation[0]['value'] != '') {
+      return check_markup($senator->field_status_explanation[0]['value'], $senator->field_status_explanation[0]['format'], FALSE);
+    }
+    else if ($senator->field_status[0]['value'] == 'incoming') {
+      return t('This Senator has been elected but has not yet assumed office. ' .
+        'To read content from your current Senator, please use our !lookup_tool.', 
+        array('!lookup_tool' => l('Senator lookup tool', 'nyss_senator_search')));
+    }
+    else {
+      return t('This Senator is currently inactive, and this content is provided to you as an archive. ' .
+        'To read content from your current Senator, please use our !lookup_tool.', 
+        array('!lookup_tool' => l('Senator lookup tool', 'nyss_senator_search')));
+    }
+  }
+}
+
+/**
+ * A themeable function to return social buttons for a senator.
+ *
+ * @param $nid
+ *   A senator's node ID.
+ */
+function theme_nyss_senator_social_buttons($nid) {
+  $senator = node_load($nid);
+  return '<div class="social_buttons">' . theme('nyss_blocks_view_content_social_buttons', $senator) . '</div>';
+}
+
+/**
+ * A themeable function to return a themed version of a senator's last name for the senators listing page.
+ *
+ * @param $output
+ *   The default output.
+ * @param $row
+ *   A senator's node ID.
+ */
+function theme_nyss_senator_last_name_for_listing($output, $row) {
+  if($output == 'Hannon, Kemp') {
+    $senurl = 'http://www.kemphannon.com';
+  }
+  else {
+    $senurl = 'node/'.$row->nid;
+  }
+  $last_name = l($output, $senurl, array('html' => TRUE));
+
+  $contacturl = trim(preg_replace('#[^\p{L}\p{N}]+#u', ' ', $row->node_title));
+  $contacturl = str_replace(' ', '-', strtolower($contacturl));
+  $contacturl = 'senator/'. $contacturl;
+
+  return $last_name . '<span class="contact"> | '. l(t('Contact'), $contacturl . '/contact').'</span>';
+
+}
+
+/**
+ *  Display the content of the 'Social buttons' block.
+ *
+ *  @return
+ *    The content of this block.
+ */
+function theme_nyss_senator_social_buttons_no_text($nid) {
+  $senator = node_load($nid);
+  $rss = $twitter = $facebook = $flickr =  $bliptv = $picasa = $youtube = $myspace = $output = '';
+  // If not on a senator page then use the overall settings else use senator's.
+  $text = t("RSS feed of @senator's content", array('@senator' => $senator->title));
+  $rss = l('<span class="network">RSS</span>', $senator->path . '/content/feed', array('html' => TRUE, 'attributes' => array('class' => 'rss', 'title' => $text)));
+  if ($senator->field_facebook_link[0]['url']) {
+    $text = t("@senator's Facebook profile", array('@senator' => $senator->title));
+    $facebook = l('<span class="network">Facebook</span>', $senator->field_facebook_link[0]['url'], array('html' => TRUE, 'attributes' => array('class' => 'facebook', 'title' => $text)));
+  }
+  if ($senator->field_twitter_link[0]['url']) {
+    $text = t("Follow @senator on Twitter", array('@senator' => $senator->title));
+    $twitter = l('<span class="network">Twitter</span>', $senator->field_twitter_link[0]['url'], array('html' => TRUE, 'attributes' => array('class' => 'twitter', 'title' => $text)));
+  }
+  if ($senator->field_myspace_link[0]['url']) {
+    $text = t("Follow @senator on MySpace", array('@senator' => $senator->title));
+    $myspace = l('<span class="network">MySpace</span>', $senator->field_myspace_link[0]['url'], array('html' => TRUE, 'attributes' => array('class' => 'myspace', 'title' => $text)));
+  }
+  if ($senator->field_youtube_link[0]['url']) {
+    $text = t("Follow @senator on YouTube", array('@senator' => $senator->title));
+    $youtube = l('<span class="network">YouTube</span>', $senator->field_youtube_link[0]['url'], array('html' => TRUE, 'attributes' => array('class' => 'youtube', 'title' => $text)));
+  }
+  if ($senator->field_flickr_link[0]['url']) {
+    $text = t("Follow @senator on Flickr", array('@senator' => $senator->title));
+    $flickr = l('<span class="network">Flickr</span>', $senator->field_flickr_link[0]['url'], array('html' => TRUE, 'attributes' => array('class' => 'flickr', 'title' => $text)));
+  }
+  if ($senator->field_picasa_link[0]['url']) {
+    $text = t("Follow @senator on Picasa", array('@senator' => $senator->title));
+    $picasa = l('<span class="network">Picasa</span>', $senator->field_picasa_link[0]['url'], array('html' => TRUE, 'attributes' => array('class' => 'picasa', 'title' => $text)));
+  }
+
+  if ($facebook || $twitter || $rss || $myspace || $youtube || $flickr || $bliptv || $picasa) {
+    $output .= '<div class="social-buttons">'. $rss . $twitter . $facebook . $flickr .  $bliptv . $picasa . $youtube . $myspace .'</div>';
+  }
+  return $output;
+}
+
+function nyss_senator_nids($reset = FALSE) {
+  if (!$reset && $nids = variable_get('nyss_senator_nids', FALSE)) {
+    return $nids;
+  }
+  $sql = "SELECT DISTINCT(node.nid) AS nid FROM {node} node 
+    LEFT JOIN {content_type_senator} node_data_field_status ON node.vid = node_data_field_status.vid
+    WHERE (node.status <> 0) AND (node.type in ('senator')) AND (node_data_field_status.field_status_value IS NULL)";
+
+  $result = db_query($sql);
+  $nids = array();
+  while ($data = db_fetch_object($result)) {
+    $nids[] = $data->nid;
+  }
+  variable_set('nyss_senator_nids', $nids);
+  return $nids;
+}
+
+function nyss_senator_current() {
+  $nids = nyss_senator_nids();
+  // If senators rotate daily, select the current senator based on which day it is
+  if (variable_get('nyss_senators_spotlight_rotation', 0)) {
+    // adjust by 5 hours for the difference with Greenwich Mean Time so the day changes at midnight
+    $time = time() - (5 * 60 * 60);
+    $day = (int) ($time / (24 * 60 * 60));
+    $nyss_senator_current = $day % count($nids);
+  }
+  // Otherwise, increment the current senator by one
+  else {
+    $nyss_senator_current = variable_get('nyss_senator_current', 0);
+    variable_set('nyss_senator_current', ($nyss_senator_current+1) % count($nids));
+  }
+  $senator = node_load($nids[$nyss_senator_current]);
+  return $senator;
+}
+
+/**
+ * Implementation of hook_webform_service_responses_alter().
+ */
+function nyss_senator_webform_service_responses_alter($results) {
+  foreach ($results['nids'] as $nid => $result) {
+    $node = node_load($nid);
+    $results['nids'][$nid]['webform_title'] = $node->title;
+    $results['nids'][$nid]['senator_short_name'] = NULL;
+    $results['nids'][$nid]['senator_district'] = NULL;
+    if (isset($node->field_senator) && $node->field_senator[0]['nid']) {
+      // Check if the node references a senator.
+      $senator = node_load($node->field_senator[0]['nid']);
+      $results['nids'][$nid]['senator_short_name'] = $senator->field_short_name[0]['value'];
+      $results['nids'][$nid]['senator_district'] = node_load($senator->field_senators_district[0]['nid'])->field_district_number[0]['value'];
+    }
+  }
+}
+

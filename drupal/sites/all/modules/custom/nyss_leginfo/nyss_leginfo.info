@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Legislation Info
+description = Legislation Info search and caching.
+package = NYSS
+core = 6.x

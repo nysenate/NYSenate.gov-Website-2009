@@ -1,0 +1,190 @@
+<?php
+// $Id: jcarousel.module,v 1.1.2.3.2.5 2009/03/25 18:10:22 robloach Exp $
+
+/**
+ * @file
+ * Provides the jCarousel jQuery plugin.
+ */
+
+/**
+ * Implementation of hook_help().
+ *
+ * The code provided in this function is a demonstration of how to use jcarousel_add().
+ */
+function jcarousel_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#jcarousel':
+      $output = '<p>'. t('The following is a demonstration of jCarousel.') .'</p>';
+
+      // Construct the carousel list.
+      $list = '<li><img src="http://static.flickr.com/66/199481236_dc98b5abb3_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/75/199481072_b4a0d09597_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/57/199481087_33ae73a8de_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/77/199481108_4359e6b971_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/58/199481143_3c148d9dd3_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/72/199481203_ad4cdcf109_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/58/199481218_264ce20da0_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/69/199481255_fdfe885f87_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/60/199480111_87d4cb3e38_s.jpg" width="75" height="75" alt="" /></li>
+        <li><img src="http://static.flickr.com/70/229228324_08223b70fa_s.jpg" width="75" height="75" alt="" /></li>';
+
+      // Provide the horizontal carousel demonstration.
+      $output .= "<h3>Horizontal carousel</h3><ul id='horizontalcarousel'>$list</ul>";
+      jcarousel_add('#horizontalcarousel');
+      $output .= '<p>As you can see, simply calling <code>jcarousel_add()</code> with the element ID will create the default horizontal carousel.</p>';
+
+      // Provide the vertical carousel demonstration.
+      $output .= "<h3>Vertical carousel</h3><ul id='verticalcarousel'>$list</ul>";
+      jcarousel_add('#verticalcarousel', array('vertical' => TRUE));
+      $output .= '<p>The <a href="http://sorgalla.com/projects/jcarousel/#Configuration">configuration options</a> are passed via the second argument in the call to <code>jcarousel_add()</code>. In this example, we created a vertical carousel.</p>';
+
+      // Provide the different skins carousel demonstration.
+      $output .= "<h3>Different skins</h3><ul id='differentskin'>$list</ul>";
+      jcarousel_add('#differentskin', array(), 'ie7');
+      $output .= '<p>We can easily change the associated skin by changing the <code>$skin</code> or <code>$skin_path</code> parameters.</p>';
+
+      // Another thing you can do is use the theme('jcarousel') function.
+      $output .= '<h3>'. t('Theme function') .'</h3>';
+      $items = array(
+        '<img src="http://static.flickr.com/66/199481236_dc98b5abb3_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/75/199481072_b4a0d09597_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/57/199481087_33ae73a8de_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/77/199481108_4359e6b971_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/58/199481143_3c148d9dd3_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/72/199481203_ad4cdcf109_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/58/199481218_264ce20da0_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/69/199481255_fdfe885f87_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/60/199480111_87d4cb3e38_s.jpg" width="75" height="75" alt="" />',
+        '<img src="http://static.flickr.com/70/229228324_08223b70fa_s.jpg" width="75" height="75" alt="" />',
+      );
+      $options = array(
+        'buttonNextEvent' => 'mouseover',
+        'buttonPrevEvent' => 'mouseover',
+      );
+      $output .= theme('jcarousel', $items, $options);
+      $output .= '<p>'. t('The theme function allows you to easily create the markup, and add all the JavaScript to the page in one function call. In this example we create the carousel with the button next event being called when the mouse rolls over the buttons.') .'</p>';
+
+      return $output;
+    break;
+  }
+}
+
+/**
+ * Adds the jCarousel plugin to the page.
+ *
+ * @param $selector
+ *   (optional) The jQuery selector to apply the jCarousel to. If not
+ *   given, will just add the jCarousel plugin.
+ * @param $options
+ *   (optional) The arguments to apply to the selected element when
+ *   creating the jCarousel. The arguments are passed through as
+ *   an associative array using the jCarousel configuration options:
+ *   http://sorgalla.com/projects/jcarousel/#Configuration
+ * @param $skin
+ *   (optional) Either "tango", "ie7", or another name for your own
+ *   skin. If you don't want to name your skin, use NULL. This skin
+ *   name will be added as a class the the jCarousel element.
+ *   Example: jcarousel-skin-NAME.  Note that the skin will not be
+ *   added if you do not pass a $selector.
+ * @param $skin_path
+ *   (optional) If you're using a custom skin, this is where you pass
+ *   the relative path to the skin's CSS file.
+ */
+function jcarousel_add($selector = NULL, $options = array(), $skin = 'tango', $skin_path = NULL) {
+  // Add jCarousel only if it hasn't been added yet.
+  static $jcarousel_added = array();
+
+  // Retrieve the jCarousel module path for later use.
+  $jcarousel = drupal_get_path('module', 'jcarousel');
+
+  // Check if we have already added the jCarousel plugin.
+  if (!isset($jcarousel_added['plugin'])) {
+    // Add either the compressed or uncompressed version of the jCarousel plugin
+    // based on if JavaScript optimization is enabled.
+    if (variable_get('preprocess_js', 0)) {
+      drupal_add_js($jcarousel .'/jcarousel/lib/jquery.jcarousel.jsmin.js');
+    }
+    else {
+      drupal_add_js($jcarousel .'/jcarousel/lib/jquery.jcarousel.js');
+    }
+
+    // Add the related jCarousel stylesheets.
+    drupal_add_css($jcarousel .'/jcarousel/lib/jquery.jcarousel.css');
+    drupal_add_css($jcarousel .'/jcarousel.css');
+
+    // Register the jCarousel Drupal behaviour.
+    drupal_add_js(drupal_get_path('module', 'jcarousel') .'/jcarousel.js');
+    $jcarousel_added['plugin'] = TRUE;
+  }
+
+  // Add the settings if they haven't been added for the selector yet.
+  if (isset($selector) && !isset($jcarousel_added['settings'][$selector])) {
+    // Add the skin to the options so that the skin class is added.
+    if (!empty($skin)) {
+      $options['skin'] = $skin;
+    }
+    // Add the jCarousel element to the settings so that it's processed by the behaviours.
+    drupal_add_js(array('jcarousel' => array($selector => $options)), 'setting');
+    $jcarousel_added['settings'][$selector] = TRUE;
+
+    // Add the skin CSS if it hasn't been added yet.
+    if (!isset($jcarousel_added['skin'][$skin])) {
+      if ($skin == 'tango' || $skin == 'ie7') {
+        drupal_add_css("$jcarousel/jcarousel/skins/$skin/skin.css");
+      } 
+      elseif (!empty($skin_path)) {
+        drupal_add_css($skin_path, 'theme');
+      }
+      $jcarousel_added['skin'][$skin] = TRUE;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function jcarousel_theme($existing, $type, $theme, $path) {
+  return array(
+    'jcarousel' => array(
+      'arguments' => array(
+        'items' => array(),
+        'options' => array(),
+        'skin' => 'tango',
+        'skin_path' => NULL,
+        'id' => 'jcarousel',
+      ),
+    ),
+  );
+}
+
+/**
+ * Creates a jCarousel element on the page. 
+ * @param $items
+ *   The items to appear in the carousel.
+ * @param $options
+ *   (optional) The arguments to apply to the selected element when
+ *   creating the jCarousel. The arguments are passed through as
+ *   an associative array using the jCarousel configuration options:
+ *   http://sorgalla.com/projects/jcarousel/#Configuration
+ * @param $skin
+ *   (optional) Either "tango", "ie7", or another name for your own
+ *   skin. If you don't want to name your skin, use NULL. This skin
+ *   name will be added as a class the the jCarousel element.
+ *   Example: jcarousel-skin-NAME.  Note that the skin will not be
+ *   added if you do not pass a $selector.
+ * @param $skin_path
+ *   (optional) If you're using a custom skin, this is where you pass
+ *   the relative path to the skin's CSS file.
+ * @param $id
+ *   (optional) The name of the jCarousel element.
+ */
+function theme_jcarousel($items = array(), $options = array(), $skin = 'tango', $skin_path = NULL, $id = 'jcarousel') {
+  $name = form_clean_id($id);
+  jcarousel_add('#'. $name, $options, $skin, $skin_path);
+  $output = '<ul id="'. $name .'" class="jcarousel-skin-'. $skin .'">';
+  foreach ($items as $item) {
+    $output .= '<li>'. $item .'</li>';
+  }
+  $output .= '</ul>';
+  return $output;
+}

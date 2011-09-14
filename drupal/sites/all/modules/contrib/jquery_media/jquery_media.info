@@ -1,0 +1,5 @@
+; $Id: jquery_media.info,v 1.1.4.2 2008/08/27 14:28:09 aaron Exp $
+name = jQuery Media
+description = Wrapper for the jQuery Media plugin, embedding virtually any media.
+package = User interface
+core = 6.x

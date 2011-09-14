@@ -1,0 +1,69 @@
+<?php
+// $Id: activism_petition.install,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * Installation file for Activism petition module
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function activism_petition_schema() {
+  $schema['activism_petition'] = array(
+    'description' => 'Stores campaign-specific settings for petition signup fields.',
+    'fields' => array(
+      'nid' => array(
+        'description'   => 'The campaign {node} to which this petition is attached.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+      'field_name' => array(
+        'description'   => 'The name of the petition signup field whose settings are being stored.',
+        'length'        => 100,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'field_enabled' => array(
+        'default'       => 1,
+        'description'   => 'Boolean for whether this field will show up on the action form.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+      'field_display' => array(
+        'description'   => 'Display text for this field, which could potentially override the defaults.',
+        'length'        => 255,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'field_required' => array(
+        'default'       => 1,
+        'description'   => 'Boolean for whether this field needs to be filled out during signup.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function activism_petition_install() {
+  drupal_install_schema('activism_petition');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function activism_petition_uninstall() {
+  drupal_uninstall_schema('activism_petition');
+}

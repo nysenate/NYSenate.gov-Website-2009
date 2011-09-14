@@ -1,0 +1,63 @@
+<?php 
+/**
+ * 	Register as new user and create account.
+ */
+
+class LegalRegister extends DrupalTestCase {
+
+  function get_info() {
+    return array(
+      'name' => t('Create Account'),
+      'desc' => t('Register as new user and create account.'),
+      'group' => t('Legal'),
+    );
+  }
+
+  function setUp() {
+    $this->drupalModuleEnable('legal');
+		$this->drupalModuleDisable('profile');
+		$this->drupalModuleDisable('nodeprofile');
+		
+    parent::setUp();
+  }
+
+	/**
+	 *  Accept T&C to successfully create an account 
+	 */
+  function testRegisterSuccessful() {
+		
+		/* Prepare a user to do testing */
+		$name = $this->randomName();
+		$mail = "$name@example.com";
+		$edit = array('name' => $name,
+		              'mail' => $mail,
+									'legal_accept' => 1);
+									
+		$this->drupalPost('user/register', $edit, 'Create new account');
+
+ 		/* Check account was created */
+		$this->assertText(t('Your password and further instructions have been sent to your e-mail address'), ' [post] Account created');
+  }
+
+	/**
+	 *  Don't accept T&C no account created
+	 */
+  function testRegisterUnsuccessful() {
+		
+		/* Prepare a user to do testing */
+		$name = $this->randomName();
+		$mail = "$name@example.com";
+		$edit = array('name' => $name,
+		              'mail' => $mail);
+									
+		$this->drupalPost('user/register', $edit, 'Create new account');
+
+ 		/* Check account was created */
+		$this->assertText(t('Terms & Conditions must be accepted.'), ' [post] T&C not accepted, account not created');
+		//  		/* Check Invoice was created */
+		
+  }
+
+
+}
+?>

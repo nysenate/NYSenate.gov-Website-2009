@@ -1,0 +1,62 @@
+// $Id: CHANGELOG.txt,v 1.1.2.2.2.2 2009/06/05 20:43:20 yhahn Exp $
+spaces DRUPAL-6--2-ALPHA4
+-------------------------
+- #365928 by dmitrig01: Hide presets form when only 1 preset is available.
+- #459978, #460016 by andypost: Fix E_ALL notices.
+- Removing t() from hook_menu().
+- Replacing OG options on node type form with a message for space_og
+  enabled node types
+- spaces_design: Provide space type body class and space title variables by
+  default to page template.
+- spaces_design: Adding spaces design styles separately to the page vars
+  array so themers can include it selectively.
+- spaces_user: Fix for the PURL modifier when a user changes her username.
+- spaces_user: Adding additional local task entry to smooth out local task
+  handling.
+- spaces_og: Moving groups subscription form from user account page to its
+  own local task.
+
+spaces DRUPAL-6--2-ALPHA3
+-------------------------
+- Fix for bug when enforcing spaces presets that are not the default preset.
+- spaces_design: Updating logo autocolor handling to latest ImageAPI changes
+  and adding check to prevent breakage with ImageMagick users.
+- Fix for hook_init() infighting between spaces & spaces_site.
+- #374502 by Scott Reynolds: Using hook_init() on specific menu router items
+  to clear caches.
+- #452340 by dmitrig01: Uses features_var_export() for pretty preset exports
+- #451966 by tmcw: Remove hardcoded content type identifier when retrieving
+  human-readable group type name
+- #447494 by Scott Reynolds: Optional param for loading space class from
+  an include file.
+- #446712 by Scott Reynolds: Hides exposed filter button on Views handler.
+- Bug fixes to group selector on node forms.
+
+spaces DRUPAL-6--2-ALPHA2
+-------------------------
+- spaces_og: Rebuild og_public flag for nodes associated with features
+  when saving group space.
+- spaces_og: Disallow node creation for og-enabled nodes in other space types.
+- Simplified spaces local task structure.
+- Added spaces links to $vars in page template.
+- Added spaces views filter for users base table.
+- Added relationship and base table support to views_filter method.
+- Make use of hook_menu_alter() for spaces menu access rules.
+- Smarter handling of spaces without features/settings.
+- Renaming spaces_core to spaces_blog and removing example book feature.
+
+spaces DRUPAL-6--2-ALPHA1
+-------------------------
+- #425614: Fixing SQL quotes for Postgres compatibility.
+- Added spaces_design addon module for CSS customization per space.
+- Refactoring spaces to make use of functionality provided by the
+  features module.
+- Updating spaces to make use of PURL and refactored code in context.
+
+spaces DRUPAL-6--1-ALPHA4
+-------------------------
+- Adding views filter to filter nodes that belong to the current
+  spaces feature.
+- Block customizer patch that allows customization of block titles,
+  weights, and status. From Ian Ward.
+- Starting changelog from here. Better late than never.

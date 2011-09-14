@@ -1,0 +1,186 @@
+<?php
+// $Id: context_http_header.module,v 1.1 2010/04/21 17:02:16 febbraro Exp $
+/**
+ * @file content_set_header.module
+ *    Adds HTTP Header reaction to Context
+ */
+
+/**
+ * Implemantation of hook_context_http_header_def 
+ */
+function context_http_header_context_http_header_def() {
+  return array(
+    'extra_headers' => array(
+      '#title'       => t('Extra HTTP Headers'),
+      '#description' => t("Enter one HTTP header per line\n with the form 'KEY:VALUE', no spaces!\n 
+      To remove a header use 'KEY:'\n Headers are replaced in full. "),
+      '#type'        => 'textarea',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_context_http_header_build
+ * should return array in the format of:  
+ * array( 
+ *    'header-1' => array('value1', 'value2', etc),
+ *    'header-2' => array(...),
+ * )
+ */
+function context_http_header_context_http_header_build($http_header_items) {
+  
+  $keyed_headers = array();
+  
+  if ($http_header_items['extra_headers']) {
+    $extra_headers = explode("\n", $http_header_items['extra_headers']);
+    
+    $values = array();
+    foreach ($extra_headers as $extra_header) {
+      list($header, $value) = explode(":", $extra_header);
+      $keyed_headers[$header][] = trim($value);
+    }
+  }
+    
+  return $keyed_headers;
+}
+
+/**
+ * _context_http_header_header_map
+ * Helper function to operate on the set of headers for each hook, 
+ * concating several values into one string so they can be set all at once.
+ * this is due to a limitation for drupal_set_header assuming replacement of given header.
+ * @param $header_builds
+ *   array containing all the headers for its hook.
+ *   array( 
+ *     'header' => array( 'value1', 'value2', 'value3', ... ) 
+ *   )
+ * @return 
+ *   array of string headers
+ *   array(
+ *     'ANOTHER: TEST,BLABH BLAH, HAH,ecp=test,!stop,with-cache',
+ *     'EXAMPLE: Another,header,for,this-hook'
+ *   )
+ */
+function _context_http_header_header_map($header_builds) {
+
+  $headers = array();
+  
+  foreach ($header_builds as $key => $value) {
+    $value_string;
+    if (is_array($value)) {
+      $value_string = implode(",", $value);
+    }
+    else {
+      $value_string = $value;
+    }
+    
+    $headers[] = $key .": ". check_plain($value_string);
+  }    
+  
+  return $headers;
+}
+
+/*****************************************
+ * context 3 integration
+ *****************************************/
+ 
+/**
+ * Make module compatible with context 3
+ * implement hook_ctools_plugin_api().
+ */
+function context_http_header_ctools_plugin_api($module, $api) {
+  if ($module == 'context' && $api == 'plugins') {
+    return array('version' => 3);
+  }
+}
+
+/**
+ * Make module compatible with context 3
+ * Implement hook_context_plugins().
+ */
+function context_http_header_context_plugins() {
+  $plugins = array();
+  $plugins['context_reaction_http_header'] = array(
+    'handler' => array(
+      'path' => drupal_get_path('module', 'context_http_header'),
+      'file' =>  'context_reaction_http_header.inc',
+      'class' => 'context_reaction_http_header',
+      'parent' => 'context_reaction',
+    ),
+  );
+
+  return $plugins;
+}
+
+/**
+ * Make module compatible with context 3
+ * Implement hook_context_registry().
+ */
+function context_http_header_context_registry() {
+  $registry['reactions'] = array(
+    'http_header' => array(
+      'title' => t('HTTP Headers'),
+      'description' => t('Set Headers on pages that meet the conditions.  Used for preventing Akamai edge server caching.'),
+      'plugin' => 'context_reaction_http_header',
+    ),
+  );
+  return $registry;
+}
+
+/**
+ * Implementation of hook_context_page_reaction()
+ * adds HTTP headers based on the active context
+ */
+function context_http_header_context_page_reaction() {
+  
+  if (function_exists("context_context_reactions")) {
+    _do_context2_reaction();
+  }
+  else {
+    if ($plugin = context_get_plugin('reaction', 'http_header')) {
+      $plugin->execute();
+    }
+  }
+}
+
+
+
+/*****************************************
+ * context 2 integration
+ *****************************************/
+
+/**
+ * helper function to keep context 2 code in its own place.
+ *
+ */
+function _do_context2_reaction() {
+  $http_header_items = context_active_values('http_header');
+  
+  $header_builds = module_invoke_all('context_http_header_build', $http_header_items);
+
+  // parse the header builds for the header and the action
+  $headers = _context_http_header_header_map($header_builds);
+
+  // add headers to the page
+  foreach ($headers as $header) {
+    drupal_set_header($header);
+  }
+}
+
+
+
+/**
+ * Implementation of hook_context_reactions()
+ * Adds a context reaction for setting HTTP Headers
+ * hook_context_reactions() depracated in context3.
+ */
+function context_http_header_context_reactions() {
+  $items['http_header'] = array(
+    '#title' => t('HTTP Headers'),
+    '#tree'  => 'tree',
+  );
+  // Retrieve fields from modules and added them to http_header
+  $items_from_hook = module_invoke_all('context_http_header_def');
+  $items['http_header'] = array_merge($items['http_header'], $items_from_hook);
+  return $items;
+}

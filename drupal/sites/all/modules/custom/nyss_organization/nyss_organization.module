@@ -1,0 +1,102 @@
+<?php
+
+include_once('nyss_organization.features.inc');
+include_once('nyss_organization.theme.block.contact.inc');
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_organization_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items["nyss_organization_view_subject_contact"] = array(
+    'arguments' => array(),
+  );
+  $items["nyss_organization_view_content_contact"] = array(
+    'arguments' => array(),
+  );
+  return $items;
+}
+
+/**
+ *  Implements hook_block().
+ */
+function nyss_organization_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+     case 'list':
+      $blocks = array();
+      $blocks['contact'] = array(
+        'info' => t('Organization contact information'),
+        'visibility' => 2,
+        'pages' => "<?php return nyss_blocks_display('$delta'); ?>",
+      );
+      return $blocks;
+    case 'configure':
+      if ($delta == 'contact') {
+        return nyss_organization_configure_form_contact();
+      }
+      break;
+    case 'save':
+      if ($delta == 'contact') {
+        nyss_organization_configure_form_save_contact($edit);
+      }
+      break;
+    case 'view':
+      return array(
+        'subject' => theme('nyss_organization_view_subject_' . $delta), // ('nyss_organization_view_subject_contact'),
+        'content' => theme('nyss_organization_view_content_' . $delta),
+      );
+  }
+}
+
+function nyss_organization() {
+  static $organization;
+  // Create the static cache for future reference.
+  $node = FALSE;
+  if (is_null($organization)) {
+    // Our default state.
+    $organization = FALSE;
+    if ((arg(0) == 'node' || arg(0) == 'organization') && ($nid = arg(1)) && is_numeric($nid)) {
+      $node = node_load($nid);
+    }
+    elseif (arg(0) == 'organization' && arg(1)) {
+      $node = nyss_organization_node_from_title(arg(1));
+    }
+    if ($node && $node->type == 'organization') {
+      $organization = $node;
+    }
+  }
+  return $organization;
+}
+
+/**
+ *  Retrives the organization node from a given title from a URL.
+ *  @param $title
+ *    The title from the URL.
+ *  @return
+ *    The corresponding senator node object.
+ */
+function nyss_organization_node_from_title($title) {
+  static $titles;
+
+  if (!isset($titles[$title])) {
+    $results = cache_get('nyss_organization_title:' . $title, 'cache_nyss_misc');
+    if (!empty($results->data) && time() < $results->expire) {
+      $titles[$title] = $results->data;
+      return $results->data;
+    }
+    $titles[$title] = '';
+    // First look for a match from the URL alias
+    if (($source = drupal_lookup_path('source', "organization/$title")) && substr($source, 0, 5) == "node/") {
+      $titles[$title] = node_load(substr($source, 5));
+    }
+    // If we don't have a match from the field_path, then match for $node->title.
+    if (!$titles[$title]) {
+      $nid = db_result(db_query_range(db_rewrite_sql("SELECT n.nid FROM {node} n WHERE n.type = 'organization' AND REPLACE(LOWER(n.title),'/','') = '%s'"), str_replace(array('_', '-', '/'), array(' ', ' ', ''), $title), 0, 1));
+      if ($nid) {
+        $titles[$title] = node_load($nid);
+      }
+    }
+    cache_set('nyss_organization_title:' . $title, $titles[$title], 'cache_nyss_misc', time() + 3600);
+  }
+  return $titles[$title];
+}

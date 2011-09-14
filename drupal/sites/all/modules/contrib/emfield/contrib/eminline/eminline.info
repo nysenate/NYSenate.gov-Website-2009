@@ -1,0 +1,12 @@
+name = Embedded Inline Media
+description = Allows users to embed media into text-areas.
+dependencies[] = emfield
+dependencies[] = emvideo
+core = 6.x
+package = Media
+; Information added by drupal.org packaging script on 2011-05-06
+version = "6.x-2.5"
+core = "6.x"
+project = "emfield"
+datestamp = "1304705515"
+

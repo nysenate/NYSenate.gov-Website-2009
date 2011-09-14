@@ -1,0 +1,253 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Leginfo
+ *
+ *  This module controls legislation info search and caching.
+ *
+ */
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_leginfo_menu() {
+  $items = array();
+  $items['legislation'] = array(
+    'title' => "Search Legislation",
+    'page callback' => 'nyss_leginfo_search_legislation_page',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/nyss/nyss/leginfo'] = array(
+    'title' => 'Legislative search',
+    'description' => 'Specify whether the Open Legislation search is down for maintenance.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_leginfo_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+function nyss_leginfo_search_legislation_page() {
+  return theme('nyss_leginfo_search_legislation_page');
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+function nyss_leginfo_theme() {
+  return array(
+    'nyss_leginfo_search_legislation_page' => array(
+      'arguments' => array(),
+    ),
+    'nyss_leginfo_service_links' => array(
+      'arguments' => array(),
+    ),
+  );
+}
+
+function theme_nyss_leginfo_search_legislation_page() {
+  $image = theme('image', "sites/all/themes/nys/images/opensenate/openleglogo.gif", '', '', array('width' => '413', 'height' => '39'));
+  
+  $output = '<div class="node">' . theme('nyss_leginfo_service_links');
+  $output .= '<div id="content-area" class="clearfix">
+  <div id="leginfo">
+    <div style="text-align: center; margin-bottom: 10px;">
+      ' . $image . '
+    </div>';
+  if (nyss_leginfo_external_search_working()) {
+    $output .= '
+    <div id="leginfo-form-wrapper">
+      <div style="text-align: center; padding-top: 20px;">';
+    $output .= nyss_leginfo_external_form();
+    $output .= '</div>
+    </div>
+    <div style="padding: 0px 20px;">
+      ' . t('<p>Browse, search and share legislative information from the New York State Senate. 
+      You can search by keyword (such as "housing"), last name of the bill\'s sponsor (e.g.: "Jones"), 
+      committee name, or bill number preceded by an "s" for Senate or "a" for Assembly (e.g.: s100, a250).
+      In addition, you can browse and search Floor Calendars, Active Lists, Committee Meetings 
+      (including attendance and voting records) and Session Transcripts.</p>
+      <p><a href="http://public.leginfo.state.ny.us/menugetf.cgi?COMMONQUERY=LAWS">Click here</a> to view the Laws of New York.</p>') . '
+    </div></div>';
+
+
+  }
+  else {
+    $output .= t(variable_get('nyss_leginfo_maintenance_message', nyss_leginfo_offline_message())) . '</div>';
+  }
+  $output .= '
+    </div>
+</div>';
+  return $output;
+}
+
+function theme_nyss_leginfo_service_links() {
+  return '<div class="share_links">
+  <div class="inner">
+    <h3>' . t('Share This') . ':</h3>
+    ' . theme('links', service_links_render(NULL, TRUE)) .'
+  </div>
+</div>';
+}
+
+function nyss_leginfo_external_form() {
+  return '
+    <form action="http://open.nysenate.gov/legislation/search" method="get" target="_blank">
+      <input id="txtSearchBox" style="width: 300px;" name="term" type="search">
+      <input value="' . t('Search') .'" type="submit">
+      <div style="margin: 3px; color: rgb(153, 153, 153); font-size: 10px;">
+        <strong>' . t('Quick Search') . '</strong> <a href="http://open.nysenate.gov/legislation/senators" target="_blank">' . 
+        t('By Sponsor') . '</a> / <a href="http://open.nysenate.gov/legislation/committees" target="_blank">' . 
+        t('By Committee') . '</a><br />' .
+        t('View Recent') . ': ' . 
+        '<a href="http://open.nysenate.gov/legislation/calendars">' . t('Calendars') . '</a> / ' .
+        '<a href="http://open.nysenate.gov/legislation/meetings">' . t('Meetings') . '</a> / ' .
+        '<a href="http://open.nysenate.gov/legislation/transcripts">' . t('Transcripts') . '</a> / ' .
+        '<a href="http://open.nysenate.gov/legislation/actions" title="Actions on Bills from the Floor of the Senate">' . t('Actions') . '</a> / ' .
+        '<a href="http://open.nysenate.gov/legislation/votes">' . t('Votes') . '</a><br />
+        '.t('Sign Up for Public Comment Updates').': <a href="http://billbuzz.nysenate.gov/" target="_blank">'.t('BillBuzz for Open Legislation').'</a><br /><br />
+      </div>' .
+      '<a href="http://open.nysenate.gov/legislation/help">' . t('Learn more about the search options') . '</a>
+    </form>';
+}
+
+/* // THIS FUNCTION IS DEPRECATED -- Delete after September 15, 2011 -- Sheldon
+
+function nyss_leginfo_search_page($arg1 = 'sponsor', $arg2 = '') {
+  $output .= '<div id="leginfo">';
+  $senator = nyss_senator();
+  if (nyss_leginfo_external_search_working()) {
+    if ($arg2) {
+      $results = nyss_leginfo_caching($arg1, $arg2, TRUE);
+    }
+    
+    $output .= '<p>' . t('You are viewing legislation sponsored by ') . $senator->title .'.<br />' . t('To view all legislation, visit the !sitelink.', array('!sitelink' => l('NY Senate Open Legislation Site', 'http://open.nysenate.gov'))) .'</p>';
+
+    if ($arg2) {
+      $district = node_load($senator->field_senators_district[0]['nid']);
+      $district_number = $district->field_district_number[0]['value'];
+
+      $output .= '<div id="leginfo-results-wrapper" class="block">';
+      if ($results) {
+        _pathauto_include();
+        if (!$senator) {
+          $output .= '<h2 class="title block_title">'. $arg1 .t(' Results: '). $arg2 ."</h2>";
+        }
+        foreach($results AS $result) {
+          $output .= '<div class="leginfo-bill-wrapper">';
+          $output .= '<strong>'. l(t('') . $result['senateId'], 'http://open.nysenate.gov/legislation/api/html/bill/' . $result['senateId'], array('attributes' => array('title' => 'View this bill on open.nysenate.gov'))) . ': ' . $result['title'] . '</strong> sponsored by <strong>'. l($result['sponsor'], 'legislation/sponsor/'. $result['sponsor'], array('attributes' => array('title' => 'Search open legislation by sponsor'))) . '</strong><br />';
+          $output .= t('Committee: '). l($result->committee, 'committee/'. pathauto_cleanstring(strtolower(str_replace(' ', '-', $result->committee))), array('attributes' => array('title' => 'Visit this committee page'))) .'<span class="leginfo-committee-search">  | '. l(t('Search'), 'legislation/committee/' . $result->committee, array('attributes' => array('title' => 'Search open legislation by committee'))) .'</span><br />';
+          $output .= $result->summary;
+          $output .= ' ' . l(t('Read more...'), 'http://open.nysenate.gov/legislation/api/html/bill/' . $result['senateId'], array('attributes' => array('title' => 'View this bill on open.nysenate.gov'))); 
+          $output .= '</div>';
+        }
+      }
+      else {
+        $output .= '<strong>'. t('No bills found for this query!') .'</strong>';
+      }
+      $output .= '</div>';
+    }
+  }
+  else {
+    $output .= variable_get('nyss_leginfo_maintenance_message', nyss_leginfo_offline_message());
+  }
+  $output .= '</div>';
+  
+  return $output;
+}
+*/
+
+function nyss_leginfo_search_form(&$form_state, $type = 'search', $term = '') {
+  $form['leg_term'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Search term'),
+    '#default_value' => $term,
+  );
+  $form['searchtype'] = array(
+    '#type' => 'radios',
+    '#options' => array(
+      'search' => 'Keyword',
+      'sponsor' => 'Sponsor',
+      'committee' => 'Committee',
+      'bill' => 'Bill No.',
+    ),
+    '#default_value' => $type,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Search Senate Legislation'),
+  );
+  $form['#redirect'] = 'legislation/';
+  
+  return $form;
+}
+function nyss_leginfo_search_form_submit(&$form_state) {
+  $form_state['#redirect'] .= $form_state['searchtype']['#value'] . '/'. $form_state['leg_term']['#value'];
+}
+
+/* // This function is deprecated. Delete after September 15, 2011. -- Sheldon
+function nyss_leginfo_caching($arg1, $arg2, $reset = TRUE) {
+  $cid = $arg1 .'_'. $arg2;
+  if (!$reset && ($results = cache_get($cid, 'cache_leginfo')) && !empty($results->data)) {
+    $results = simplexml_load_string($results->data);
+  }
+  else {
+    if ($arg1 == 'sponsor') {
+    	@$results = simplexml_load_file('http://open.nysenate.gov/legislation/api/1.0/xml/'. $arg1 .'/' . $arg2 . '/1/1000?filter=oid:s*+AND+stricken:false');
+    }
+    else {
+    	@$results = simplexml_load_file('http://open.nysenate.gov/legislation/api/1.0/xml/'. $arg1 .'/' . $arg2 . '/1/20?filter=oid:s*+AND+stricken:false');
+    }
+    
+    if (!is_object($results)) {
+      drupal_set_message(t('We\'re having difficulty connecting to the server right now. Please try again in a little bit, or visit the !leginfo_link. We apologize for the inconvenience.', array('!leginfo_link' => l(t('public LegInfo site'), 'http://public.leginfo.state.ny.us/menuf.cgi')) ), 'error'); 
+    }
+    else {
+      cache_set($cid, $results->asXML(), 'cache_leginfo', time() + 86400);
+    }
+  }
+  return $results;
+}
+*/
+
+function nyss_leginfo_offline_message() {
+  $output  = t('<p>Legislation Search on NYSenate.gov is offline for maintenance. Instead, please use the <a href="http://public.leginfo.state.ny.us/menuf.cgi">Legislative Research Service website</a> for up-to-the-minute legislative information.</p>
+  <p><a href="http://public.leginfo.state.ny.us/menugetf.cgi?COMMONQUERY=LAWS">Click here</a> to view the Laws of New York.</p>');
+  return $output;
+}
+
+function nyss_leginfo_external_search_working() {
+  return (variable_get('nyss_leginfo_online_status', 0) == 0);
+}
+
+/**
+ * Form builder. Configure settings for handling search offline conditions.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function nyss_leginfo_admin_settings() {
+  $form['nyss_leginfo_online_status'] = array(
+    '#type' => 'radios',
+    '#title' => t('The Open Legislation search is currently'),
+    '#options' => array(
+      t('Working'), 
+      t('Down for maintenance'),
+    ),
+    '#default_value' => variable_get('nyss_leginfo_online_status', 0),
+  );
+  $form['nyss_leginfo_maintenance_message'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Maintenance message'),
+    '#description' => t('Enter the message you would like the site to display when Open Legislation search is down for maintenance'),
+    '#default_value' => variable_get('nyss_leginfo_maintenance_message', nyss_leginfo_offline_message()),
+    '#cols' => 40,
+    '#rows' => 6,
+    '#resizable' => TRUE,
+  );
+  return system_settings_form($form);
+}

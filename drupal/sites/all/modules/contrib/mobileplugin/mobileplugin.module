@@ -1,0 +1,760 @@
+<?php
+// $Id: mobileplugin.module,v 1.9 2010/01/26 17:01:42 teemule Exp $
+
+/**
+ * Mobile Plugin is a mobile optimization package for Drupal.
+ * Nitro FX Oy, Finland 2009
+ * Mikko Hyytiainen, Teemu Lehtinen
+ */
+
+define('MOBILEPLUGIN_FULL_GROUP', 'full');
+define('MOBILEPLUGIN_MOBILE_GROUP', 'mobile');
+define('MOBILEPLUGIN_ENABLE', 'enable mobile plugin for');
+
+/**
+ * Returns the permissions used by the module.
+ * @return permissions array
+ */
+function mobileplugin_perm() {
+	return array(MOBILEPLUGIN_ENABLE);
+}
+
+/**
+* Displays help and module information.
+* @param path
+* @param arg
+* @return help text for the section
+*/
+function mobileplugin_help($path, $arg) {
+	$output = '';
+	switch ($path) {
+	case 'admin/help#mobileplugin':
+		$output = '<p>' .  t('Provides a mobile optimized view to the site') . '</p>';
+		break;
+	}
+	return $output;
+}
+
+/** 
+ * Logic to select a group and set the theme at page init time.
+ */
+function mobileplugin_init() {
+	global $mobileplugin_group, $mobileplugin_host_defined;
+	if (!user_access(MOBILEPLUGIN_ENABLE)) {
+		return;
+	}
+	$mobile_host = variable_get('mobileplugin_mobile_domain', '');
+	$mobileplugin_host_defined = strlen($mobile_host) > 0;
+	$cached_state = false;
+
+	// Check for session and cookie.
+	if (isset($_SESSION['mobileplugin_group'])) {
+		$cached_state = $_SESSION['mobileplugin_group'];
+	} else if (isset($_COOKIE['mobileplugin_group'])) {
+		$cached_state = $_COOKIE['mobileplugin_group'];
+	}
+	if ($cached_state) {
+		list($group, $touch) = explode(',', $cached_state);
+		if (intval($touch)) {
+			_mobileplugin_add_class('touchscreen');
+		}
+		$mobileplugin_group = _mobileplugin_validate_group($group);
+		_mobileplugin_set_theme($mobileplugin_group);
+		return;
+	}
+
+	// Check for configured mobile domain.
+	if ($mobileplugin_host_defined) {
+		if($_SERVER['HTTP_HOST'] != $mobile_host) {
+			$mobileplugin_group = MOBILEPLUGIN_FULL_GROUP;
+			return;
+		}
+		$mobileplugin_group = MOBILEPLUGIN_MOBILE_GROUP;
+	} else {
+		$mobileplugin_group = MOBILEPLUGIN_FULL_GROUP;
+	}
+
+	// Do device detection.
+	$touch = 0;
+	if (variable_get('mobileplugin_detection', true)) {
+		list($mobileplugin_group, $touch) = _mobileplugin_detect_group($mobileplugin_group);
+		if ($touch) {
+			_mobileplugin_add_class('touchscreen');
+		}
+	}
+
+	// Store group to a cookie.
+	setcookie('mobileplugin_group', $mobileplugin_group .','. ($touch ? '1' : '0'), 0, '/');
+	_mobileplugin_set_theme();
+}
+
+/** 
+ * Attaches pages and actions to menu paths.
+ * @return the menu items
+ */
+function mobileplugin_menu() {
+	$items = array();
+	$items['mobileplugin/switch'] = array(
+		'page callback' => 'mobileplugin_switch',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	$items['admin/build/mobileplugin'] = array(
+		'title' => 'Mobile Plugin',
+		'description' => 'Set up a mobile site',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('mobileplugin_admin_settings'),
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_NORMAL_ITEM
+	);
+	$items['admin/build/mobileplugin/settings'] = array(
+		'title' => 'Settings',
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'weight' => -10
+	);
+	$items['admin/build/mobileplugin/groups'] = array(
+		'title' => 'Device groups',
+		'page callback' => 'mobileplugin_groups',
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 1
+	);
+	$items['admin/build/mobileplugin/groups/edit'] = array(
+		'title' => 'Edit group',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('mobileplugin_groups_form'),
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_CALLBACK
+	);
+	$items['admin/build/mobileplugin/groups/filter'] = array(
+		'title' => 'Filter group css and js',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('mobileplugin_filter_form'),
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_CALLBACK
+	);
+	$items['admin/build/mobileplugin/rules'] = array(
+		'title' => 'Detection rules',
+		'page callback' => 'mobileplugin_rules',
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 2
+	);
+	$items['admin/build/mobileplugin/rules/edit'] = array(
+		'title' => 'Edit rule',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('mobileplugin_rules_form'),
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_CALLBACK
+	);
+	$items['admin/build/mobileplugin/test'] = array(
+		'page callback' => 'mobileplugin_test_group',
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_CALLBACK
+	);
+	$items['admin/build/mobileplugin/debug'] = array(
+		'title' => 'Device debug',
+		'page callback' => 'mobileplugin_debug',
+		'file' => 'mobileplugin-admin.inc',
+		'access arguments' => array('administer site configuration'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 3
+	);
+	return $items;
+}
+
+/**
+ * Checks if a mobile version is served.
+ * @return true if a mobile version is served
+ */
+function mobileplugin_is_mobile() {
+	global $mobileplugin_group;
+	return $mobileplugin_group != MOBILEPLUGIN_FULL_GROUP;
+}
+
+/**
+ * Gets the current group settings.
+ * @return the current group settings
+ */
+function mobileplugin_get_group_setup() {
+	global $mobileplugin_group;
+	static $group_setup;
+	if ($group_setup) {
+		return $group_setup;
+	}
+	$allgroups = _mobileplugin_get_groups();
+	$group_setup = $allgroups[$mobileplugin_group];
+	return $group_setup;
+}
+
+/**
+* Switches from the mobile to full view and vice versa.
+*/
+function mobileplugin_switch() {
+	global $mobileplugin_group;
+	if ($mobileplugin_group != MOBILEPLUGIN_FULL_GROUP) {
+		$group = MOBILEPLUGIN_FULL_GROUP;
+		$touch = false;
+	} else {
+		list($group, $touch) = _mobileplugin_detect_group(MOBILEPLUGIN_MOBILE_GROUP);
+	}
+	setcookie('mobileplugin_group', $group . ',' . ($touch ? '1' : '0'), time() + 8640000, '/');
+	drupal_goto(drupal_get_destination());
+}
+
+/**
+ * Sets the configured theme for the given group.
+ */
+function _mobileplugin_set_theme() {
+	global $mobileplugin_group, $custom_theme;
+	if ($group != MOBILEPLUGIN_FULL_GROUP) {
+		$grouplist = _mobileplugin_get_groups();
+		$custom_theme = $grouplist[$mobileplugin_group]['theme'];
+	}
+}
+
+/**
+ * Adds a css class for the page.
+ * @param name a css class name
+ */
+function _mobileplugin_add_class($name = null) {
+	global $mobileplugin_class;
+	if (!is_null($name)) {
+		$mobileplugin_class .= ' '.$name;
+	}
+	return $mobileplugin_class;
+}
+
+/**
+ * Detects the device group.
+ * @return the device group detected
+ */
+function _mobileplugin_detect_group($default_group = MOBILEPLUGIN_FULL_GROUP) {
+	$device = null;
+	$rules = _mobileplugin_get_rules();
+	foreach ($rules as $r) {
+
+		// Get property value to compare.
+		$v = null;
+		if ($r['capability'] == 'USERAGENT') {
+			$v = $_SERVER['HTTP_USER_AGENT'];
+		} else if (module_exists('wurfl')) {
+			if (is_null($device)) {
+				$device = wurfl_get_requestingDevice();
+			}
+			if ($device) {
+				if ($r['capability'] == 'ID') {
+					$v = $device->id;
+				} else {
+					$v = $device->getCapability($r['capability']);
+				}
+			}
+		} else if ($r['capability'] == 'is_wireless_device') {
+			module_load_include('inc', 'mobileplugin', 'mobileplugin-detect');
+			$v = mobileplugin_lite_detection() ? 'true' : 'false';
+		}
+
+		// Find matches.
+		if (!is_null($v) && _mobileplugin_detect_match($v, $r['operator'], $r['value'])) {
+			if ($r['group_name'] == 'no') {
+				return array($default_group, false);
+			}
+			$gt = explode(',', $r['group_name']);
+			if (count($gt) > 1) {
+				return array($gt[0], $gt[1] > 0);
+			}
+			$t = false;
+			if (module_exists('wurfl')) {
+				if (is_null($device)) {
+					$device = wurfl_get_requestingDevice();
+				}
+				$t = ($device && $device->getCapability('is_wireless_device') == 'true'
+					&& $device->getCapability('pointing_method') == 'touchscreen');
+			}
+			return array($gt[0], $t);
+		}
+	}
+	return array($default_group, false);
+}
+
+/**
+ * Compares values.
+ */
+function _mobileplugin_detect_match($value, $op, $compare) {
+	$arr = explode("\n", $compare);
+	switch ($op) {
+	case '==':
+		foreach ($arr as $a) {
+			if ($value == $a) {
+				return true;
+			}
+		}
+		return false;
+	case '!=':
+		foreach ($arr as $a) {
+			if ($value == $a) {
+				return false;
+			}
+		}
+		return true;
+	case '<=':
+		foreach ($arr as $a) {
+			if ($value <= $a) {
+				return true;
+			}
+		}
+		return false;
+	case '>=':
+		foreach ($arr as $a) {
+			if ($value >= $a) {
+				return true;
+			}
+		}
+		return false;
+	case '=~':
+		foreach ($arr as $a) {
+			if (stripos($value, trim($a)) !== false) {
+				return true;
+			}
+		}
+		return false;
+	case '!=~':
+		foreach ($arr as $a) {
+			if (stripos($value, $a) !== false) {
+				return false;
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Validates the group is in the configured groups.
+ * @param group a group name
+ * @return a valid group name
+ */
+function _mobileplugin_validate_group($group) {
+	$g = strtolower($group);
+	$grouplist = _mobileplugin_get_groups();
+	if (isset($grouplist[$g])) {
+		return $g;
+	}
+	return MOBILEPLUGIN_FULL_GROUP;
+}
+
+/**
+ * Gets the configured groups.
+ * @return configured groups and their settings
+ */
+function _mobileplugin_get_groups() {
+	static $grouplist;
+	if ($grouplist) {
+		return $grouplist;
+	}
+	if ($c = cache_get('mobileplugin_grouplist', 'cache')) {
+		$grouplist = $c->data;
+	} else {
+		$grouplist = array();
+		$result = db_query('select name,theme,data from {mobileplugin_groups}');
+		while ($row = db_fetch_array($result)) {
+			_mobileplugin_group_setup_in($row);
+			$grouplist[$row['name']] = $row;
+		}
+		cache_set('mobileplugin_grouplist', $grouplist, 'cache');
+	}
+	return $grouplist;
+}
+
+/**
+ * Processes the group settings for use.
+ * @param group a loaded group settings array
+ */
+function _mobileplugin_group_setup_in(&$group) {
+	if ($group['data']) {
+		$group = array_merge($group, unserialize($group['data']));
+	}
+	unset($group['data']);
+}
+
+/**
+ * Gets the configured rules from the database.
+ * @return the detection rules in ordered array
+ */
+function _mobileplugin_get_rules() {
+	static $rulelist;
+	if ($rulelist) {
+		return $rulelist;
+	}
+	if ($c = cache_get('mobileplugin_rulelist', 'cache')) {
+		$rulelist = $c->data;
+	} else {
+		$rulelist = array();
+		$n = 0;
+		$result = db_query('select capability,operator,value,group_name from {mobileplugin_rules} order by weight asc');
+		while ($row = db_fetch_array($result)) {
+			$rulelist[$n] = $row;
+			$n++;
+		}
+		cache_set('mobileplugin_rulelist', $rulelist, 'cache');
+	}
+	return $rulelist;
+}
+
+/**
+ * Optimizes node content.
+ * @param node a node object
+ * @param op the current operation
+ * @param teaser a flag of teaser view
+ * @param page a flag of page view 
+ */
+function mobileplugin_nodeapi(&$node, $op, $teaser = false, $page = true) {
+	global $mobileplugin_group;
+	if ($op == 'view' && $mobileplugin_group != MOBILEPLUGIN_FULL_GROUP) {
+		$element_names = array_filter(array_keys($node->content), 'element_child');
+		$cache_key = 'mobileplugin_optimized:'. $node->nid .':'. ($teaser ? 't' : 'f') .':'. $mobileplugin_group;
+		if ($c = cache_get($cache_key, 'cache_page')) {
+			$values = $c->data;
+		} else {
+			$values = array();
+			foreach ($element_names as $name) {
+				$values[$name] = $node->content[$name]['#value'];
+			}
+			_mobileplugin_optimize($values);
+			cache_set($cache_key, $values, 'cache_page');
+		}
+		foreach ($element_names as $name) {
+			$node->content[$name]['#value'] = $values[$name];
+		}
+	} else if($op == 'update' || $op == 'delete') {
+		cache_clear_all('mobileplugin_optimized:'. $node->nid .':', 'cache_page', true);
+	}
+}
+
+/**
+ * Optimizes comment content.
+ * @param comment a comment object
+ * @param op the current operation
+ */
+function mobileplugin_comment(&$comment, $op) {
+	global $mobileplugin_group;
+	if ($op == 'view' && $mobileplugin_group != MOBILEPLUGIN_FULL_GROUP) {
+		$cache_key = 'mobileplugin_optimized_cid:'. $comment->cid .':'. $mobileplugin_group;
+		if ($c = cache_get($cache_key, 'cache_page')) {
+			$value = $c->data;
+		} else {
+			$map = array('value' => $comment->comment);
+			_mobileplugin_optimize($map);
+			$value = $map['value'];
+			cache_set($cache_key, $value, 'cache_page');
+		}
+		$comment->comment = $value;
+	} else if ($op == 'update' || $op == 'delete') {
+		cache_clear_all('mobileplugin_optimized_cid:'. $comment->cid .':', 'cache_page', true);
+	}
+}
+
+/**
+ * Optimizes html content for mobile view.
+ * @param map an associative array of html markup to optimize
+ */
+function _mobileplugin_optimize(&$map) {
+	require_once(dirname(__FILE__) . '/simple_html_dom.php');
+
+	// Prepare group configuration.
+	$group_setup = mobileplugin_get_group_setup();
+	$imgact = _mobileplugin_get_setup_val($group_setup, 'imageact', 'scale');
+	$width = $height = 180;
+	if ($imgact == 'scale') {
+		list($w, $h) = explode('x', _mobileplugin_get_setup_val($group_setup, 'imagesize', ''));
+		$w = intval(trim($w));
+		$h = intval(trim($h));
+		if ($w > 0 && $h > 0) {
+			$width = $w;
+			$height = $h;
+		}
+	}
+	$bw = intval(_mobileplugin_get_setup_val($group_setup, 'breakwords', 30));
+
+	// Optimize given key values.
+	$values = array();
+	foreach ($map as $key => $value) {
+		if (!empty($value)) {
+			$dom = str_get_html($value);
+			module_invoke_all('mobileplugin_optimize_dom', $group_setup, $dom);
+
+			// Do image processing.
+			$dom = str_get_html($dom->save());
+			switch ($imgact) {
+			case 'scale':
+				foreach ($dom->find('img') as $i) {
+					$res = _mobileplugin_image_scaled($i->src, $width, $height);
+					if (is_array($res)) {
+						$i->width = $res[0];
+						$i->height = $res[1] > 0 ? $res[1] : null;
+					} else {
+						$i->src = base_path() . $res;
+						$i->width = null;
+						$i->height = null;
+					}
+				}
+				break;
+			case 'remove':
+				foreach ($dom->find('img') as $i) {
+					$i = null;
+				}
+				break;
+			default:
+				break;
+			}
+
+			// Break long words.
+			if ($bw > 0) {
+				foreach ($dom->find('text') as $t) {
+					if ($t->parent()->tag != 'script') {
+						$t->outertext = _mobileplugin_break_long_words($t->outertext, $bw);
+					}
+				}
+			}
+			$map[$key] = $dom->save();
+		}
+	}
+}
+
+/**
+ * Gets a setting or a default value. Usable helper for modules implementing mobileplugin hooks.
+ * @param group a group settings array
+ * @param key a stored key
+ * @param default a default value
+ * @return a stored value or default
+ */
+function _mobileplugin_get_setup_val(&$group, $key, $default) {
+	if (isset($group[$key])) {
+		return $group[$key];
+	}
+	return $default;
+}
+
+/**
+ * Scales an image down if possible.
+ * @param url an image url
+ * @param width a maximum width
+ * @param height a maximum height
+ * @return new image url or size array
+ */
+function _mobileplugin_image_scaled($url, $width, $height) {
+	$copydir = file_directory_path() . '/mobileplugin';
+	$sizedir = $copydir . '/' . $width . 'x' . $height;
+	$basename = md5($url) . substr($url, strrpos($url, '.'));
+	$targetname = $sizedir . '/' . $basename;
+	if (file_exists($targetname)) {
+		return $targetname;
+	}
+
+	// Get the image through http to be sure.
+	$urlinfo = parse_url($url);
+	if (!$urlinfo['host'] || $urlinfo['host'] == $_SERVER['SERVER_NAME']) {
+		$bpath = base_path();
+		$bpathl = strlen($bpath);
+		if (substr($urlinfo['path'], 0, $bpathl) == $bpath) {
+			$file = urldecode(substr($urlinfo['path'], $bpathl));
+
+			// Try to activate imagecache.
+			if (!file_exists($file)) {
+				drupal_http_request($urlinfo['path'], array(), 'GET', null, 1);
+				if (!file_exists($file)) {
+					return array($width, 0);
+				}
+			}
+
+			// Scale using imageapi if available.
+			file_check_directory($copydir, true);
+			file_check_directory($sizedir, true);
+			drupal_get_messages();
+			if (module_exists('imageapi') && imageapi_default_toolkit()) {
+				$image = imageapi_image_open($file);
+				if ($image->info['width'] > 0) {
+					if (imageapi_image_scale($image, $width, $height) && imageapi_image_close($image, $targetname)) {
+						return $targetname;
+					}
+				}
+			}
+			if (image_scale($file, $targetname, $width, $height)) {
+				return $targetname;
+			}
+		}
+	}
+	return array($width, 0);
+}
+
+/**
+ * Adds suggested word breaks to long words.
+ * @param str a source string
+ * @param max a maximum word length
+ * @return the result string
+ */
+function _mobileplugin_break_long_words($str, $max) {
+	$res = '';
+	$l = strlen($str);
+	$c = 0;
+	for ($i = 0; $i < $l; $i++) {
+		$ch = $str{$i};
+		$res .= $ch;
+		if ($ch == ' ' || $ch == "\t" || $ch == '\n') {
+			$c = 0;
+		} else {
+			$c++;
+			if ($c == $max) {
+				$res .= '<wbr/>';
+				$c = 0;
+			}
+		}
+	}
+	return $res;
+}
+
+/**
+ * Gets filtered css markup.
+ * @return filtered css markup
+ */
+function _mobileplugin_filter_css(&$css = array()) {
+	$group_setup = mobileplugin_get_group_setup();
+	$filtercss = _mobileplugin_get_setup_val($group_setup, 'filtercss', array('sites/all/themes/', 'themes/', 'sites/default/files/'));
+	foreach ($css as $media => $types) {
+		foreach ($types as $type => $files) {
+			foreach ($files as $file => $preprocess) {
+				if (!_mobileplugin_is_inside_paths($file, $filtercss)) {
+					unset($css[$media][$type][$file]);
+				}
+			}
+		}
+	}
+	return drupal_get_css($css);
+}
+
+/**
+ * Gets filtered header js markup.
+ * @return filtered header js markup
+ */
+function _mobileplugin_filter_js() {
+	$group_setup = mobileplugin_get_group_setup();
+	$filterjs = _mobileplugin_get_setup_val($group_setup, 'filterjs', array());
+	$js = drupal_add_js();
+	foreach ($js as $type => $files) {
+		switch ($type) {
+		case 'setting':
+			if (!_mobileplugin_is_inside_paths('misc/drupal.js', $filterjs)) {
+				unset($js['setting']);
+			}
+			break;
+		case 'inline':
+			break;
+		default:
+			foreach ($files as $file => $info) {
+				if (!_mobileplugin_is_inside_paths($file, $filterjs)) {
+					unset($js[$type][$file]);
+				}
+			}
+		}
+	}
+	return drupal_get_js('header', $js);
+}
+
+/**
+ * Tests if a target is inside the given paths.
+ * @param target a target path or file
+ * @param paths a list of paths
+ * @return true if the target is inside the given paths
+ */
+function _mobileplugin_is_inside_paths($target, &$paths) {
+	foreach ($paths as $p) {
+		$lp = strlen($p);
+		if (strlen($target) >= $lp && $p == substr($target, 0, $lp)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+* Implements a drupal block.
+* @param op the block operation
+* @param delta the block delta
+* @returns the block data
+*/
+function mobileplugin_block($op = 'list', $delta = 0) {
+	if ($op == 'list') {
+		$blocks[0]['info'] = t('Switch to and from mobile version');
+		$blocks[0]['cache'] = BLOCK_NO_CACHE;
+		return $blocks;
+	} else if ($op == 'view') {
+		$block = array();
+		switch($delta) {
+		case 0:
+			if (user_access(MOBILEPLUGIN_ENABLE)) {
+				$switch = _mobileplugin_get_switch();
+				$block = array('content' => theme('mobileplugin_switch', $switch['url'], $switch['title']));
+			}
+			break;
+		}
+		return $block;
+	}
+}
+
+/**
+ * Defines full/mobile switch.
+ */
+function _mobileplugin_get_switch() {
+	global $mobileplugin_host_defined, $mobileplugin_group;
+	static $switch;
+	if ($switch) {
+		return $switch;
+	}
+	$switch = array();
+	if ($mobileplugin_group == MOBILEPLUGIN_FULL_GROUP) {
+		if ($mobileplugin_host_defined) {
+			$switch['url'] = 'http://' . variable_get('mobileplugin_mobile_domain', '');
+		} else {
+			$switch['url'] = 'mobileplugin/switch';
+		}
+		$switch['title'] = t('Show mobile version');
+	} else {
+		if ($mobileplugin_host_defined) {
+			$switch['url'] = 'http://' . variable_get('mobileplugin_full_domain', '');
+		} else {
+			$switch['url'] = 'mobileplugin/switch';
+		}
+		$switch['title'] = t('Show full browser version');
+	}
+	return $switch;
+}
+
+/**
+ * Register theme functions.
+ * @return theme function array
+ */
+function mobileplugin_theme() {
+	return array(
+		'mobileplugin_switch' => array(
+			'arguments' => array($url => '', $title => '')
+		)
+	);
+}
+
+/**
+* Themes full/mobile switch block.
+* @param url a url to switch the theme
+* @param title a title for the operation
+*/
+function theme_mobileplugin_switch($url, $title) {
+	return l($title, $url, array('query' => drupal_get_destination()));
+}

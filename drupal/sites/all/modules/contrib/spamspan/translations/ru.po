@@ -1,0 +1,94 @@
+# Greek translation of spamspan module
+# $Id: ru.po,v 1.1.2.1 2008/09/11 18:01:26 lakka Exp $
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from file: spamspan.module,v 1.7 2007/01/17 21:33:58 lakka
+#
+# Vasileios Lourdas <lourdas_v@yahoo.gr>, 2007.
+msgid ""
+msgstr ""
+"Project-Id-Version: Spamspan Russian\n"
+"POT-Creation-Date: 2007-05-24 23:41+0300\n"
+"PO-Revision-Date: 2008-04-18 16:10+0300\n"
+"Last-Translator: Alexander <storm@rustex.ru>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.11.4\n"
+"X-Poedit-Country: RUSSIAN FEDERATION\n"
+"X-Poedit-SourceCharset: iso-8859-1\n"
+"X-Poedit-Language: Russian\n"
+
+#: spamspan.module:26
+msgid "Disguises email addresses in an attempt to reduce spam."
+msgstr "Маскирует электронные адреса от спам-ботов, пытаясь уменьшить количество спама."
+
+#: spamspan.module:28
+msgid " <a href=\"%url\">more help</a>"
+msgstr " <a href=\"%url\">подробнее</a>"
+
+#: spamspan.module:32
+msgid "<p>The SpamSpan module obfuscates email addresses to help prevent spambots from collecting them. It will produce clickable links if JavaScript is enabled, and will show the email address as <code>example [at] example [dot] com</code> if the browser does not support JavaScript.</p><p>To configure the module, select \"configure\" next to the <a href=\"%url\">input format</a> you'd like to use. Enable \"Hide Email Addresses\" and submit the form. Then select the \"configure\" tab to choose relevant options.</p>"
+msgstr "<p>Модуль SpamSpan служит для маскировки электронных адресов от спам-ботов, осложняя их автоматический сбор со страницы сайта. В случае, если javascript включен, он создаёт кликабельную ссылку, или, если javascript в браузере отключен, показывает электронный адрес в виде: <code>example [at] example [dot] com</code></p><p>Чтобы настроить работу модуля, выберите \"настроить\" напротив нужного Вам <a href=\"%url\">фильтра ввода</a>. Отметьте галочкой  \"Скрывать электронные адреса\" и нажмите \"Сохранить\". Затем войдите в \"перераспределение\", чтобы выбрать последовательность выполнения фильтров</p>"
+
+#: spamspan.module:44
+msgid "Each email address will be obfuscated in a human readble fashion or (if JavaScript is enabled) replaced with a spamproof clickable link."
+msgstr "Каждый электронный адрес будет преобразован в читабельную для человека форму, или (при включенном JavaScript) будет заменён кликабельной ссылкой."
+
+#: spamspan.module:56
+msgid "Hide email addresses"
+msgstr "Скрыть электронные адреса"
+
+#: spamspan.module:65
+msgid "Attempt to hide email addresses from spam-bots."
+msgstr "Пытается скрыть электронные адреса от спам-ботов."
+
+#: spamspan.module:76
+msgid "SpamSpan email address encoding filter"
+msgstr "Фильтр SpamSpan для шифрования электронных адресов"
+
+#: spamspan.module:77
+msgid "You probably do not need to change any of these settings"
+msgstr "Скорее всего, Вам не нужно изменять эти настройки."
+
+#: spamspan.module:83
+msgid "Local part class"
+msgstr "Класс пользовательской части адреса"
+
+#: spamspan.module:86
+msgid "The class name of the &lt;span&gt; element enclosing the part of the address before the @"
+msgstr "Имя класса элемента &lt;span&gt;, содержащего пользовательскую часть электронного адреса, слева от @."
+
+#: spamspan.module:91
+msgid "Domain part class"
+msgstr "Класс доменной части адреса"
+
+#: spamspan.module:94
+msgid "The class name of the &lt;span&gt; element enclosing the part of the address after the @"
+msgstr "Имя класса элемента &lt;span&gt;, содержащего доменную часть электронного адреса, справа от @."
+
+#: spamspan.module:99
+msgid "@ text"
+msgstr "@ текст"
+
+#: spamspan.module:102
+msgid "Replace @ with this text when javascript is disabled"
+msgstr "Заменяет @ указанным здесь текстом, если у пользователя включен JavaScript"
+
+#: spamspan.module:0
+msgid "spamspan"
+msgstr "spamspan"
+
+#: spamspan.info:0
+msgid "SpamSpan"
+msgstr "SpamSpan"
+
+#: spamspan.info:0
+msgid "The SpamSpan module obfuscates email addresses to help prevent spambots from collecting them.  It implements the technique at http://www.spamspan.com."
+msgstr "Модуль SpamSpan служит для маскировки электронных адресов от спам-ботов, осложняя их автоматический сбор со страницы сайта.Использует методы, описанные на http://www.spamspan.com."
+
+#: spamspan.info:0
+msgid "Input filters"
+msgstr "Фильтры ввода"
+

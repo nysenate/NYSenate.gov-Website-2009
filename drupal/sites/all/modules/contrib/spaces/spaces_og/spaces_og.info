@@ -1,0 +1,16 @@
+; $Id: spaces_og.info,v 1.1.2.1.2.2 2009/06/26 13:56:13 yhahn Exp $
+name = "Spaces OG"
+description = "Provides integration between Spaces and OG"
+package = "Spaces"
+core = "6.x"
+dependencies[] = og
+dependencies[] = og_access
+dependencies[] = og_views
+dependencies[] = spaces
+
+; Information added by drupal.org packaging script on 2010-02-15
+version = "6.x-2.0-beta7"
+core = "6.x"
+project = "spaces"
+datestamp = "1266249907"
+

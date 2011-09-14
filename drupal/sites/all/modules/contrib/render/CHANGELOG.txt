@@ -1,0 +1,36 @@
+// $Id: CHANGELOG.txt,v 1.16 2009/01/17 20:13:55 sun Exp $
+
+Render x.x-x.x, xxxx-xx-xx
+--------------------------
+
+
+Render 6.x-1.x, xxxx-xx-xx
+--------------------------
+#120308 by mbutcher, sun: Added sIFR 3 plugin.
+#224674 by sun: Fixed JS/CSS files for rules not updated after rule update.
+#311472 by sun: Fixed uploaded font files missing after cron runs.
+#305932 by sun: Fixed E^ALL PHP notices; code clean-up.
+#211380 by sun: Ported Dynamic Rendering to Drupal 6.x.
+
+
+Render 5.x-1.x, xxxx-xx-xx
+--------------------------
+#265092 by sun: Fixed invalid HTML on edit rule page (CSS selector help).
+#224713 by mortendk, sun: Fixed sIFR text not clickable in Firefox.
+#245405 by sun: Fixed install error due to default value for text column.
+
+
+Render 5.x-1.1, 2008-02-24
+--------------------------
+#224713 by sun: Updated download and troubleshooting links.
+#224674 by sun: Removed one font resource link in sIFR plugin help text.
+
+
+Render 5.x-1.0, 2008-01-19
+--------------------------
+Updated sIFR rule examples based on default Garland theme.
+#180144 by sun: Fixed menu callback arguments are not arrays.
+#207074 by sun: Added missing hook_uninstall.
+#140118 by sun: Fixed Hard-coded CSS in rules overview.
+
+

@@ -1,0 +1,874 @@
+
+2008-10-29	Mark Wubben		revision 436
+
+[CHANGED] sifr.fla: Added directions for embedding correct font style glyphs, added Bold + Italic as an example. Set "Antialias for readability" as default export setting (ActionScript sets it as well, so no change in the final displayed text).
+
+2008-10-29	Mark Wubben		revision 435
+
+[CHANGED] Improved Flash movie incompatibility warning.
+
+2008-10-29	Mark Wubben		revision 434
+
+[NEW] Created example `sifr-config.js` file, although the demo still uses inline CSS and JavaScript.
+
+[CHANGED] FWIW, changed copyright statement syntax.
+
+2008-10-29	Mark Wubben		revision 433
+
+[CHANGED] Merged the sIFR-screen and sIFR-print CSS files into one `sifr.css`, using @media selectors to distinguish between screen types.
+
+2008-10-28	Mark Wubben		revision 432
+
+[FIXED] Font-size-deduce-algorithm fired even if not necessary, and would give incorrect results if the replaced element was `display: inline`.
+
+2008-10-28	Mark Wubben		revision 431
+
+[FIXED] You can now set the font-size of HTML elements within the Flash movie directly in pixels, rather than as a percentage from the main font size.
+
+2008-10-28	Mark Wubben		revision 430
+
+[CHANGED] Sometimes, somehow, in at least Firefox 2, an ExternalInterface callback is suddenly unavailable. Now checking for the callback before firing it.
+
+2008-10-28	Mark Wubben		revision 429
+
+2008-10-25	Mark Wubben		revision 428
+
+[CHANGED] Enabled Flash transparency for Gecko 1.9 and Opera 9.61 with Flash 10 on Linux.
+
+[CHANGED] Upgraded Opera version check to 9.61, to make sure Flash transparency worked correctly in supported Opera browsers.
+
+[CHANGED] Updated Konqueror detection, although can't get any Flash actually rendered right now. Therefore, Konqueror is still not supported.
+
+2008-10-24	Mark Wubben		revision 427
+
+[FIXED] <script> and <style> tags no longer end up in the alternate content.
+
+2008-10-24	Mark Wubben		revision 426
+
+[CHANGED] No longer throwing exceptions if pre-fetch fails. Under Webkit, pre-fetch doesn't work in XHTML pages, and an exception would be thrown if the sifr-debug.js file had been loaded. This then made it impossible to actually test debug sIFR under Webkit / XHTML.
+
+2008-10-24	Mark Wubben		revision 425
+
+[CHANGED] Specifying background-color: transparent; without enabling transparency through wmode now falls back to white as the background color, preventing Flash from improperly rendering a green background.
+
+2008-10-24	Mark Wubben		revision 424
+
+[CHANGED] When calculating ratios, leading is removed from the Flash CSS. This does mean that after the ratios have been calculated, the text won't have leading. Simply revert back to a normal replacement to see the leading return.
+
+2008-10-24	Mark Wubben		revision 423
+
+[FIXED] Now also adjusting for negative values of leading.
+
+2008-10-24	Mark Wubben		revision 422
+
+[CHANGED] Flash used a leading 2px less than the one you specified. I've now fixed this, such that the specified leading is actually used. IMPORTANT: This probably means that if you've specified leading, it's now 2px too high.
+
+[CHANGED] Using a different initial height inside Flash. This shouldn't affect anything, though.
+
+[FIXED] Again taking leading into account, when guessing final height of Flash movie.
+
+[CHANGED] Dramatically simplified font size calculation. You no longer need to specify `line-height: 1em` in the CSS. Font sizes are now calculated precisely, even on IE. Any weird "'1.bottom' is undefined" errors in IE should be gone. IE8 seemed to have been quite susceptible to these errors.
+
+WARNING: This is a bit new, if you're upgrading from an older sIFR version, test carefully to see if everything still works.
+
+2008-10-24	Mark Wubben		revision 421
+
+2008-10-24	Mark Wubben		revision 420
+
+[IMPROVED] Made some changes to decrease jumpiness caused by inserting the Flash movie.
+
+2008-07-11			revision 419
+
+[FIXED] This revision should fix all issues with sIFR and Flash < 9,0,115 under IE6 (and 7). Long story really short: those Flash players for IE have serious bugs (caused by Adobe) when it comes to ExternalInterface. sIFR switched to using ExternalInterface in r386. I finally got older Flash players working on my test machine, so the issues could actually be fixed, without me trying something and waiting for (often non-existant) feedback on whether the fix worked or not.
+
+Thank you for your patience.
+
+2008-07-11			revision 418
+
+[FIXED] Flash detection results are now consistent for both IE and non-IE browsers.
+
+2008-07-11			revision 417
+
+2008-07-11			revision 416
+
+[FIXED] Improved Flash detection to more closely follow SWFObject and to work better with Flash 10 (beta).
+
+2008-07-02	Mark Wubben		revision 415
+
+[CHANGED] Temporarily disabled selectable:false in FF3 on non-Macintosh machines if the window mode of the Flash movie is set to opaque or transparent. Non-selectable text and a transparent window mode broke links in FF3 on Windows, just taking precautions until this has been fixed.
+
+2008-06-21	Mark Wubben		revision 414
+
+[FIXED] Yikes, turns out the version comparison code introduced in r408 didn't actually do a very fine job at comparing Flash versions, as a result of which the workarounds for problems with older Flash 9 versions were never enabled. This should now be fixed.
+
+2008-06-17	Mark Wubben		revision 413
+
+[CHANGED] Enabled pre-fetch for all browsers.
+
+2008-06-17	Mark Wubben		revision 412
+
+[FIXED] Taking extra care not to mess with the Flash <object> in a call stack originating from an ExternalInterface call out of the Flash movie.
+
+2008-06-17	Mark Wubben		revision 411
+
+[NEW] Added Bold+Italic text to the default sIFR text. The default text shows which glyphs have been installed, but I missed the Bold+Italic combination.
+
+2008-06-17	Mark Wubben		revision 410
+
+[NEW] Added an API call on FlashInteractor to cleanly remove a sIFR Flash <object> (and just the <object>!) from the document manually. The call is `FlashInteractor#remove()`, so for example `sIFR.replacements[0].remove()` removes the Flash element of the first replacement from the document.
+
+2008-06-17	Mark Wubben		revision 409
+
+[FIXED] Removing Flash <object>s from the page just like SWFObject 2.1 (beta 7). This should stop memory leaks and weird bugs in old Flash players. When removed due to unloading the page, the Flash <object>s are replaced by placeholder <div>s, with the dimensions of the old <object>s. This stops the page from "collapsing" because the Flash is removed.
+
+[CHANGED] Removed `.sIFR-unloading` class. No longer needed now that placeholders are used.
+
+2008-05-27	Mark Wubben		revision 408
+
+[FIXED] Under certain conditions, Flash players older than 9,0,115,0 would, in Internet Explorer, fail to set up the communication with the JavaScript code. (This has been verified for Flash 9 players, but not for Flash 8 players). Luckily I've found a workaround which should solve most issues.
+
+[CHANGED] The workaround mentioned allowed me to simplify the movie reset functionality. I am not yet sure if the reset functionality works for the broken Flash players.
+
+[CHANGED] `sIFR.ua.flashVersion` is no longer an integer, but the real Flash version run through `sIFR.ua.parseVersion()`.
+
+2008-05-11	Mark Wubben		revision 407
+
+[CHANGED] Updated parseSelector to 2.0.2, fixing a minor issue regarding the parsing of pseudo-classes.
+
+2008-05-04	Mark Wubben		revision 406
+
+[FIXED] When using `fitExactly`, the Flash movie would, when reset, and under certain conditions, unnecessarily wrap the text. Fixed by no longer saving the exact text width in the Flash variables (on the JavaScript side).
+
+2008-04-23	Mark Wubben		revision 405
+
+[FIXED] The conversion to ExternalInterface broke the movie reset functionality that was in place to fix a rather nasty IE issue. (Long story short: if you change the `innerHTML` of an element containing Flash movies, IE re-inserts the movie but without the Flash variables. sIFR works around this issue.) I've created a different way to reset the correct movie. And, as a side effect, there's no longer a two second delay in showing the default text when you open the Flash movie directly.
+
+2008-04-20	Mark Wubben		revision 404
+
+[FIXED] Fixed an issue with the local build script, which stopped the full-source JavaScript from working in IE.
+
+2008-04-20	Mark Wubben		revision 403
+
+[FIXED] `forceSingleLine` broke the Flash filters. Originally, `forceSingleLine` caused the text area inside the Flash movie to be 50 000 pixels wide. Flash wisely decided not to show filters for containers this large… Now the text area will be wide enough to fit the text on a single line, but not so wide as that Flash stops applying filters.
+
+2008-04-20	Mark Wubben		revision 402
+
+[CHANGED] **Important** Clarified the hacky nature of `sIFR.useStyleCheck`, by making it a bit more work to use it. Please read <http://wiki.novemberborn.net/sifr3/DetectingCSSLoad> for more info. If you're using the style check, please read the article and update your site accordingly.
+
+The sIFR-screen.css and sIFR-print.css files have been changed in this release. Again, if you're using `sIFR.useStyleCheck`, please read the mentioned article carefully before updating the CSS files.
+
+2008-04-20	Mark Wubben		revision 401
+
+[FIXED] No longer replacing <script> and <style> elements.
+
+2008-04-20	Mark Wubben		revision 400
+
+[FIXED] The IE repaint fix incorrectly set the display of the <object> to block. No more!
+
+2008-04-20	Mark Wubben		revision 399
+
+[IMPROVED] Ignoring resize events if no elements have yet been replaced.
+
+[FIXED] Depending on the layout, IE < 8 had trouble rendering the Flash <object> after recalculating the width due to a resize event. I've added an IE specific hack to force a repaint of the Flash movie – this hack applies to all IE versions. Thanks to mikeindustries.com for having such a complicated layout that IE fell over :)
+
+2008-04-13	Mark Wubben		revision 398
+
+[FIXED] Turns out sIFR stopped working in Firefox 2. 
+
+(May I add here, that of the > 800 downloads of r395 and more than 600 downloads of r397, nobody notified me of this until today?!?). 
+
+ExternalInterface functions on the Flash movie are indeed functions, but lack the Function prototype. sIFR was calling `apply` on these movies, which failed. Luckily, calling `Function.prototype.apply.call(flashNode[type], flashNode, args)` works fine :)
+
+2008-04-06	Mark Wubben		revision 397
+
+[FIXED] Improved whitespace handling. Browsers tend to leave the whitespace from the source document in the DOM, which then gets displayed when the text is send to Flash. sIFR removes this whitespace where necessary.
+
+2008-04-06	Mark Wubben		revision 396
+
+[CHANGED] Now throwing Flash communication exceptions if the debug code is loaded.
+
+[FIXED] Flash filters stopped working because I broke the serialization of the filter configuration. Won't do that again!
+
+2008-03-25	Mark Wubben		revision 395
+
+[CHANGED] Added width/height: auto to the print stylesheet.
+
+2008-03-25	Mark Wubben		revision 394
+
+[FIXED] It's no longer possible to replace the alternate content.
+
+2008-03-25	Mark Wubben		revision 393
+
+[FIXED] Now removing whitespace around <br> elements.
+
+2008-03-24	Mark Wubben		revision 392
+
+[CHANGED] Outsourced movie reset functionality to MovieCreator (internal class).
+
+[FIXED] Flash exposed `scale` as an ExternalInterface callback, but in IE `scale` is also a property of the Flash element COM object. This made Adobe's ExternalInterface code cause an exception when closing a window containing sIFR movies.
+
+2008-03-24	Mark Wubben		revision 391
+
+[FIXED] Made some general improvements to page zoom handling, and some more specific improvements for Opera 9.50. Unfortunately it still crashes when you zoom in/out quickly, but since other browsers don't I'm going to write this off to an Opera bug. Good thing it's still in beta, so I'll report the issue.
+
+2008-03-24	Mark Wubben		revision 390
+
+[FIXED] Pre-fetch was broken in Safari 3.1 (and probably also 3.0).
+
+2008-03-24	Mark Wubben		revision 389
+
+[FIXED] Whitespace was trimmed from replaced context, but actually for each textNode. `<span> ! </span>` would become `<span>!</span>`, which was incorrect. Fixed by making sure whitespace is only trimmed from the entire content string.
+
+2008-03-23	Mark Wubben		revision 388
+
+[FIXED] `resetMovie()` was unfortunately broken in IE due to the ExternalInterface changes. This has now been fixed.
+
+2008-03-23	Mark Wubben		revision 387
+
+[CHANGED] Ensuring that all external Flash callbacks run in a new callstack. If you mess with the Flash movie while it's executing an ExternalInterface call, all kinds of horrible things may happen. Running the callback in a new callstack prevents this.
+
+[CHANGED] Simplified housekeeping for `onReplacement` callback.
+
+[FIXED] `resetMovie()` in non-IE browsers was broken.
+
+[FIXED] `resetMovie()`, when invoked from the Flash movie, would reset the movie from the same callstack, which is too confusing for Flash.
+
+[NEW] The `onRelease` callback is now called even if the user clicks on a link. Useful if the link doesn't do anything, which is the case with `javascript:;` links. The callback is handled before the link is followed, so even if you leave the page it could be useful.
+
+2008-03-23	Mark Wubben		revision 386
+
+[FIXED] Always tried to set a class name on internally created elements, even when not necessary (although it always is).
+
+2008-03-23	Mark Wubben		revision 385
+
+[CHANGED] Refactored to use ExternalInterface for Flash <--> JavaScript communication.
+
+[FIXED] Noticed a few bugs with ratio calculation, perhaps related to the communication changes, perhaps not.
+
+2008-03-16	Mark Wubben		revision 384
+
+[CHANGED] Now using YUI Compressor to compress the code.
+
+2008-03-10	Mark Wubben		revision 383
+
+[CHANGED] Re-factored the JavaScript code. I may have removed a few things which may cause trouble, other than that (and the changes below) things should be fine.
+
+[REMOVED] The `sIFR.preserveSingleWhitespace`, `sIFR.fixWrap`, `sIFR.forceClear` and `sIFR.fromLocal` options have been removed. I don't think these were used often anyway.
+
+[REMOVED] Removed support for loading Flash movies for specific Flash player versions.
+
+[REMOVED] Removed `sIFR.prefetch()` method. Pass the movies to `sIFR.activate()` instead.
+
+[CHANGED] `sIFR.callbacks` has been renamed to `sIFR.replacements`. `sIFR.getCallbackByFlashElement()` has been renamed to `sIFR.getReplacementByFlashElement()`.
+
+[CHANGED] Re-enabled Opera support for 9.50. Disabled Firefox support below 1.5.0.12: the fixFocus workaround did not work in Firefox 1.0 and this makes for easier testing, too.
+
+[CHANGED] Changed User Agent detection a bit. Most significant changes is that `sIFR.ua.geckoBuildDate` has been replaced by `sIFR.ua.geckoVersion`, since the build date does not actually correspond to the rendering engine version. All `sIFR.ua.*Version` properties have changed, they're now special strings so JavaScript's string comparison can be used to test for browser versions (supporting versions like `1.5.0.12`). If you want to write your own version checks, compared the `sIFr.ua.*Version` properties to `sIFR.ua.parseVersion("1.5.0.12")`. The `parseVersion()` method creates the same string as the `*Version` properties so it can be compared.
+
+2008-02-01	Mark Wubben		revision 382
+
+[CHANGED] Framerate of the Flash movies was 30fps, changed it to 12fps, which helps a bit with CPU usage. Reaction time appears to be good. (Haven't changed the distributed movies though, don't have those fonts on the Windows install where I run Flash Pro. Yes, that's a contrived solution.)
+
+2008-02-01	Mark Wubben		revision 381
+
+[FIXED] Now properly using _blank as the link target for opening links in a new window. (Thanks Mike Kormendy!)
+
+2008-02-01	Mark Wubben		revision 380
+
+[FIXED] resetMovie() now works properly even after movies have been resized.
+
+2008-02-01	Mark Wubben		revision 379
+
+2008-02-01	Mark Wubben		revision 378
+
+Completely redid the build process, which will help me clean up the code and paves the way for specific sIFR versions for JS libraries such as Dojo and jQuery. No changes in sIFR behaviour since r372.
+
+2008-02-01	Mark Wubben		revision 377
+
+2008-01-27	Mark Wubben		revision 376
+
+2008-01-27	Mark Wubben		revision 375
+
+2008-01-27	Mark Wubben		revision 374
+
+2008-01-27	Mark Wubben		revision 373
+
+2008-01-26	Mark Wubben		revision 372
+
+[FIXED] Distributed index.xhtml now actually works.
+
+2008-01-26	Mark Wubben		revision 371
+
+[FIXED] No more weird text zoom behaviour when moving back through Firefox's browser history.
+
+2008-01-20	Mark Wubben		revision 370
+
+[CHANGED] forceSingleLine no longer causes an infinite loop in the Flash movie if the text cannot fit on a single line (say, because it contains physical linebreaks).
+
+[FIXED] Leading now works properly with forceSingleLine.
+
+[CHANGED] Minor optimization regarding zoom.
+
+2008-01-19	Mark Wubben		revision 369
+
+[FIXED] Significantly increased response to page zoom, and fixed another edge case, too!
+
+2008-01-19	Mark Wubben		revision 368
+
+[FIXED] The demo file was actually in quirks mode, as opposed to standards mode.
+
+2008-01-19	Mark Wubben		revision 367
+
+[NEW] Added support for `.sIFR-root { cursor: pointer; }`.
+
+2008-01-19	Mark Wubben		revision 366
+
+[FIXED] When navigating back through the browser history in Firefox, Flash movies would incorrectly zoom.
+
+2008-01-19	Mark Wubben		revision 365
+
+[FIXED] Replaced text inside a Flash movie was not remembered when navigating back through the browser history in Firefox.
+
+2008-01-19	Mark Wubben		revision 364
+
+[FIXED] Calling sIFR.redraw() would cause an incorrect scaling of the Flash text.
+
+2008-01-19	Mark Wubben		revision 363
+
+[FIXED] When opening print preview in Firefox/Windows, an error was thrown because the resize code was trying to resize, even though the Flash movie was no longer visible on the page. Now no longer resizing if the Flash movie isn't visible.
+
+Also made sure getComputedStyle() doesn't throw errors if no computed style is available.
+
+2008-01-19	Mark Wubben		revision 362
+
+[FIXED] If forceSingleLine is enabled, fitExactly is set to true ensuring that the Flash movie is rendered at the correct width.
+
+2008-01-05	Mark Wubben		revision 361
+
+[FIXED] The Firefox/Window focus fix workaround caused infinite recursion, fixed now.
+
+[IMPROVED] The resize handling code still caused the page contents to jump in Firefox 2. Pages should no longer jump, although Flash elements may flicker briefly. Thanks to Amelia MacLeod for reporting.
+
+2007-12-31	Mark Wubben		revision 360
+
+[CHANGED] Renamed `sIFR.registerEvents` to `sIFR.autoInitialize`.
+
+2007-12-31	Mark Wubben		revision 359
+
+[CHANGED] Removed `sIFR.hideElements`. If you don't want to hide the HTML text before replacing, remove the `visibility:hidden` style rule from the decoy styles.
+
+2007-12-31	Mark Wubben		revision 358
+
+[FIXED] Now rounding the zoom level to the nearest 5% value, cause it's not always very exact. Also added a little zoom detection hack for IE7.
+
+2007-12-30	Mark Wubben		revision 357
+
+[FIXED] Fixed some issues with ratio calculation after the recent changes. Also disabled wmode when calculating ratios, it crashes Firefox on Windows.
+
+2007-12-30	Mark Wubben		revision 356
+
+[FIXED] Initial zoom calculation was broken.
+
+2007-12-30	Mark Wubben		revision 355
+
+[FIXED] Flash movies don't rescale if they're not visible when the zoom level changes. sIFR now listens to the scroll event to scale all Flash movies every time the page scrolls. A bit crude, but it works.
+
+2007-12-30	Mark Wubben		revision 354
+
+[CHANGED] Rewrote callback matching.
+
+2007-12-30	Mark Wubben		revision 353
+
+[NEW] Added support for page zoom!
+
+2007-12-30	Mark Wubben		revision 352
+
+[FIXED] Broke the `changeCSS` method, fixed now.
+
+2007-12-29	Mark Wubben		revision 351
+
+[CHANGED] Removed `sifr` attribute from the Flash movie object.
+
+2007-12-26	Mark Wubben		revision 350
+
+[FIXED] sIFR would not load in IE inside an iframe, if useDomLoaded is enabled.
+
+2007-12-26	Mark Wubben		revision 349
+
+[CHANGED] Made forceWidth the default option, because sIFR supports window resize handling. Also improved the resize handling. If you disable resize handling, you should also set forceWidth to `false` to prevent the movie from "sticking out" when the window is made smaller.
+
+2007-12-26	Mark Wubben		revision 348
+
+[CHANGED] Replaced tabs by spaces in the CSS files.
+
+2007-12-26	Mark Wubben		revision 347
+
+[NEW] In IE, when the page unloads, a sIFR-unloading class is added to the document element. I've added a bit of CSS to sIFR-screen.css which hides the Flash movies if this class is set. This works around rendering issues in IE with the old Flash movies as the new page loads.
+
+2007-12-25	Mark Wubben		revision 346
+
+[FIXED] IE tends to block the prompt() containing the ratios, I'm now detecting this and showing an alert instead. Also changed the code so the prompt() is no longer fired directly from the Flash callback, but in a new callstack. Hopefully that'll prevent the browser crashes.
+
+2007-12-25	Mark Wubben		revision 345
+
+[CHANGED] replaceText() now accepts a second argument, which is an array of nodes to be used as the alternate content. Because fallback for XHTML documents has been removed, you now need to pass in DOM nodes for the alternate content if you're using sIFR in true XHTML documents (with the correct mime-type).
+
+2007-12-18	Mark Wubben		revision 344
+
+[CHANGED] Rewrote the Flash movie insertion code. It now does pretty much the same as SWFObject, which is cool cause we can now rely on their testing as well. I could also remove the XML fallback code, and I'm no longer using <embed> *at all*. This is a pretty big change, so much testing is appreciated!
+
+2007-12-18	Mark Wubben		revision 343
+
+[NEW] If sIFR is opened from the file system, and the debug code is present, an alert will be show to explain why sIFR did not activate.
+
+2007-12-18	Mark Wubben		revision 342
+
+[NEW] If sIFR is opened from the file system, and the debug code is present, an alert will be show to explain why sIFR did not activate.
+
+2007-12-16	Mark Wubben		revision 341
+
+[NEW] Added an XHTML demo.
+
+[CHANGED] In Safari 3.0.4, XHTML documents do not expose properties such as `document.location` and `document.cookie`. sIFR requires on these properties, therefore I've added an explicit check for `document.location`. This disables XHTML support in Safari 3.0.4. The properties are correct in the recent WebKit nightlies, but another bug prevent sIFR from correctly inserting the Flash movie into an XHTML document.
+
+2007-12-05	Mark Wubben		revision 340
+
+[CHANGED] Cleaned up load detection code, changed the CSS detection to use margin-left instead of a background color in order to minimize the chance of accidental display of the dummy element.
+
+2007-12-04	Mark Wubben		revision 339
+
+[FIXED] Syntax error in r338 (never released).
+
+[FIXED] Completely rewrote the initialization code. Important change:
+
+sIFR.useDomContentLoaded has been renamed to sIFR.useDomLoaded
+
+The DOM load check now (again) works in IE, Safari and Opera. However, in Safari and Opera the replacements won't be executed right after the DOM load, because this is no guarantee that CSS has been applied. Hence:
+
+sIFR.useStyleCheck = true;
+
+causes sIFR to insert a dummy element into the page, and check it's background color. If as expected (red) CSS is assumed to have been applied, and the replacements are executed. This process is used on all browsers. Some assumptions:
+
+* The dummy element doesn't have a red background color because of another selector
+* The sIFR CSS code is loaded along with other CSS, ensuring that when the sIFR CSS is applied, so is all other CSS.
+
+And finally, you need to update sIFR-screen.css for the style check to work. Safari 2 still waits until the full page load.
+
+2007-12-04	Mark Wubben		revision 338
+
+[CHANGED] Split the version check for Konqueror into major, minor and small, so it becomes possible to check for 3.5.10, if that version is ever created.
+
+2007-12-04	Mark Wubben		revision 337
+
+[FIXED] r336 could not be exported, because the construction of the menu items violated some Flash-only ActionScript constraint. (Compiling the ActionScript code using MTASC worked fine) Moved the construction and we're good to go.
+
+2007-12-03	Mark Wubben		revision 336
+
+[NEW] sIFR events and fixHover broke the context menu for link navigation. I've added a custom context menu with the options "Follow link" and "Open link in new window" (which opens the link with target '_new'). For some reason I couldn't use the default text ("Open" and "Open in new window") as Flash wouldn't render the menu item.
+
+2007-12-03	Mark Wubben		revision 335
+
+[CHANGED] Disabled Opera and Konqueror support while they fix their Flash <-> JavaScript communication issues.
+
+2007-12-03	Mark Wubben		revision 334
+
+[FIXED] Konqueror is supported from version 3.5.6 and up.
+
+2007-12-02	Mark Wubben		revision 333
+
+[NEW] Added a global `sIFR.onReplacementStart` event which is fired every time a `replace()` statement is executed. Execution may be delayed while sIFR waits for the page to load.
+
+2007-12-02	Mark Wubben		revision 332
+
+[FIXED] Resizing the window while repaintOnResize is enabled no longer causes a page reflow. A Flash element may flicker though.
+
+2007-12-02	Mark Wubben		revision 331
+
+[FIXED] Spaces are now allowed in the replacement CSS. This means you can now specify font families whose name consists of more than one word.
+
+2007-12-02	Mark Wubben		revision 330
+
+[CHANGED] The default text sIFR renders (when the movie is opened directly, for instance) now contains normal, bold and italic text.
+
+2007-12-02	Mark Wubben		revision 329
+
+2007-12-02	Mark Wubben		revision 328
+
+[NEW] Support for onRollOver and onRollOut events. These events work even if fixHover is applied, unlike onRelease.
+
+[NEW] You can now disable the pointer cursor (the 'hand') when using the mouse events. For `.sifr-config`, specify `cursor: arrow`.
+
+2007-11-29	Mark Wubben		revision 327
+
+2007-11-29	Mark Wubben		revision 326
+
+2007-11-29	Mark Wubben		revision 325
+
+[CHANGED] Changed the behaviour of the fixFocus kwarg. It will only be activated for Gecko builds later than 20061206, on Windows.
+
+2007-11-29	Mark Wubben		revision 324
+
+[FIXED] Optimized performance of forceSingleLine.
+
+2007-11-03	Mark Wubben		revision 323
+
+[FIXED] fixHover was broken in r320. Embarrassingly enough I missed an `else` in the codepath.
+
+[FIXED] Some Flash variables had the value 'undefined' instead of a boolean value.
+
+2007-11-01	Mark Wubben		revision 322
+
+[REMOVED] Removed CSS detection. It occasionally broke down in Safari 3, and I'm no longer willing to rely on the kind of hack I used.
+
+2007-10-23	Mark Wubben		revision 321
+
+[NEW] You can now add an `onRelease` event handler to the replacement. The handler will be fired after the user clicks on the movie. The first argument to the handler is the callback element for the movie. 
+
+If the Flash movie contains just one link, and the hover fix is applied, the release event will not be fired.
+
+Setting the release handler causes a pointer cursor to appear when the mouse is positioned over the movie.
+
+2007-10-23	Mark Wubben		revision 320
+
+[CHANGED] forceSingleLine is now enforced through ActionScript. The algorithm keeps increasing the width of the text field until the text stops wrapping. This needs *a lot* of optimization, obviously.
+
+2007-10-23	Mark Wubben		revision 319
+
+[CHANGED] The focus fix is now applied via the sIFR-screen stylesheet. **If you are using fixFocus, update the CSS!**
+
+2007-10-10	Mark Wubben		revision 318
+
+2007-10-06	Mark Wubben		revision 317
+
+[NEW] Added a workaround for the focus issue in Flash. If a Flash movie has an opaque or transparent window mode, and one of its ancestors is floated, scrolling the page stops the movie from reacting to mouse events until you've clicked on it. AFAIK this only occurs in Firefox on Windows. The workaround adds an extra div around the Flash movie, so the DOM will be slightly different than normal. You can enable the workaround by setting the keyword argument `fixFocus` to true.
+
+2007-10-06	Mark Wubben		revision 316
+
+2007-10-06	Mark Wubben		revision 315
+
+[NEW] Added a forceSingleLine (Boolean) option to the keyword arguments. This will pass a 9999 px width to the Flash movie, meaning that the text will be rendered on one line. This also enforces fitExactly to scale the width of the Flash movie back down. Not sure how well this will behave though.
+
+2007-10-06	Mark Wubben		revision 314
+
+2007-10-04	Mark Wubben		revision 313
+
+[CHANGED] Now treating newline and carriage return characters as a space.
+
+2007-10-03	Mark Wubben		revision 312
+
+[CHANGED] Removed support for delayCSS. It's not reliable enough, and didn't work in IE or Opera anyway.
+
+2007-10-03	Mark Wubben		revision 311
+
+[FIXED] The < character was not escaped before it went into the HTML field, causing all following characters to be treated as a tag. Actually fixed it this time around.
+
+2007-10-02	Mark Wubben		revision 310
+
+[FIXED] The < character was not escaped before it went into the HTML field, causing all following characters to be treated as a tag.
+
+2007-09-18	Mark Wubben		revision 309
+
+2007-09-17	Mark Wubben		revision 308
+
+[CHANGED] Ratio calculation now uses a lowercase x to calculate the aspect ratio of the font.
+
+2007-09-10	Mark Wubben		revision 307
+
+[NEW] Some server side systems can be very picky about the URIs they accept. sIFR might change the encoding of the URIs, which normally is fine, but not in case of a picky server. You can now specify your own encoding function by setting `kwars.uriEncode`. When called this function receives one argument, the original URI, and it must return an encoded URI. Use at your own risk.
+
+2007-09-09	Mark Wubben		revision 306
+
+[FIXED] When replacing links, if the URI had already been encoded on the server it would be encoded again. Now first decoding the URI before encoding it.
+
+2007-09-04	Mark Wubben		revision 305
+
+[FIXED] If a hard coded font size was given, links in the element would break in IE.
+
+2007-08-11	Mark Wubben		revision 304
+
+[CHANGED] Some refactoring and improvement of the debug helper.
+
+2007-08-11	Mark Wubben		revision 303
+
+[FIXED] Replacing the text in a sIFR movie now also replaces the alternate text.
+
+2007-08-11	Mark Wubben		revision 302
+
+[FIXED] fixHover now only applies if the element being replaced contains exactly one link, and that link has no text or other elements as its sibling.
+
+[CHANGED] Relying on the JavaScript serialization of Boolean variables when constructing the flashvars.
+
+2007-08-11	Mark Wubben		revision 301
+
+[FIXED] The dimension calculation workaround from r300 wasn't checking if the child node was in fact an element.
+
+2007-08-11	Mark Wubben		revision 300
+
+[CHANGED] The code calculating the dimensions of the to-be-replaced elements will now attempt to calculate the dimensions of child elements in case the element itself has no dimensions.
+[FIXED] Again properly checking if there is any text to be replaced.
+[CHANGED] Indentation in the demo file.
+
+2007-08-04	Mark Wubben		revision 299
+
+[FIXED] The "fixHover" fix should only apply to elements with just one link. This actually needs to be improved further so that it only applies if the entire element consists of the link, but that's for a future revision.
+
+2007-07-31	Mark Wubben		revision 298
+
+[FIXED] Only one "+" got escaped.
+
+2007-07-30	Mark Wubben		revision 297
+
+[FIXED] The recent version check broke version notification in case the movie was opened directly.
+
+2007-07-30	Mark Wubben		revision 296
+
+2007-07-30	Mark Wubben		revision 295
+
+2007-07-30	Mark Wubben		revision 294
+
+[CHANGED] sIFR will now refuse to display if the JavaScript and Flash movie versions don't match.
+
+2007-07-30	Mark Wubben		revision 293
+
+2007-07-29	Mark Wubben		revision 292
+
+[FIXED] Under certain circumstances IE would continuously fire the resize event, which caused some elements to be continuously repainted. I'm now checking if the window has actually resized before repainting the Flash elements.
+
+2007-07-29	Mark Wubben		revision 291
+
+[CHANGED] Now using the font size from the current style in IE if it's in pixels. This means the font size is no longer approximated and is thus a bit better.
+
+2007-07-28	Mark Wubben		revision 290
+
+2007-07-28	Mark Wubben		revision 289
+
+[NEW] Introduced a `changeCSS` method for callback objects. This replaces the CSS applied to the Flash text. You cannot change all properties, however. Still need to make an easy way to do this for all callback objects responding to a certain selector.
+
+2007-07-27	Mark Wubben		revision 288
+
+2007-07-27	Mark Wubben		revision 287
+
+2007-07-27	Mark Wubben		revision 286
+
+[NEW] In case text selection for a sIFR element is disabled, clicking on the Flash movie will automatically blur it.
+
+2007-07-27	Mark Wubben		revision 285
+
+[CHANGED] Focus fix is now cross-browser and more efficient.
+
+2007-07-27	Mark Wubben		revision 284
+
+[NEW] Added an option to control resize handling. Set sIFR.repaintOnResize to `false` before activating to prevent resize handling.
+
+2007-07-26	Mark Wubben		revision 283
+
+[FIXED] Now encoding URIs inside JavaScript, since Flash does such a poor job at it.
+
+2007-07-26	Mark Wubben		revision 282
+
+[CHANGED] The `delayCss` property has been renamed to `delayCSS`. Also fixed a couple of bugs in it.
+
+2007-07-26	Mark Wubben		revision 281
+
+[NEW] sIFR will now handle window resizing.
+
+2007-07-15	Mark Wubben		revision 280
+
+[NEW] Focus is removed from the Flash movie when the user attempts to scroll using the mouse wheel.
+
+2007-07-15	Mark Wubben		revision 279
+
+[NEW] If the Flash movie has focus (because it was clicked on, for example) and a key event is received, focus is removed from the movie and returned to the document. The next key event will be handled by the browser, and not the Flash movie. This prevents the Flash movie from capturing user input.
+
+2007-07-03	Mark Wubben		revision 278
+
+[CHANGED] Prevents variable injection using GET variables.
+
+2007-07-03	Mark Wubben		revision 277
+
+[CHANGED] Removed `sIFR.debugMode`. sIFR will automatically enter debug mode if the debug file is loaded, which is indicated by the presence of `sIFR.debug`.
+
+2007-07-03	Mark Wubben		revision 276
+
+[FIXED] CallbackInfo methods would not verify wether the Flash movie was still available.
+
+2007-07-03	Mark Wubben		revision 275
+
+[NEW] Added a "sIFR.redraw()" method which will reset all sIFR movies on the page.
+
+2007-06-06	Mark Wubben		revision 274
+
+[FIXED] With the previous revision I broke the escaping of "special" characters such as % and +. This should now be fixed.
+
+2007-05-27	Mark Wubben		revision 273
+
+[CHANGED] Removed `fromLocal` property from the ActionScript code. Don't know how to detect wether the Flash movie is being requested from the filesystem.
+
+2007-05-27	Mark Wubben		revision 272
+
+[CHANGED] Now disabled sIFR for Gecko-based browsers from 4th August 2004 or older. This blocks Netscape 7.2 builds that apparently crashed when sIFR was running.
+
+2007-05-27	Mark Wubben		revision 271
+
+[CHANGED] Re-architectured debug mode. When `sifr-debug.js` is loaded, debug mode is automatically enabled. You should not enable it manually. The compressed `sifr.js` file does not contain the error messages, these are loaded by `sifr-debug.js`.
+
+2007-05-27	Mark Wubben		revision 270
+
+[CHANGED] sIFR will no longer activate when it's being loaded from the filesystem (the location starts with "file:").  If `sIFR.debugMode` is `true`, a JavaScript error will be thrown explaining why sIFR did not activate. To override this you can set `sIFR.fromLocal = true`. The meaning of this property has changed in this revision, by default it used to add "localhost" to the allowed domains. This is no longer the case.
+
+2007-05-27	Mark Wubben		revision 269
+
+[CHANGED] Added an option to prevent the wrapping of text. Use `preventWrap: true` in the keyword arguments for `sIFR.replace()`.
+
+2007-05-27	Mark Wubben		revision 268
+
+[CHANGED] The anti-alias type can now be configured by the JavaScript code. Use `antiAliasType` in the keyword arguments, see the Flash documentation for allowed values.
+
+2007-05-27	Mark Wubben		revision 267
+
+[CHANGED] Improved encoding of Flash variables.
+
+2007-05-27	Mark Wubben		revision 266
+
+2007-05-27	Mark Wubben		revision 265
+
+[FIXED] Problem in IE when using DomContentLoaded.
+
+2007-05-27	Mark Wubben		revision 264
+
+2007-05-27	Mark Wubben		revision 263
+
+2007-05-27	Mark Wubben		revision 262
+
+Cleaning up the SVN repository. No changes in sIFR code.
+
+2007-05-20	Mark Wubben		revision 261
+
+[CHANGED] Added a two second delay to showing the default text in case there is no content. If the resetmovie workaround is applied in IE, this stops the default text from being displayed before the movie is reset. When the movie is opened directly there will also be a two second delay..
+
+2007-05-20	Mark Wubben		revision 260
+
+[FIXED] Content was escaped before being passed to the modifyContentString() method. It is now escaped after this method.
+
+[FIXED] Links stopped working after the hover fix. When the hover fix is enabled sIFR only supports one link per text movie, and clicking *anywhere* in the movie triggers the link. This is comparable to how sIFR 2 worked.
+
+2007-05-20	Mark Wubben		revision 259
+
+[FIXED] Escaping and unescaping of Unicode characters when sending content to the Flash movie. Content is now explicitly escaped in the JavaScript code, and unescaped in the Flash code. I'm no longer relying on the browser and Flash plugin to handle this properly when sending text through the FlashVars. It had to be implemented manually anyway for CallbackInfo#replaceText().
+
+2007-05-19	Mark Wubben		revision 258
+
+[FIXED] Improved the fix for sticky hovers. Now using MovieClip#onRollOut to detect when the mouse leaves the Flash movie. A side effect is that there will always be a hand cursor when fixHover is enabled, therefore the fix is only applied if the replaced text contains a link. The fix can be disabled by setting `sIFR.fixHover = false;`.
+
+[FIXED] When replacing text, the Flash movie wouldn't unescape the content.
+
+2007-05-11	Mark Wubben		revision 257
+
+[FIXED] There were a few bugs and inefficiencies in the ratio calculations. The new code results in smaller ratios which perform better.
+
+2007-05-11	Mark Wubben		revision 256
+
+Adding new Options.as file, hopefully all is well now.
+
+2007-05-11	Mark Wubben		revision 255
+
+Removing incorrectly named Options.as file
+
+2007-05-07	Mark Wubben		revision 254
+
+[FIXED] Now properly handling tuneHeight values that are of type string.
+
+2007-05-05	Mark Wubben		revision 253
+
+[CHANGED] If sIFR.prefetch() is called *after* activating sIFR through sIFR.activate(), the Flash movies passed to the prefetch() call will be pre-fetched for all browsers, not just Safari and IE. This can be useful when you're not using sIFR right away. To pre-fetch for Safari and IE pass the movies to the activate() call.
+
+2007-05-05	Mark Wubben		revision 252
+
+[CHANGED] Removed default ratios. They were incorrect anyway, and not very useful.
+
+2007-05-05	Mark Wubben		revision 251
+
+[CHANGED] Now catching exceptions thrown when trying to call ActionScript code. CallbackInfo#replaceText() and CallbackInfo#fixHover() now return a boolean value indicating whether the call succeeded.
+
+2007-04-30	Mark Wubben		revision 250
+
+[FIXED] Added the tuneHeight value to the *correct* height approximation this time.
+
+2007-04-28	Mark Wubben		revision 249
+
+[FIXED] Forgot to add the tuneHeight value to the height approximation.
+
+2007-04-26	Mark Wubben		revision 248
+
+[NEW] First stab at background styling, but this has not been exposed yet.
+
+[FIXED] Ratio calculation would not take any tuneHeight settings into account.
+
+2007-04-25	Mark Wubben		revision 247
+
+[NEW] Now generating a changelog when running the export script.
+
+2007-04-24	Mark Wubben		revision 246
+
+Fixed stylesheet to show .sIFR-ignore elements.
+
+2007-04-19	Mark Wubben		revision 245
+
+Changed escaping of replaceText()
+
+2007-04-19	Mark Wubben		revision 244
+
+Renamed CallbackInfo#write() to CallbackInfo#replaceText().
+
+2007-04-18	Mark Wubben		revision 243
+
+* Moved some constants into their singleton
+* Added automatic filtering of units for some CSS properties.
+
+2007-04-18	Mark Wubben		revision 242
+
+Added transparency and opaqueness options.
+
+2007-04-15	Mark Wubben		revision 241
+
+Fixed handleContent() function, test for last child was incorrect.
+
+2007-04-13	Mark Wubben		revision 240
+
+Fix for onReplacement() callback: height and width resizes are now done simultanously.
+
+2007-04-05	Mark Wubben		revision 239
+
+First stap at a replace() syntax and value validation script.
+
+2007-03-30	Mark Wubben		revision 238
+
+* Renamed CallbackInfo#getFlashNode() to CallbackInfo#getFlashElement().
+* Fixed hoverFix after writing different content.
+
+2007-03-29	Mark Wubben		revision 237
+
+* Changed framerate of Flash movies.
+* Forgotten checkin of the export script.
+
+2007-03-29	Mark Wubben		revision 236
+
+* Improved delayCss handling for Opera.
+* Removed support for replacing non-visible elements. This doesn't play well with callbacks and Opera, and consistency is better.
+
+2007-03-29	Mark Wubben		revision 235
+
+Improved callback "API".
+
+2007-03-29	Mark Wubben		revision 234
+
+Added better way of getting references to callback objects.
+
+2007-03-29	Mark Wubben		revision 233
+
+Removed resize stuff.
+Removed background color from <head> element, which is used to test for CSS support.
+
+2007-03-29	Mark Wubben		revision 232
+
+Checking in first stab at resizing. This is just for record keeping, have to fix other bugs first.

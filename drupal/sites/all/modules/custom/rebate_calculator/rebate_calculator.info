@@ -1,0 +1,5 @@
+; $Id$
+name = Rebate Calculator
+description = Tax rebate calculator
+package = NYSS
+core = 6.x

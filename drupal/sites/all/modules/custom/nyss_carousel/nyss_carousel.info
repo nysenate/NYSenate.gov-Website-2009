@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Carousel
+description = Control the flag for the front page carousel.
+package = NYSS
+core = 6.x
+dependencies[] = nyss_editors

@@ -1,0 +1,831 @@
+<?php
+// $Id: activism.module,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * Provides campaigns and a framework for calls to action.
+ *
+ * @todo if campaign is unpublished, offer ability to publish it on CTA tab.
+ * @todo the token stuff for signups should be in here instead.
+ * @todo activism_signup_mail should be pre-filled with logged in user.
+ * @todo campaign footer should probably have an input format.
+ * @todo not sure i like mail_list as part of the default fields.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function activism_menu() {
+  $items['node/%node/activism_cta'] = array(
+    'access callback'     => 'activism_campaign_access',
+    'access arguments'    => array('activism tab access', 1),
+    'page callback'       => 'drupal_get_form',
+    'page arguments'      => array('activism_campaign_cta_form', 1),
+    'title'               => 'Call to action',
+    'type'                => MENU_LOCAL_TASK,
+    'weight'              => 5,
+  );
+  $items['node/%node/activism_report'] = array(
+    'access callback'     => 'activism_campaign_access',
+    'access arguments'    => array('activism tab access', 1),
+    'page callback'       => 'activism_campaign_report',
+    'page arguments'      => array(1),
+    'title'               => 'Report',
+    'type'                => MENU_LOCAL_TASK,
+    'weight'              => 5,
+  );
+  $items['node/%node/activism_export'] = array(
+    'access callback'     => 'activism_campaign_access',
+    'access arguments'    => array('activism tab access', 1),
+    'page callback'       => 'activism_campaign_export',
+    'page arguments'      => array(1),
+    'title'               => 'Export',
+    'type'                => MENU_LOCAL_TASK,
+    'weight'              => 6,
+  );
+  $items['admin/content/activism'] = array(
+    'access arguments'  => array('administer activism'),
+    'description'       => 'View campaigns and their current goal state.',
+    'page callback'     => 'activism_campaign_overview',
+    'title'             => 'Activism',
+  );
+  $items['admin/settings/activism'] = array(
+    'access arguments'  => array('administer activism'),
+    'description'       => 'Configure campaigns and enabled calls to action.',
+    'page callback'     => 'drupal_get_form',
+    'page arguments'    => array('activism_settings'),
+    'title'             => 'Activism',
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function activism_perm() {
+  return array(
+    'administer activism',
+    'create campaign content',
+    'delete own campaign content',
+    'delete any campaign content',
+    'edit own campaign content',
+    'edit any campaign content',
+  );
+}
+
+/**
+ * Implementation of hook_node_info().
+ */
+function activism_node_info() {
+  return array(
+    'campaign' => array(
+      'name'          => t('Campaign'),
+      'description'   => t('Define a campaign and create calls to action to support it.'),
+      'module'        => 'activism_campaign',
+      'title_label'   => t('Campaign title'),
+      'body_label'    => t('Campaign message'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_access().
+ *
+ * Doubles as a access callback for node/1234/activism_cta; see hook_menu().
+ */
+function activism_campaign_access($op, $node, $account = NULL) {
+  // 'activism tab access' comes from hook_menu() for various node/1234/TABS.
+  // load in the current user and force them to be validated against.
+  global $user;
+  $account = ($op == 'activism tab access') ? $GLOBALS['user'] : $account;
+  if (empty($account)) {
+    $account = $user;
+  }
+
+  // we check against the type for our menu access callback too. doesn't harm normal hook_access().
+  if ((is_string($node) && $node != 'campaign') || (is_object($node) && $node->type != 'campaign')) {
+    return FALSE;
+  }
+
+  if ($op == 'create') {
+    return user_access('create campaign content', $account);
+  }
+
+  if ($op == 'update' || $op == 'activism tab access') {
+    if (user_access('edit any campaign content', $account)
+    || (user_access('edit own campaign content', $account) && ($account->uid == $node->uid))) {
+      return TRUE;
+    }
+  }
+
+  if ($op == 'delete') {
+    if (user_access('delete any campaign content', $account)
+    || (user_access('delete own campaign content', $account) && ($account->uid == $node->uid))) {
+      return TRUE;
+    }
+  }
+
+  if ($op == 'view') {
+    if (user_access('administer activism') || user_access('edit any campaign content') ) {
+      return TRUE;
+    }
+
+    if ($node->nid && $node->status) {
+      $grants = array();
+      foreach (node_access_grants($op, $account) as $realm => $gids) {
+        foreach ($gids as $gid) {
+          $grants[] = "(gid = $gid AND realm = '$realm')";
+        }
+      }
+
+      $grants_sql = '';
+      if (count($grants)) {
+        $grants_sql = 'AND ('. implode(' OR ', $grants) .')';
+      }
+
+      $sql = "SELECT 1 FROM {node_access} WHERE (nid = 0 OR nid = %d) $grants_sql AND grant_$op >= 1";
+      $result = db_query_range($sql, $node->nid, 0, 1);
+      return (bool) db_result($result);
+    }
+  }
+
+  // Let authors view their own nodes.
+  if ($account->uid == $node->uid && $account->uid != 0 ) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function activism_campaign_form(&$node) {
+  $node_type = node_get_types('type', $node);
+
+  if ($node_type->has_title) {
+    $form['title'] = array(
+      '#type'           => 'textfield',
+      '#title'          => check_plain($node_type->title_label),
+      '#required'       => TRUE,
+      '#default_value'  => $node->title,
+      '#weight'         => -5,
+    );
+  }
+
+  $cta_types = module_invoke_all('activism_cta_info');
+  foreach ($cta_types as $cta_type) { // build FAPI #options.
+    $options[$cta_type['module']] = t('@name: @description', array('@name' => $cta_type['name'], '@description' => $cta_type['description']));
+  }
+  $form['activism_cta_module'] = array(
+    '#default_value'  => isset($node->activism_cta_module) ? $node->activism_cta_module : '',
+    '#description'    => t('Once a campaign type has been chosen and saved, it can not be changed.'),
+    '#options'        => $options,
+    '#required'       => TRUE,
+    '#title'          => t('Campaign type'),
+    '#type'           => 'radios',
+  );
+
+  // disable allow editing of type after submit.
+  if (!empty($node->activism_cta_module)) {
+    $form['activism_cta_module']['#required'] = FALSE;
+    $form['activism_cta_module']['#type']     = 'item';
+    $form['activism_cta_module']['#value']    = $options[$node->activism_cta_module];
+  }
+
+  if ($node_type->has_body) {
+    $form['body_field'] = node_body_field($node, $node_type->body_label, $node_type->min_word_count);
+  }
+
+  $form['activism_campaign_description'] = array(
+    '#default_value'  => isset($node->activism_campaign_description) ? $node->activism_campaign_description : '',
+    '#description'    => t('This description is for administrative purposes and will not be shown to users.'),
+    '#title'          => t('Campaign description'),
+    '#type'           => 'textarea',
+  );
+  $form['activism_campaign_footer_message'] = array(
+    '#default_value'  => isset($node->activism_campaign_footer_message) ? $node->activism_campaign_footer_message : '',
+    '#description'    => t("The footer message is displayed at the bottom of a campaign's user-intended display."),
+    '#title'          => t('Campaign footer message'),
+    '#type'           => 'textarea',
+  );
+
+  return $form;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function activism_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type == 'campaign') {
+    switch ($op) {
+      case 'insert':
+        // new nodes get redirected to the cta tab immediately.
+        $_SESSION['activism_redirect_to_cta_tab'] = $node->nid;
+        // no break! allow passthrough to 'update' below!
+
+      case 'update':
+        // we handle new nodes, and revisions to existing nodes, with a
+        // single drupal_write_record(). if we're inserting or it's a new
+        // revision, we're always creating a new record, so $update is empty.
+        // if neither of those are true, then it's gotta be an update without
+        // a new revision, so we'll just modify the existing passed vid.
+        $update = ($op == 'insert' || $node->revision) ? array() : array('vid');
+
+        $record = new stdClass;
+        $record->nid = $node->nid;
+        $record->vid = $node->vid;
+
+        // save all activism_ fields.
+        foreach ($node as $key => $value) {
+          if (strpos($key, 'activism_') !== FALSE) {
+            $key = str_replace('activism_', '', $key);
+            $record->$key = $value; // magick! (not really)
+          }
+        }
+
+        drupal_write_record('activism_campaign', $record, $update);
+        break;
+
+      case 'delete revision':
+        db_query('DELETE FROM {activism_campaign} WHERE vid = %d', $node->vid);
+        break;
+
+      case 'delete':
+        db_query('DELETE FROM {activism_campaign} WHERE nid = %d', $node->nid);
+        db_query('DELETE FROM {activism_signups} WHERE nid = %d', $node->nid);
+        break;
+
+      case 'load':
+        $additions = db_fetch_array(db_query('SELECT * FROM {activism_campaign} WHERE vid = %d', $node->vid));
+        if (is_array($additions)) { // only if we got results bub.
+          foreach ($additions as $key => $value) { // prefix all hoho.
+            $additions["activism_$key"] = $value;
+            unset($additions[$key]);
+          } // fallout from the above.
+          unset($additions['activism_nid']);
+          unset($additions['activism_vid']);
+          return $additions;
+        }
+
+      case 'view':
+        // if this session is set, the user must have just created a new
+        // campaign, so they need to configure the call to action next.
+        if (isset($_SESSION['activism_redirect_to_cta_tab'])) {
+          $nid = $_SESSION['activism_redirect_to_cta_tab'];
+          unset($_SESSION['activism_redirect_to_cta_tab']);
+          drupal_goto('node/' . $nid . '/activism_cta');
+        }
+
+        // everything else is only shown on full pages, not teasers.
+        if (!$page) { // full forms in a teaser view? that'd be crazy.
+          return; // and a teaser shouldn't have a header, much less a footer.
+        } // and if the form isn't there, the expiration shouldn't be either.
+
+        // check to see if this campaign has expired.
+        $campaign_has_expired = FALSE; // set to TRUE below.
+        if (!empty($node->activism_campaign_expired_date)) {
+          $expired = strtotime($node->activism_campaign_expired_date);
+          if (time() >= $expired) { // if we're past the due date.
+            $campaign_has_expired = TRUE; // so we can stop the form.
+            $node->content['activism_campaign_expired'] = array(
+              '#type'     => 'fieldset',
+              '#title'    => t('Campaign has expired'),
+              '#weight'   => 50,
+            );
+            $node->content['activism_campaign_expired']['activism_campaign_expired_message'] = array(
+              '#type'     => 'markup', // one day, I will become more than the sum of my parts...
+              '#value'    => check_markup($node->activism_campaign_expired_message),
+              '#weight'   => 50,
+            );
+          }
+        }
+        if (!$campaign_has_expired) {
+          // since this form is attached to a node, it gets cached and the CSS
+          // doesn't appear to be called during form_alter. known bug in drupal 6
+          // and drupal 7; to fix, we'll throw the CSS attachment on a node view.
+          drupal_add_css(drupal_get_path('module', 'activism') . '/activism.css');
+          $cta_types = module_invoke_all('activism_cta_info'); // human name plz.
+          $cta_name  = $cta_types[$node->activism_cta_module]['name']; // k thx.
+          $node->content['activism_cta_form_group'] = array(
+            '#title'      => t('@cta_name', array('@cta_name' => $cta_name)),
+            '#type'       => 'fieldset',
+            '#weight'     => 50,
+          );
+          $node->content['activism_cta_form_group']['activism_cta_form'] = array(
+            '#value' => drupal_get_form($node->activism_cta_module . '_activism_cta_form', $node),
+          );
+        }
+        $node->content['activism_campaign_footer_message'] = array(
+          '#type'     => 'markup', // I shall rise up as a new, improved, MEGATRON!
+          '#value'    => check_markup($node->activism_campaign_footer_message),
+          '#weight'   => 100,
+        );
+        break;
+    }
+  }
+}
+
+/**
+ * Menu callback and form for node/1234/activism_cta.
+ */
+function activism_campaign_cta_form(&$form_state, $node) {
+  $form['#node'] = $node; // like node edit form.
+  $form['activism_campaign'] = array(
+    '#collapsible'    => TRUE,
+    '#title'          => t('Campaign configuration'),
+    '#type'           => 'fieldset',
+    '#weight'         => 100,
+  );
+  $form['activism_campaign']['activism_cta_goal'] = array(
+    '#default_value'  => $node->activism_cta_goal,
+    '#description'    => t('How many actions should be performed before this campaign is considered successful?'),
+    '#title'          => t('Campaign goal'),
+    '#type'           => 'textfield',
+  );
+
+  $form['activism_campaign']['activism_campaign_expired_date'] = array(
+    '#default_value'  => str_replace(' 00:00:00', '', $node->activism_campaign_expired_date),
+    '#description'    => t('Format: @date', array('@date' => format_date(time(), 'custom', 'Y-m-d'))),
+    '#title'          => t('Expiration date'),
+    '#type'           => 'textfield',
+  );
+  if (module_exists('date_popup')) {
+    $form['activism_campaign']['activism_campaign_expired_date']['#date_format'] = 'Y-m-d';
+    $form['activism_campaign']['activism_campaign_expired_date']['#type'] = 'date_popup';
+    unset($form['activism_campaign']['activism_campaign_expired_date']['#description']);
+  }
+
+  $form['activism_campaign']['activism_campaign_expired_message'] = array(
+    '#default_value'  => $node->activism_campaign_expired_message,
+    '#description'    => t('This message is displayed in place of the action form when the campaign has expired.'),
+    '#title'          => t('Expiration message'),
+    '#type'           => 'textarea',
+  );
+
+  $form['activism_cta_mail_list_opt-in'] = array(
+    '#collapsible'    => TRUE,
+    '#title'          => t('Mailing list opt-in'),
+    '#type'           => 'fieldset',
+    '#weight'         => 101,
+  );
+  $form['activism_cta_mail_list_opt-in']['activism_cta_mail_list'] = array(
+    '#default_value'  => $node->activism_cta_mail_list,
+    '#title'          => t('Include mailing list checkbox on the action form'),
+    '#type'           => 'checkbox',
+  );
+  $form['activism_cta_mail_list_opt-in']['activism_cta_mail_list_default'] = array(
+    '#default_value'  => $node->activism_cta_mail_list_default,
+    '#title'          => t('Check the mailing list checkbox by default'),
+    '#type'           => 'checkbox',
+  );
+  $form['activism_cta_mail_list_opt-in']['activism_cta_mail_list_title'] = array(
+    '#default_value'  => $node->activism_cta_mail_list_title,
+    '#description'    => t('If left blank, the default of "Sign up for our mailing list" will be used.'),
+    '#title'          => t('Display text for mailing list opt-in checkbox'),
+    '#type'           => 'textfield',
+  );
+
+  $form['activism_cta_mail_autoresponder'] = array(
+    '#collapsible'    => TRUE,
+    '#title'          => t('E-mail auto-responder'),
+    '#type'           => 'fieldset',
+    '#weight'         => 102,
+  );
+  $form['activism_cta_mail_autoresponder']['activism_cta_mail_autoresponder_subject'] = array(
+    '#default_value'  => $node->activism_cta_mail_autoresponder_subject,
+    '#description'    => t('The subject line of the auto-responder message e-mailed to the user as a confirmation of taking the action.'),
+    '#title'          => t('E-mail auto-responder subject'),
+    '#type'           => 'textfield',
+  );
+  $form['activism_cta_mail_autoresponder']['activism_cta_mail_autoresponder_filter']['activism_cta_mail_autoresponder_body'] = array(
+    '#default_value'  => $node->activism_cta_mail_autoresponder_body,
+    '#description'    => t('The message body of the auto-responder message will be e-mailed to the user as a confirmation of taking the action.'),
+    '#title'          => t('E-mail auto-responder body'),
+    '#type'           => 'textarea',
+  );
+  $format_default = isset($node->activism_cta_mail_autoresponder_body_format) ? $node->activism_cta_mail_autoresponder_body_format : FILTER_FORMAT_DEFAULT;
+  $form['activism_cta_mail_autoresponder']['activism_cta_mail_autoresponder_filter']['activism_cta_mail_autoresponder_format']
+    = filter_form($format_default, NULL, array('activism_cta_mail_autoresponder_format'));
+
+  $form['activism_campaign']['activism_cta_destination'] = array(
+    '#default_value'  => $node->activism_cta_destination,
+    '#description'    => t('If present, the URL (http://example.com/node/4) where the user will be redirected after taking the action.'),
+    '#title'          => t('Destination URL'),
+    '#type'           => 'textfield',
+  );
+  $form['save'] = array(
+    '#type'           => 'submit',
+    '#value'          => t('Save'),
+    '#weight'         => 200,
+  );
+
+  return $form;
+}
+
+/**
+ * #validate callback for activism_campaign_cta_form().
+ */
+function activism_campaign_cta_form_validate($form, &$form_state) {
+  if (!module_exists('date_popup') && !empty($form_state['values']['activism_campaign_expired_date'])) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $form_state['values']['activism_campaign_expired_date'])) {
+      form_set_error('activism_campaign_expired_date', t('Expiration date must be in YYYY-MM-DD format.'));
+    }
+  }
+
+  if (!empty($form_state['values']['activism_cta_goal']) && !is_numeric($form_state['values']['activism_cta_goal'])) {
+    form_set_error('activism_cta_goal', t('Campaign goal must be a number.'));
+  }
+}
+
+/**
+ * #submit callback for activism_campaign_cta_form().
+ */
+function activism_campaign_cta_form_submit($form, &$form_state) {
+  // prep the node with its new set of values.
+  $node = node_load($form['#node']->nid);
+  foreach ($form_state['values'] as $key => $value) {
+    if (strpos($key, 'activism') !== FALSE) {
+      $node->$key = $value;
+    }
+  }
+
+  node_save($node); // cta changes DO NOT MAKE new revisions, so we don't care about vid here.
+  drupal_set_message(t('Call to action for %title has been updated.', array('%title' => $node->title)));
+}
+
+/**
+ * Default configuration for activism signup fields.
+ */
+function activism_signup_form_defaults() {
+  return array(
+    'first_name' => array(
+      '#required' => TRUE,
+      '#title'    => t('First name'),
+      '#type'     => 'textfield',
+      '#prefix'   => '<div class="clear-block">'
+    ),
+    'last_name' => array(
+      '#required' => TRUE,
+      '#suffix'   => '</div>',
+      '#title'    => t('Last name'),
+      '#type'     => 'textfield',
+    ),
+    'mail' => array(
+      '#required' => TRUE,
+      '#title'    => t('E-mail address'),
+      '#type'     => 'textfield',
+    ),
+    'street_address' => array(
+      '#title'    => t('Street address'),
+      '#type'     => 'textfield',
+    ),
+    'city' => array(
+      '#title'    => t('City'),
+      '#type'     => 'textfield',
+    ),
+    'state' => array(
+      '#options'  => activism_signup_form_us_states(),
+      '#title'    => t('State'),
+      '#type'     => 'select',
+    ),
+    'postal_code' => array(
+      '#title'    => t('Zip code'),
+      '#type'     => 'textfield',
+    ),
+    'phone' => array(
+      '#title'    => t('Phone number'),
+      '#type'     => 'textfield',
+    ),
+    'mobile' => array(
+      '#title'    => t('Mobile number'),
+      '#type'     => 'textfield',
+    ),
+    'comment' => array(
+      '#title'    => t('Comments'),
+      '#type'     => 'textarea',
+    ),
+    'mail_list' => array(
+      '#type'     => 'checkbox',
+      '#title'    => t('Sign up for our mailing list'),
+      '#weight'   => 5,
+    ),
+  );
+}
+
+/**
+ * Add an Activism signup data element to a form.
+ *
+ * @param $form
+ *   The form to append the requested $element too.
+ * @param $element
+ *   One of: first_name, last_name, mail, street_address, city,
+ *   state, postal_code, phone, mobile, comment, and mail_list.
+ */
+function activism_signup_form_element(&$form, $element) {
+  $elements_info = activism_signup_form_defaults();
+  if (isset($elements_info[$element])) { // naught exciting 'ere.
+    $form['activism_signup_' . $element] = $elements_info[$element];
+  }
+
+  if ($element == 'mail_list') { // mailing list elements can have admin-selected overrides.
+    $form['activism_signup_mail_list']['#default_value'] = $form['#node']->activism_cta_mail_list_default;
+    $form['activism_signup_mail_list']['#title'] = !empty($form['#node']->activism_cta_mail_list_title)
+      ? $form['#node']->activism_cta_mail_list_title : $form['activism_signup_mail_list']['#title'];
+  }
+}
+
+/**
+ * Sigh. I hate including this here, but a necessary weevil.
+ */
+function activism_signup_form_us_states() {
+  return array(
+    "AK" => "Alaska",
+    "AL" => "Alabama",
+    "AR" => "Arkansas",
+    "AZ" => "Arizona",
+    "CA" => "California",
+    "CO" => "Colorado",
+    "CT" => "Connecticut",
+    "DC" => "District Of Columbia",
+    "DE" => "Delaware",
+    "FL" => "Florida",
+    "GA" => "Georgia",
+    "HI" => "Hawaii",
+    "IA" => "Iowa",
+    "ID" => "Idaho",
+    "IL" => "Illinois",
+    "IN" => "Indiana",
+    "KS" => "Kansas",
+    "KY" => "Kentucky",
+    "LA" => "Louisiana",
+    "MA" => "Massachusetts",
+    "MD" => "Maryland",
+    "ME" => "Maine",
+    "MI" => "Michigan",
+    "MN" => "Minnesota",
+    "MO" => "Missouri",
+    "MS" => "Mississippi",
+    "MT" => "Montana",
+    "NC" => "North Carolina",
+    "ND" => "North Dakota",
+    "NE" => "Nebraska",
+    "NH" => "New Hampshire",
+    "NJ" => "New Jersey",
+    "NM" => "New Mexico",
+    "NV" => "Nevada",
+    "NY" => "New York",
+    "OH" => "Ohio",
+    "OK" => "Oklahoma",
+    "OR" => "Oregon",
+    "PA" => "Pennsylvania",
+    "RI" => "Rhode Island",
+    "SC" => "South Carolina",
+    "SD" => "South Dakota",
+    "TN" => "Tennessee",
+    "TX" => "Texas",
+    "UT" => "Utah",
+    "VA" => "Virginia",
+    "VT" => "Vermont",
+    "WA" => "Washington",
+    "WI" => "Wisconsin",
+    "WV" => "West Virginia",
+    "WY" => "Wyoming",
+  );
+}
+
+/**
+ * #submit callback for to handle signup storage and goal tracking.
+ */
+function activism_signup_form_submit($form, &$form_state) {
+  $record = new stdClass;
+  $record->nid = $form['#node']->nid;
+  $record->timestamp = time(); // NOW!
+
+  // for any of our signup fields that exist, store 'em as a record.
+  foreach (array('first_name', 'last_name', 'mail', 'street_address', 'city', 'state', 'postal_code', 'phone', 'mobile', 'comment', 'mail_list') as $element) {
+    if (!empty($form_state['values']['activism_signup_' . $element])) { // this presumes that activism_signup_form_element() was used.
+      $record->$element = $form_state['values']['activism_signup_' . $element];
+    }
+  }
+
+  global $user; // anonymous or logged user ID please.
+  $record->uid = user_is_logged_in() ? $user->uid : 0; // no e-mail filled in? bugger.
+  if (user_is_logged_in() && empty($form_state['values']['activism_signup_mail'])) {
+    $record->mail = $user->mail;
+  }
+
+  // send it home, holmes... nostaw, pudduhs.
+  drupal_write_record('activism_signups', $record);
+
+  // if an auto-responder has been set for the campaign, send it to the submitter.
+  if (!empty($form['#node']->activism_cta_mail_autoresponder_subject) && !empty($form['#node']->activism_cta_mail_autoresponder_body)) {
+    if (!empty($record->mail)) { // should be pretty rare for this to be blank (based on current scenarios), but check anyways.
+      drupal_mail('activism', 'activism_cta_mail_autoresponder', $record->mail, language_default(), array('node' => $form['#node']));
+    }
+  }
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function activism_form_alter(&$form, $form_state) {
+  $cta_types = module_invoke_all('activism_cta_info');
+  foreach ($cta_types as $cta_type) { // build list of all possible ids.
+    $activism_cta_forms[] = $cta_type['module'] . '_activism_cta_form';
+  }
+
+  // if we're in any of our activism_cta_forms, we need to add the
+  // proper redirect and get a #submit in there for signup storage.
+  if (in_array($form['form_id']['#value'], $activism_cta_forms)) {
+    $form['#node'] = $form['#parameters'][2]; // shorthand plz thx.
+    $form['#redirect'] = !empty($form['#node']->activism_cta_destination)
+      ? $form['#node']->activism_cta_destination : 'node/' . $form['#node']->nid;
+    $form['#submit'][] = 'activism_signup_form_submit';
+
+    // campaign has mailing list checkbox enabled.
+    if ($form['#node']->activism_cta_mail_list) {
+      activism_signup_form_element($form, 'mail_list');
+    }
+  }
+}
+
+/**
+ * Implementation of hook_mail().
+ */
+function activism_mail($key, &$message, $params) {
+  if ($key == 'activism_cta_mail_autoresponder') {
+    $node = $params['node']; // grab the node which has all our campaign config.
+    $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+    $message['subject'] = check_plain($node->activism_cta_mail_autoresponder_subject);
+    $message['body']['activism_cta_mail_autoresponder_body'] = check_markup($node->activism_cta_mail_autoresponder_body, $node->activism_cta_mail_autoresponder_body_format);
+  }
+}
+
+/**
+ * Menu callback; view configured campaigns and their current goal state.
+ */
+function activism_campaign_overview() {
+  $output = NULL; // make page title verbosey.
+  drupal_set_title(t('Activism campaigns'));
+  $cta_types = module_invoke_all('activism_cta_info');
+
+  $headers = array(
+    array('data' => t('Campaign'),    'field' => 'n.title'),
+    array('data' => t('Type'),        'field' => 'ac.cta_module'),
+    array('data' => t('Start'),       'field' => 'n.created', 'sort' => 'desc'),
+    array('data' => t('End'),         'field' => 'ac.campaign_expired_date'),
+    array('data' => t('Goal'),        'field' => 'ac.cta_goal'),
+    array('data' => t('Total'),       'field' => 'cta_goal_current'),
+    array('data' => t('Operations'),  'colspan' => 2),
+  );
+
+  $results = pager_query("SELECT n.nid, n.title, n.created, ac.cta_module, ac.campaign_expired_date, ac.cta_goal, COUNT(acs.nid) AS cta_goal_current FROM {node} n LEFT JOIN {activism_campaign} ac ON (n.vid = ac.vid) LEFT JOIN {activism_signups} acs ON (n.nid = acs.nid) WHERE n.type = 'campaign' GROUP BY n.nid" . tablesort_sql($headers), 50);
+  while ($result = db_fetch_object($results)) {
+    $rows[] = array(
+      array('data' => l($result->title, 'node/' . $result->nid), 'class' => 'activism-campaign-title'),
+      array('data' => check_plain($cta_types[$result->cta_module]['name']), 'class' => 'activism-cta-module'),
+      array('data' => format_date($result->created, 'custom', 'Y-m-d'), 'class' => 'activism-campaign-start-date'),
+      array('data' => check_plain($result->campaign_expired_date), 'class' => 'activism-campaign-expired-date'),
+      array('data' => check_plain($result->cta_goal), 'class' => 'activism-cta-goal'), // MoOROe COofefeeEe...
+      array('data' => check_plain($result->cta_goal_current), 'class' => 'activism-cta-goal-current'), // NoOow@
+      array('data' => l(t('Report'), 'node/' . $result->nid . '/activism_report'), 'class' => 'activism-operations'),
+      array('data' => l(t('Export'), 'node/' . $result->nid . '/activism_export'), 'class' => 'activism-operations'),
+    );
+  }
+
+  if (!count($rows)) { // HOW DARE YOU VISIT ME WITHOUT PROPER DATA? ARGHGhHH.
+    $rows[] = array(array('data' => t('No campaigns have been created.'), 'colspan' => 8));
+  }
+
+  $output .= '<p style="margin-bottom:0;">' . l(t('Create new campaign'), 'node/add/campaign') . '</p>';
+  $output .= theme('table', $headers, $rows, array('id' => 'activism-campaign-overview'));
+  $output .= theme('pager', array(), 50); // 50 is the same as admin/content/node.
+  return $output;
+}
+
+/**
+ * Menu callback; export the signups for this campaign in CSV format.
+ */
+function activism_campaign_export($node) {
+  drupal_set_header('Content-type: text/csv'); // make a happy campaign_1234_export.csv puh-lease.
+  drupal_set_header("Content-Disposition: attachment; filename=campaign_" . $node->nid . "_export.csv");
+  $columns = array('nid', 'uid', 'timestamp', 'first_name', 'last_name', 'mail', 'street_address', 'city',  'state', 'postal_code', 'phone', 'mobile', 'comment', 'mail_list');
+
+  $line = NULL; // make a header.
+  foreach ($columns as $column) {
+    $line .= '"' . $column . '",';
+  } // replace ending comma with a newline.
+  $line = preg_replace('/,$/', "\n", $line);
+  print $line;
+
+  // and now send out all the signups for this campaign.
+  $results = db_query('SELECT * FROM {activism_signups} WHERE nid = %d ORDER BY timestamp', $node->nid);
+  while ($result = db_fetch_object($results)) {
+    $line = NULL; // startin' over.
+    foreach ($columns as $column) {
+      $line .= '"' . addslashes($result->$column) . '",';
+  } // replace ending comma with a newline.
+    $line = preg_replace('/,$/', "\n", $line);
+    print $line;
+  }
+
+  exit;
+}
+
+/**
+ * Menu callback; view the signups and goal tracking for a single campaign.
+ */
+function activism_campaign_report($node) {
+  $output = NULL;
+
+  $counts = activism_campaign_report_totals($node);
+  drupal_add_css(drupal_get_path('module', 'activism') . '/activism.css');
+  $total_today = isset($counts[format_date(time(), 'custom', 'Yz')]) ? $counts[format_date(time(), 'custom', 'Yz')] : 0;
+  $output .= '<div class="activism-campaign-counts">'; // show some little happy clou... tre... statistics, STATISTICS.
+  $output .=  '<div class="activism-campaign-counts-total">' . t('Total signups: @count', array('@count' => $counts['signup_total'])) . '</div>';
+  $output .=  '<div class="activism-campaign-counts-avg-today">' . t('Total signups today: @count', array('@count' => $total_today)) . '</div>';
+  $output .=  '<div class="activism-campaign-counts-avg-day">' . t('Average per day: @count', array('@count' => $counts['avg_per_day'])) . '</div>';
+  $output .=  '<div class="activism-campaign-counts-avg-week">' . t('Average per week: @count', array('@count' => $counts['avg_per_week'])) . '</div>';
+  $output .=  '<div class="activism-campaign-counts-avg-year">' . t('Average per month: @count', array('@count' => $counts['avg_per_month'])) . '</div>';
+  $output .= '</div>'; // the default display for this little box is floated right all LOOK AT ME< LOOK AT ME. My armpit itches.
+  $output .= '<div class="activism-campaign-description">' . check_markup($node->activism_campaign_description) . '</div>';
+
+  if (!empty($node->activism_campaign_expired_date)) {
+    $output .=  '<p>' . t('This campaign expires on @date.',
+      array('@date' => $node->activism_campaign_expired_date)) . '</p>';
+  }
+
+  $output .= '<h3>' . t('Call to action signups') . '</h3>';
+  $output .= '<p style="margin-bottom:0;"><em>' . t('This is a condensed listing; for the complete dataset, <a href="!url">export a CSV</a>.', array('!url' => url('node/' . $node->nid . '/activism_export'))) . '</em></p>';
+  $headers = array(
+    array('data' => t('Date'),            'field' => 'acs.timestamp', 'sort' => 'desc'),
+    array('data' => t('Name'),            'field' => 'acs.last_name'),
+    array('data' => t('E-mail address'),  'field' => 'acs.mail'),
+    array('data' => t('City'),            'field' => 'acs.city'),
+    array('data' => t('State'),           'field' => 'acs.state'),
+    array('data' => t('Zip code'),        'field' => 'acs.postal_code'),
+  );
+
+  $results = pager_query("SELECT * FROM {activism_signups} acs WHERE nid = %d" . tablesort_sql($headers), 50, 0, NULL, $node->nid);
+  while ($result = db_fetch_object($results)) {
+    $rows[] = array(
+      array('data' => format_date($result->timestamp, 'small'), 'class' => 'activism-signup-timestamp'),
+      array('data' => check_plain($result->first_name) . ' ' . check_plain($result->last_name), 'class' => 'activism-signup-name'),
+      array('data' => check_plain($result->mail), 'class' => 'activism-signup-mail'), // I want to play 8-bit Legend of Zelda.
+      array('data' => check_plain($result->city), 'class' => 'activism-signup-city'),
+      array('data' => check_plain($result->state), 'class' => 'activism-signup-state'),
+      array('data' => check_plain($result->postal_code), 'class' => 'activism-signup-postal-code'),
+    );
+  }
+
+  if (!count($rows)) { // HOW DARE YOU CREATE A CAMPAIGN THAT GARNERS NO LOVE?! ARGgHH.
+    $rows[] = array(array('data' => t('No call to action signups have been submitted.'), 'colspan' => 6));
+  }
+
+  $output .= theme('table', $headers, $rows, array('id' => 'activism-signups-overview'));
+  $output .= theme('pager', array(), 50); // 50 is the same as admin/content/node.
+  return $output;
+}
+
+/**
+ * Determine signup total and duration-based averages for a campaign.
+ */
+function activism_campaign_report_totals($node) {
+  $counts['avg_per_day'] = $counts['avg_per_week'] = $counts['avg_per_month'] = $counts['signup_total'] = 0;
+  $results = db_query("SELECT * FROM {activism_signups} acs WHERE nid = %d ORDER BY timestamp", $node->nid);
+  while ($result = db_fetch_object($results)) { // count days, weeks, and months from signup data.
+    foreach (array('day' => 'Yd', 'week' => 'YW', 'month' => 'Ym') as $duration => $format) {
+      ${"current_$duration"} = format_date($result->timestamp, 'custom', $format);
+      if (${"current_$duration"} != ${"last_$duration"}) {
+        $counts['active_' . $duration . 's']++; // magick!
+        ${"last_$duration"} = ${"current_$duration"};
+      }
+    }
+    $counts['signup_days'][$current_day]++;
+    $counts['signup_weeks'][$current_week]++;
+    $counts['signup_months'][$current_month]++;
+    $counts['signup_total']++;
+  }
+
+  if (isset($counts['active_days'])) { // to prevent division by zero errors.
+    $counts['avg_per_day']  = round($counts['signup_total'] / $counts['active_days']);
+    $counts['avg_per_week']  = round($counts['signup_total'] / $counts['active_weeks']);
+    $counts['avg_per_month'] = round($counts['signup_total'] / $counts['active_months']);
+  }
+
+  return $counts;
+}
+
+/**
+ * Menu callback; configure campaigns and enabled calls to action.
+ */
+function activism_settings() {
+  $form['activism'] = array(
+    '#type'     => 'markup', // for now, this primarily serves as a container for CTA settings.
+    '#value'    => t('The primary Activism module currently has no configuration; choose a call to action tab above.'),
+  );
+
+  return $form;
+}

@@ -1,0 +1,191 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Initiative
+ *
+ *  This module handles information related to initiatives.
+ */
+
+/**
+ *  What initiative does this page belong to?
+ *
+ *  If a page view or content belongs to a specific senator, this will return
+ *  the node for that senator, or FALSE if it doesn't belong to any senator.
+ *
+ *  @return
+ *    The initiatives' node, or FALSE.
+ */
+function nyss_initiative() {
+  static $initiative;
+  // Create the static cache for future reference.
+  if (is_null($initiative)) {
+    // Our default state.
+    $initiative = FALSE;
+
+    if ((arg(0) == 'node' || arg(0) == 'initiative') && ($nid = arg(1)) && is_numeric($nid)) {
+      $node = node_load($nid);
+      $initiative = nyss_initiative_node($node);
+    }
+    elseif (arg(0) == 'initiative' && arg(1)) {
+      $node = nyss_initiative_node_from_title(arg(1));
+      $initiative = nyss_initiative_node($node);
+    }
+  }
+  return $initiative;
+}
+
+/**
+ *  Is the current page a initiative's home page?
+ *
+ *  @return
+ *    Boolean
+ */
+function nyss_initiative_home() {
+  if (arg(0) == 'node' && ($nid = arg(1)) && is_numeric($nid) && arg(2) == '') {
+    $node = node_load($nid);
+  }
+  elseif (arg(0) == 'initiative' && arg(1) && arg(2) == '') {
+    $node = nyss_initiative_node_from_title(arg(1));
+  } else {
+    return FALSE;
+  }
+  return ($node->type == 'initiative');  
+}
+
+/**
+ *  This will return the initiative associated with the node.
+ *
+ *  @param $node
+ *    The node referencing the initiative, or a initiative's node.
+ *  @param $reset
+ *    (optional) If TRUE, then reset the static variable.
+ *  @return
+ *    The initiative node referenced by the node.
+ */
+function nyss_initiative_node($node, $reset = FALSE) {
+  static $initiatives;
+  if (is_numeric($node)) {
+    $node = node_load($node);
+  }
+  if (!$node) {
+    return FALSE;
+  }
+  // Reset our static array.
+  if (is_null($initiatives) || $reset) {
+    $initiatives = array();
+  }
+
+  // We cache the initiative nodes.
+  if (!isset($initiatives[$node->nid])) {
+    $initiatives[$node->nid] = FALSE;
+
+    if ($node->type == 'initiative') {
+      // If we're given a initiative's node, then return it.
+      $initiatives[$node->nid] = $node;
+    }
+    else if (isset($node->field_initiative) && $node->field_initiative[0]['nid']) {
+      // Check if the node references a initiative.
+      $initiative = node_load($node->field_initiative[0]['nid']);
+      if ($initiative->type == 'initiative') {
+        // If the referenced node is a valid initiative, then bingo.
+        $initiatives[$node->nid] = $initiative;
+      }
+    }
+  }
+  return $initiatives[$node->nid];
+}
+
+/**
+ *  Retrives the initiative node from a given title from a URL.
+ *  @param $title
+ *    The title from the URL.
+ *  @return
+ *    The corresponding senator node object.
+ */
+function nyss_initiative_node_from_title($title) {
+  static $titles;
+  if (!isset($titles[$title])) {
+    $results = cache_get('nyss_initiative_title:' . $title, 'cache_nyss_misc');
+    if (!empty($results->data) && time() < $results->expire) {
+      $titles[$title] = $results->data;
+      return $results->data;
+    }
+    $titles[$title] = '';
+    // First look for a match from the URL alias
+    if (($source = drupal_lookup_path('source', "initiative/$title")) && substr($source, 0, 5) == "node/") {
+      $titles[$title] = node_load(substr($source, 5));
+    }
+    // If we don't have a match from the field_path, then match for $node->title.
+    if (!$titles[$title]) {
+      $nid = db_result(db_query_range(db_rewrite_sql("SELECT n.nid FROM {node} n WHERE REPLACE(LOWER(n.title),'/','') = '%s'"), str_replace(array('_', '-', '/'), array(' ', ' ', ''), $title), 0, 1));
+      if ($nid) {
+        $titles[$title] = node_load($nid);
+      }
+    }
+    cache_set('nyss_initiative_title:' . $title, $titles[$title], 'cache_nyss_misc', time() + 3600);
+  }
+  return $titles[$title];
+}
+
+function nyss_initiative_related_content_count($nid) {
+  $sql = 'SELECT COUNT(node.nid) AS nid FROM {node} node 
+    LEFT JOIN content_field_initiative node_data_field_initiative ON node.vid = node_data_field_initiative.vid
+    INNER JOIN node node_node_data_field_initiative ON node_data_field_initiative.field_initiative_nid = node_node_data_field_initiative.nid
+    WHERE (node.status <> 0) AND (node_node_data_field_initiative.nid = %d)';
+  $result = db_result(db_query($sql, $nid));
+  return $result;
+}
+
+/**
+ * Implementation of hook_init()
+ */
+function nyss_initiative_init() {
+  $initiative = nyss_initiative(); 
+  if($initiative) {
+    context_set('nyss', 'content_type', 'initiative');
+    context_set('nyss', 'initiative', $initiative);
+  }
+}
+
+/**
+ * Implementation of hook_form_alter()
+ */
+function nyss_initiative_form_alter(&$form, $form_state, $form_id) {
+  if ( $form['#id'] == 'node-form' && $form['type']['#value'] == 'initiative' ) {
+    // Some trickery to put CCK field_hide_upcoming_events in the same fieldset
+    // as the feature_on_front_carousel flag
+    $form['flag_plus'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Flags'),
+      '#weight' => 0,
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+    );
+    foreach ($form['flag'] as $flag_name => $flag) {
+      if (substr($flag_name, 0, 1) != '#') {
+        $form['flag_plus'][$flag_name] = $form['flag'][$flag_name];
+        $form['flag_plus'][$flag_name]['#parents'] = array('flag', $flag_name);
+      }
+    }
+    unset($form['flag']);
+    $form['flag_plus']['field_hide_upcoming_events'] = $form['field_hide_upcoming_events'];
+    unset($form['field_hide_upcoming_events']);
+  }
+}
+
+/**
+ * Return an associative array of the titles of all nodes of type initiative
+ * 
+ */
+function nyss_initiative_list_titles() {
+  $options = array();
+  $sql = "SELECT DISTINCT(node.nid) AS nid, node.title AS node_title FROM {node} node WHERE node.type in ('initiative') ORDER BY node_title";
+  $results = db_query($sql);
+  while ($initiative = db_fetch_object($results)) {
+    $options[$initiative->node_title] = $initiative->node_title;
+  }
+  return $options;
+}
+

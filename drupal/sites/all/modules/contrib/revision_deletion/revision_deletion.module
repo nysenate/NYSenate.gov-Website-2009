@@ -1,0 +1,633 @@
+<?php
+// $Id: revision_deletion.module,v 1.2.2.18 2009/08/12 15:38:48 nancyw Exp $
+
+/**
+ * @file
+ * Node Revision Deletion, written by Greg Holsclaw
+ */
+
+/**
+ * Implementation of hook_perm().
+ */
+function revision_deletion_perm() {
+  return array('mass delete revisions');
+}
+
+/**
+ * Implementation of hook_help().
+ */
+function revision_deletion_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#revision_deletion':
+      return t('This module will greatly speed up the task of deleting old revisions of nodes. The database clutter and space can be quickly reclaimed as this module, on cron runs, will delete aged revisions (never the current revision) of nodes older than a set period of time. Options include frequency of the cron deletion job, and the age of revisions before being deleted. Cron.php must be run to execute.');
+
+    case 'admin/modules#description':
+      return t('Delete old revisions of nodes quickly.');
+
+    case 'admin/content/revision_deletion':
+    case 'admin/content/revision_deletion/list':
+      return t('Using revisions is a good way to improve the integrity of your node content; however it may result in a significant increase in your database size. This page lists the nodes that currently have revisions meeting the deletion criteria and allows you to delete them.');
+
+    case 'admin/content/revision_deletion/settings':
+      return t('These settings control which revisions may be deleted, how often, and from which types of content.');
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function revision_deletion_menu() {
+  $items = array();
+  $items['admin/content/revision_deletion'] = array(
+    'title' => 'Revisions to Mass Delete',
+    'page callback' => 'revision_deletion_settings_page',
+    'access arguments' => array('mass delete revisions'),
+    'type' => MENU_NORMAL_ITEM,
+    'description' => 'Configure or manually run the revision deletion module',
+    );
+
+  $items['admin/content/revision_deletion/list'] = array(
+    'title' => 'List',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('revision_deletion_auto_form'),
+    'access arguments' => array('mass delete revisions'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    );
+
+  $items['admin/content/revision_deletion/settings'] = array(
+    'title' => 'Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('revision_deletion_settings'),
+    'file' => 'revision_deletion.admin.inc',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'description' => 'Configure settings for the revision deletion module',
+    );
+
+  $items['admin/content/revision_deletion/node/%node'] = array(
+    'page callback' => 'revision_deletion_list',
+    'page arguments' => array(4),
+    'access arguments' => array('mass delete revisions'),
+    'type' => MENU_CALLBACK,
+    );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_menu_alter().
+ * Intercepts the core node revisions list and replaces it with ours.
+ */
+function revision_deletion_menu_alter(&$items) {
+  if (variable_get('revision_delete_list_takeover', 0)) {
+    $items['node/%node/revisions']['page callback'] = 'revision_deletion_list';
+    $items['node/%node/revisions']['file'] = 'revision_deletion.module';
+    $items['node/%node/revisions']['access_callback'] = '_revision_deletion_access';
+    $items['node/%node/revisions']['module'] = 'revision_deletion';
+  }
+}
+
+/**
+ * Replace _node_revision_access().
+ */
+function _revision_deletion_access($node, $op='delete') {
+  return _node_revision_access($node, $op) || user_access('mass delete revisions');
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function revision_deletion_theme() {
+  return array(
+    'revision_deletion_list_form' => array(
+      'arguments' => array('form' => NULL)
+      ),
+    'revision_deletion_auto_form' => array(
+      'arguments' => array('form' => NULL)
+      ),
+    );
+}
+
+/**
+ * Implementation of hook_cron().
+ */
+function revision_deletion_cron() {
+  $last_update = variable_get('revision_delete_cron', 0);
+  $rev_del_freq = variable_get('revision_delete_freq', 0);
+  $diff = $rev_del_freq == 0 ? 0 : time() - $rev_del_freq;
+
+  if ($diff > $last_update) {
+    $revisions = revision_deletion_get_list();
+    foreach ($revisions as $data) {
+      if ($data->select) {
+        revision_deletion_delete_rev($data);
+      }
+    }
+
+    variable_set('revision_delete_cron', time());
+  }
+}
+
+function revision_deletion_settings_page() {
+  return drupal_get_form('revision_deletion_auto_form');
+}
+
+/**
+ * Get the list of revisions to delete.
+ * @param $nid - specific node to retrieve.
+ * @return array containing objects of all revisions.
+ */
+function revision_deletion_get_list($nid = NULL) {
+  $nodes = variable_get('revision_delete', array());
+  $show_conditional = variable_get('revision_delete_list_show_conditional', 1);
+  $keep_original = variable_get('revision_delete_list_keep_original', 0);
+  $keep_date_last = variable_get('revision_delete_list_keep_date_last', 0);
+  $keep_current = variable_get('revision_delete_list_keep_current', 1209600);
+  $limit = variable_get('revision_delete_limit', 20);
+  $now = isset($_SERVER['REQUEST_TIME']) ? $_SERVER['REQUEST_TIME'] : time();
+
+  $fmt = variable_get('date_format_short', variable_get('date_format_short_custom', 'Y M j'));
+  $fmt = trim(str_replace(array('H', 'i', ':'), '', $fmt));
+
+  $aged = $now - variable_get('revision_delete_age', 2419200);
+  // If there is a nid specified, skip the age check and show all revisions.
+  if (is_null($nid)) {
+    $args = array($aged);
+  }
+  else {
+    $args = array($now);
+  }
+  $args = array_merge($args, $nodes);
+
+  $conds = 'AND n.type IN('. db_placeholders($nodes, 'text') .') ';
+  if ($nid) {
+    $conds .= "AND r.nid=$nid ";
+    $args[] = $nid;
+  }
+
+  // Ignore the Coder flag here; the code is correct and secure.
+  $query = "SELECT n.title, r.nid, r.vid, r.timestamp, r.uid, r.log, n.type, n.vid AS current, n.status FROM {node_revisions} r INNER JOIN {node} n ON r.nid = n.nid WHERE n.nid IN (SELECT r.nid FROM {node_revisions} r INNER JOIN {node} n ON r.nid = n.nid AND r.vid <> n.vid WHERE r.timestamp < %d $conds ) ORDER BY r.nid, r.timestamp DESC";
+//  drupal_set_message('<strong>query</strong> = '.$query .', <strong>arguments</strong> = '. print_r($args, TRUE));
+  if ($limit > 0) {
+    $result = pager_query($query, $limit, 0, NULL, $args);
+  }
+  else {
+    $result = db_query($query, $args);
+  }
+
+  $data = array();
+  $prev_date = $prev_nid = $prev_vid = NULL;
+  $keeper = FALSE;
+
+  while ($row = db_fetch_object($result)) {
+    $vid = $row->vid;
+    $msg = '';
+    $row->select = TRUE;
+    $row->class = 'revision-selected';
+    $row->date = format_date($row->timestamp, 'custom', $fmt, 0);
+
+    // See if previous was an original.
+    if ($row->nid != $prev_nid) {
+      $prev_nid = $row->nid;
+      $oldest = db_result(db_query_range("SELECT vid FROM {node_revisions} WHERE nid=%d ORDER BY timestamp ASC", $row->nid, 0, 1));
+    }
+    $row->oldest = $oldest;
+
+    // Is this the current revision?
+    if ($row->current == $vid) {
+      $msg = '<em>'. t('Current revision') .'</em>';
+      $row->select = FALSE;
+      $row->class = 'revision-current';
+      // If it's not old enough yet, keep next.
+      if ($now - $rev->timestamp < $keep_current) {
+        $keeper = TRUE;
+      }
+    }
+    else {
+      // If this is the next oldest revision and the newset isn't old enough, keep this one too.
+      if ($keeper) {
+        $msg = '<em>'. t('Young current') .'</em>';
+        $form['select'][$vid]['#default_value'] = FALSE;
+        $keeper = FALSE;
+        $row->class = 'revision-young';
+      }
+
+      // Is this the original?
+      if ($vid == $oldest && $keep_original) {
+        $msg = '<em>'. t('Original version') .'</em>';
+        $row->select = FALSE;
+        $row->class = 'revision-original';
+      }
+      else {
+        // Is it the last for the date?
+        if ($row->date != $prev_date && $keep_date_last) {
+          $msg = '<em>'. t('Last for !date', array('!date' => $row->date)) .'</em>';
+          $row->select = FALSE;
+          $row->class = 'revision-last';
+        }
+      }
+    }
+    $row->msgs = $show_conditional ? $msg : '';
+
+    // Save it all to be returned.
+    $data[$vid] = $row;
+    $prev_vid = $vid;
+    $prev_date = $row->date;
+  }
+
+  return $data;
+}
+
+/**
+ * Implementation of revision_deletion_delete_rev().
+ * Borrows heavily from the node.module api function to delete revisions, with some of the checks
+ * and messages removed. No check to make sure we are not deleting the current node revision.
+ * That is covered in the function that creates the data set.
+ */
+function revision_deletion_delete_rev($data = NULL) {
+  $node = node_load($data->nid, $data->vid);
+  db_query("DELETE FROM {node_revisions} WHERE nid = %d AND vid = %d", $data->nid, $data->vid);
+  node_invoke_nodeapi($node, 'delete revision');
+  watchdog('Revision Deletion', '@type: node @nid, deleted %title, revision @revision.', array('@type' => $node->type, '%title' => $node->title, '@nid' => $data->nid, '@revision' => $data->vid));
+}
+
+/**
+ * List all revisions of a node so they can be deleted manually.
+ */
+function revision_deletion_list($node) {
+  // Make sure it's one of ours.
+  if (in_array($node->type, variable_get('revision_delete', array()))) {
+    return drupal_get_form('revision_deletion_list_form', $node);
+  }
+  else {
+    module_load_include('inc', 'node', 'node.pages');
+    return node_revision_overview($node);
+  }
+}
+
+/**
+ * Form to list all revisions of a node.
+ */
+function revision_deletion_list_form($form_state, $node) {
+  drupal_add_css(drupal_get_path('module', 'revision_deletion') .'/revision_deletion.css');
+
+  $limit = variable_get('revision_delete_list_limit', 25);
+  $show_conditional = variable_get('revision_delete_list_show_conditional', 1);
+  $keep_original = variable_get('revision_delete_list_keep_original', 0);
+  $keep_date_last = variable_get('revision_delete_list_keep_date_last', 0);
+  $keep_current = variable_get('revision_delete_list_keep_current', 1209600);
+  $limit = variable_get('revision_delete_limit', 20);
+  $destination = drupal_get_destination();
+  $now = isset($_SERVER['REQUEST_TIME']) ? $_SERVER['REQUEST_TIME'] : time();
+
+  $nid = $node->nid;
+  $title = $node->title;
+  drupal_set_title(t('Revisions for "@title"', array('@title' => $title)));
+
+  $accounts = array();
+  $form = array();
+
+  $form['header'] = array(
+    '#type' => 'value',
+    '#value' => array(
+      t('Delete'),
+      t('Revision ID'),
+      t('User'),
+      t('Date/Time'),
+      t('Operations'),
+      ),
+    );
+
+  if ($show_conditional) {
+    $form['header']['#value'][] = t('Notes');
+  }
+
+  $form['nid'] = array(
+    '#type'  => 'value',
+    '#value' => $nid,
+    );
+
+  $keeper = FALSE;
+
+  $revisions = revision_deletion_get_list($node->nid);
+  foreach ($revisions as $rev) {
+    $vid = $rev->vid;
+    $ops = array();
+    if (!isset($accounts[$rev->uid])) {
+      $acct = user_load(array('uid' => $rev->uid));
+      $accounts[$rev->uid] = theme('username', $acct);
+    }
+
+    $form['select'][$vid] = array(
+      '#type' => 'checkbox',
+      '#disabled' => ($vid == $rev->current),
+      '#default_value' => $rev->select,
+      '#return_value' => array(
+        'action' => 'delete',
+        'vid' => $vid,
+        'nid' => $rev->nid,
+        'title' => $rev->title,
+        'type' => $rev->type,
+        ),
+      );
+    $form['class'][$vid] = array('#value' => $rev->class);
+
+    $form['vid'][$vid] = array('#value' => l($vid, 'node/'. $nid .'/revisions/'. $vid .'/view'));
+    $form['user'][$vid] = array('#value' => $accounts[$rev->uid]);
+    $form['timestamp'][$vid] = array('#value' => format_date($rev->timestamp, 'small'));
+    $form['log'][$vid] = array('#value' => filter_xss($rev->log));
+
+    if ($vid != $rev->current) {
+      $ops[] = l(t('revert'), "node/$nid/revisions/$vid/revert", array('query' => $destination));
+      $ops[] = l(t('delete'), "node/$nid/revisions/$vid/delete", array('query' => $destination));
+    }
+
+    $form['operations'][$vid] = array('#value' => implode(' | ', $ops));
+    $form['msg'][$vid] = array('#value' => $rev->msgs);
+  }
+
+  $form['no_confirm'] = array('#value' => '<p>'. t('Note that there is no confirmation for this action.') .'</p>');
+  $form['pager'] = array('#value' => theme('pager', array(), $limit));
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Delete selected'));
+  return $form;
+}
+
+/**
+ * Theme the form to list all revisions of a node.
+ */
+function theme_revision_deletion_list_form($form) {
+  $element_children = element_children($form['vid']);
+  
+  // We build our own table so we can put the log message on a separate row and use
+  // the merge-down and merge-up classes.
+  $eo = array('odd' => 'even', 'even' => 'odd');
+  $class = 'even';
+  $output = '<div id="revision-deletion-list"><table><tr>';
+  foreach ($form['header']['#value'] as $index => $text) {
+    if ($index == 0 && count($element_children) > 1) {
+      drupal_add_js('misc/tableselect.js');
+      $output .= '<th class="select-all">' . "$text</th>";
+    }
+    else {
+      $output .= "<th>$text</th>";
+    }
+  }
+  $output .= '</tr>';
+
+  foreach ($element_children as $key) {
+    $class = $eo[$class];
+    $row_class = $class;
+    if (isset($form['class'][$key])) {
+      $row_class .= ' '. $form['class'][$key]['#value'];
+      unset($form['class'][$key]);
+    }
+    $log_present = !empty($form['log'][$key]['#value']);
+    $output .= '<tr class="'. $row_class . ($log_present ? ' merge-down' : NULL) .'">';
+    $output .= '<tr class="'. $class . ($log_present ? ' merge-down' : NULL) .'">';
+    $output .= '<td align="center"'. ($form['select'][$key]['#default_value'] ? ' class="selected"' : '') .'">'. drupal_render($form['select'][$key]) .'</td>';
+    $output .= '<td align="center">'. drupal_render($form['vid'][$key]) .'</td>';
+    $output .= '<td align="center">'. drupal_render($form['user'][$key]) .'</td>';
+    $output .= '<td align="center">'. drupal_render($form['timestamp'][$key]) .'</td>';
+    $output .= '<td align="center">'. drupal_render($form['operations'][$key]) .'</td>';
+    $output .= '<td>'. drupal_render($form['msg'][$key]) .'</td>';
+    if ($log_present) {
+      $output .= '</tr>';
+      $output .= '<tr class="'. $row_class .' merge-up">';
+      $output .= '<td colspan="20" class="revision-log">'. drupal_render($form['log'][$key]) .'</td>';
+    }
+    $output .= '</tr>';
+  }
+
+  $output .= '</table>';
+
+  $output .= drupal_render($form);
+
+  return $output .'</div>';
+}
+
+/**
+ * Handle submission of form to list all revisions of a node.
+ */
+function revision_deletion_list_form_submit($form, &$form_state) {
+  $count = 0;
+  foreach ($form_state['values'] as $key => $value) {
+    if (is_numeric($key) && is_array($value) && $value['action'] === 'delete') {
+      revision_deletion_delete_rev((object) $value);
+      ++$count;
+    }
+  }
+  if ($count) {
+    drupal_set_message(format_plural($count, 'Deleted one revision.', 'Deleted @count revisions.'));
+  }
+  else {
+    drupal_set_message(t('No revisions deleted.'));
+  }
+}
+
+/**
+ * Get the list of revisions to auto-delete.
+ * @return array containing objects of all revisions.
+ */
+function revision_deletion_auto_form() {
+  drupal_add_css(drupal_get_path('module', 'revision_deletion') .'/revision_deletion.css');
+  $form = array();
+  $show_conditional = variable_get('revision_delete_list_show_conditional', 1);
+
+  $form['header'] = array(
+    '#type'  => 'value',
+    '#value' => array(
+      t('Delete'),
+      t('Title'),
+      t('Revision ID'),
+      t('User'),
+      t('Date/Time'),
+      t('Type'),
+      t('Status'),
+//      t('Notes'),   // added below.
+      ),
+    );
+  if ($show_conditional) {
+    $form['header']['#value'][] = t('Notes');
+  }
+  $form['header']['#value'][] = t('Operations');
+
+  $node_types = node_get_types('names');
+
+  $revs = revision_deletion_get_list();
+  $prev_nid = 0;
+
+  foreach ($revs as $rev) {
+    $vid = $rev->vid;
+
+    // Get user names.
+    if (!isset($accounts[$rev->uid])) {
+      $acct = user_load(array('uid' => $rev->uid));
+      $accounts[$rev->uid] = theme('username', $acct);
+    }
+
+    // Make first title a link to the node.
+    $t = '';
+    if ($prev_nid != $rev->nid) {
+      $t = l($rev->title, 'node/'. $rev->nid, array('title' => t('view !type', array('!type' => $rev->type))));
+      $form['ops'][$vid] = array('#value' => l(t('list revisions'), 'admin/content/revision_deletion/node/'. $rev->nid));
+    }
+
+    // Make vid a link to the revision.
+    $v = l($rev->vid, 'node/'. $rev->nid .'/revisions/'. $rev->vid .'/view', array('title' => t('view revision')));
+
+    // Build form elements.
+    $form['select'][$vid] = array(
+      '#type' => 'checkbox',
+      '#default_value' => $rev->select,
+      '#disabled' => ($vid == $rev->current),
+      '#return_value' => array(
+        'action' => 'delete',
+        'vid' => $vid,
+        'nid' => $rev->nid,
+        'title' => $rev->title,
+        'type' => $rev->type,
+        ),
+      );
+    $form['class'][$vid] = array('#value' => $rev->class);
+    $form['title'][$vid] = array('#value' => $t);
+    $form['vid'][$vid] = array('#value' => $v);
+    $form['user'][$vid] = array('#value' => $accounts[$rev->uid]);
+    $form['timestamp'][$vid] = array('#value' => format_date($rev->timestamp, 'small'));
+    $form['type'][$vid] = array('#value' => $node_types[$rev->type]);
+    // @TODO: Find free icons for status.
+    $form['status'][$vid] = array('#value' => ($rev->status ? t('Published') : t('Unpublished')));
+    $form['msg'][$vid] = array('#value' => $rev->msgs);
+    $form['log'][$vid] = array('#value' => $rev->log);
+
+    $prev_nid = $rev->nid;
+  }
+
+  // Add the button and some explanatory text.
+  $interval = variable_get('revision_delete_freq', 0);
+  $last_update = variable_get('revision_delete_cron', 0);
+  $age = variable_get('revision_delete_age', 2419200);
+  $keep_current = variable_get('revision_delete_list_keep_current', 1209600);
+  $keep_original = variable_get('revision_delete_list_keep_original', 0);
+  $keep_date_last = variable_get('revision_delete_list_keep_date_last', 0);
+
+  $form['description'] = array('#value' => '<div class="description">'. t('Click the title to view the current content; click the revision ID to view the revision. Clicking on the "Run Revision Deletion" button will delete all of the selected revisions, even if they are shown on other pages.') .'</div>');
+
+  // Build some informational messages.
+  // The values are already 'sanitized.'
+  $info_texts = array();
+  if ($interval == 0) {
+    $auto_msg = t('Automatic deletion is not currently scheduled.');
+    }
+  else {
+    $auto_msg = t('Automatic deletion is scheduled to run every !interval.',
+      array('!interval' => format_interval($interval)));
+
+    if ($last_update) {
+      $auto_msg .= ' '. t('It was last run !last_update_time (!last_update_ago ago).',
+        array(
+          '!last_update_time' => format_date($last_update, 'large'),
+          '!last_update_ago' => format_interval(time() - $last_update),
+          )
+        );
+      }
+    else {
+      $auto_msg .= ' '. t('It has not yet run automatically.');
+    }
+  }
+
+  if ($keep_current > 0) {
+    $info_texts[] = t('If the current revision was created less than !current_age ago, the next older revision will be kept.',
+      array('!current_age' => format_interval($keep_current)));
+  }
+
+  if ($keep_original) {
+    $info_texts[] = t('The original revision will be kept.');
+  }
+
+  if ($keep_date_last) {
+    $info_texts[] = t('The last revision for each date will be kept.');
+  }
+
+  if ($age > 0) {
+    $info_texts[] = t('It will delete revisions that are older than !age_interval.',
+      array('!age_interval' => format_interval($age)));
+  }
+
+  $form['info'] = array(
+    '#type'  => 'markup',
+    '#value' => '<div class="info">'. $auto_msg .'<h5>'. t('Selection Rules') .'</h5>'. theme('item_list', $info_texts) .'</div>',
+    );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Run Revision Deletion'),
+    );
+
+  $form['pager'] = array('#value' => theme('pager', array(), $limit));
+
+  // Reuse the other form's submit handler.
+  $form['#submit'][] = 'revision_deletion_list_form_submit';
+
+  return $form;
+}
+
+/**
+ * Theme the form to list all auto-delete eligible revisions.
+ */
+function theme_revision_deletion_auto_form($form) {
+  $element_children = element_children($form['vid']);
+
+  // We build our own table so we can put the log message on a separate row and use
+  // the merge-down and merge-up classes.
+  $eo = array('odd' => 'even', 'even' => 'odd');
+  $class = 'even';
+  $output = '<div id="revision-deletion-list"><table><tr>';
+  foreach ($form['header']['#value'] as $index => $text) {
+    if ($index == 0 && count($element_children) > 1) {
+      drupal_add_js('misc/tableselect.js');
+      $output .= '<th class="select-all">' . "$text</th>";
+    }
+    else {
+      $output .= "<th>$text</th>";
+    }
+  }
+  $output .= '</tr>';
+  $found_some = FALSE;
+
+  foreach ($element_children as $key) {
+    $class = $eo[$class];
+    $row_class = $class;
+    if (isset($form['class'][$key])) {
+      $row_class .= ' '. $form['class'][$key]['#value'];
+      unset($form['class'][$key]);
+    }
+    $log_present = !empty($form['log'][$key]['#value']);
+    $output .= '<tr class="'. $row_class . ($log_present ? ' merge-down' : NULL) .'">';
+    $output .= '<td align="center"'. ($form['select'][$key]['#default_value'] ? ' class="selected"' : '') .'">'. drupal_render($form['select'][$key]) .'</td>';
+    $output .= '<td>'. drupal_render($form['title'][$key]) .'</td>';
+    $output .= '<td align="center">'. drupal_render($form['vid'][$key]) .'</td>';
+    $output .= '<td align="center">'. drupal_render($form['user'][$key]) .'</td>';
+    $output .= '<td>'. drupal_render($form['timestamp'][$key]) .'</td>';
+    $output .= '<td align="center">'. drupal_render($form['type'][$key]) .'</td>';
+    $output .= '<td>'. drupal_render($form['status'][$key]) .'</td>';
+    $output .= '<td>'. drupal_render($form['msg'][$key]) .'</td>';
+    $output .= '<td>'. drupal_render($form['ops'][$key]) .'</td>';
+    if ($log_present) {
+      $output .= '</tr>';
+      $output .= '<tr class="'. $row_class .' merge-up">';
+      $output .= '<td colspan="20" class="revision-log">'. drupal_render($form['log'][$key]) .'</td>';
+    }
+    $output .= '</tr>';
+    $found_some = TRUE;
+  }
+
+  if (!$found_some) {
+    $output .= '<tr><td colspan="20"><div class="messages error">'. t('No content with deletable revisions found.') .'</div></td></tr>';
+  }
+
+  $output .= '</table>';
+  $output .= drupal_render($form);
+
+  return $output .'</div>';
+}
+

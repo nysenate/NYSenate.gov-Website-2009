@@ -1,0 +1,3 @@
+<?php
+
+include_once('openleg_parser_feature.features.inc');

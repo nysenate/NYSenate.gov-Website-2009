@@ -1,0 +1,5 @@
+// $Id: CHANGELOG.txt,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+Activism 6.x-2.0, 2009-05-12
+----------------------------
+  * First public release.

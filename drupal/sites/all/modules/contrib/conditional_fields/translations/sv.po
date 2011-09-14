@@ -1,0 +1,298 @@
+# $Id$
+#
+# Swedish translation of Drupal (conditional_fields)
+# Generated from files:
+#  conditional_fields.module: n/a
+#  conditional_fields.info: n/a
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Conditional Fields 6.x\n"
+"POT-Creation-Date: 2009-11-30 02:20+0100\n"
+"PO-Revision-Date: 2009-11-30 02:21+0100\n"
+"Last-Translator: Magnus Gunnarsson <seals@passagen.se>\n"
+"Language-Team: drupalsverige.se\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"X-Poedit-Language: Swedish\n"
+"X-Poedit-Country: SWEDEN\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+#: conditional_fields.module:24
+msgid "These settings only apply to the conditional fields of this content type."
+msgstr "Dessa inställningar gäller enbart för villkorliga fält till denna innehållstyp."
+
+#: conditional_fields.module:27
+msgid "The Conditional Fields module allows to set fields with allowed values as \"controlling fields\" for other fields and groups. When a field or group is \"controlled\", it will only be available for editing and displayed if the selected values of the controlling field match the \"trigger values\" assigned to it. You can, for example, make a custom \"article teaser\" field that is shown only if a \"Has teaser\" checkbox is checked."
+msgstr "Modulen villkorliga fält (Conditional Fields) låter dig ange fält med tillåtna värden som \"styrda fält\" för andra fält och grupper. När ett fält eller grupp är \"styrt\" så kommer det enbart vara tillgängligt för redigering och visas om det valda värdet för det styrda fältet överensstämmer med det \"utlösta värdet\" som tillhör det. Du kan till exempel göra ett anpassat fält \"förhandsgranska artikel\" som enbart visas om en kryssruta \"Har förhandstitt\" är markerad."
+
+#: conditional_fields.module:28
+msgid "When editing a node, the controlled fields are dynamically shown and hidden with javascript."
+msgstr "Vid redigering av en nod så kommer de styrda fälten visas och gömmas dynamiskt med JavaScript."
+
+#: conditional_fields.module:29
+msgid "On node view, the controlled fields which were left untriggered are hidden."
+msgstr "Vid nodvisning så kommer styrda fält gömmas som lämnades att inte lösas ut."
+
+#: conditional_fields.module:30
+msgid "Once the module is activated, a new set of options will appear in the editing form of cck fields, from where you can select which of the allowed values available of candidate \"controlling\" fields will make the field \"controlled\". If <em>- Not controlling -</em> or no value is selected, the field will be shown as usual."
+msgstr "När modulen är aktiverad så kommer ett ny omgång av alternativ att visas i formuläret för redigering av CCK-fält där du kan välja vilka av de tillåtna värden tillgängliga för kandiderade \"styrda\" fält som kommer göra fältet \"styrt\". Om <em>- Styr ej -</em> eller inget värde är valt så kommer fältet att visas som vanligt."
+
+#: conditional_fields.module:31
+msgid "These are the requisites to make a field controllable:"
+msgstr "Detta är kraven för att göra ett fält styrbart:"
+
+#: conditional_fields.module:33
+msgid "The controlling field widget must be single or multiple select list, radio buttons or checkboxes."
+msgstr "Gränssnittskomponenten för styrande av fält måste antingen vara en enstaka eller flervalslista, radioknappar eller kryssrutor."
+
+#: conditional_fields.module:34
+msgid "The controlling field must have allowed values."
+msgstr "Det styrande fältet måste ha tillåtna värden."
+
+#: conditional_fields.module:35
+msgid "If the controlled field is in a group, the controlling field must be in the same group."
+msgstr "Om det styrda fältet är i en grupp så måste det styrande fältet vara inom samma grupp."
+
+#: conditional_fields.module:36
+msgid "If you want to make a group controllable, the controlling field should not be inside a group."
+msgstr "Om du vill göra en grupp styrbar så får inte det styrande fältet vara inuti en grupp."
+
+#: conditional_fields.module:38
+msgid "There is also a \"Conditional fields\" settings tab in every content type admin page."
+msgstr "Det finns också en flik \"Villkorliga fält\" under varje sida för adminstrering av innehållstyp."
+
+#: conditional_fields.module:39
+msgid "The <a href=\"@handbook\">Conditional Fields Handbook</a> contains further explanations and examples."
+msgstr "<a href=\"@handbook\">Conditional Fields Handbook</a> innehåller fler förklaringar och exempel."
+
+#: conditional_fields.module:82
+msgid "User Interface options"
+msgstr "Alternativ för användargränssnitt"
+
+#: conditional_fields.module:88
+msgid "Don't use javascript. Fields are only hidden on node view."
+msgstr "Använd inte JavaScript. Fält göms enbart vid nodvisning."
+
+#: conditional_fields.module:89
+msgid "Hide untriggered fields"
+msgstr "Göm ej utlösta fält"
+
+#: conditional_fields.module:90
+msgid "Disable untriggered fields"
+msgstr "Inaktivera ej utlösta fält"
+
+#: conditional_fields.module:93
+msgid "Choose the desired javascript behaviour in node editing forms."
+msgstr "Välj önskat uppförande på JavaScript i formulär för redigering av noder."
+
+#: conditional_fields.module:98
+msgid "Animation"
+msgstr "Animation"
+
+#: conditional_fields.module:99
+msgid "These settings have effect only if you select the 'Hide untriggered fields' option above."
+msgstr "Dessa inställningar påverkas enbart om du valt alternativet \"Göm ej utlösta fält\" ovan."
+
+#: conditional_fields.module:103;410
+msgid "Type"
+msgstr "Typ"
+
+#: conditional_fields.module:106
+msgid "No animation"
+msgstr "Ingen animation"
+
+#: conditional_fields.module:107
+msgid "Slide down"
+msgstr "Glid ned"
+
+#: conditional_fields.module:108
+msgid "Fade"
+msgstr "Tona"
+
+#: conditional_fields.module:113
+msgid "Speed"
+msgstr "Hastighet"
+
+#: conditional_fields.module:114
+msgid "The speed at which the animation is performed. Slow = 600ms; Normal = 400ms; Fast = 200ms."
+msgstr "Hastigheten som animationen genomförs i. Långsam = 600 ms, normal = 400 ms, snabb = 200 ms."
+
+#: conditional_fields.module:117
+msgid "Slow"
+msgstr "Långsam"
+
+#: conditional_fields.module:118
+msgid "Normal"
+msgstr "Normal"
+
+#: conditional_fields.module:119
+msgid "Fast"
+msgstr "Snabb"
+
+#: conditional_fields.module:124
+msgid "Orphaned controlled fields settings"
+msgstr "Inställningar för oanvända styrda fält"
+
+#: conditional_fields.module:125
+msgid "Configure the visibility/editability of controlled fields whose controlling fields are not visible/editable."
+msgstr "Konfigurera synligheten/redigeringsmöjligheten av styrda fält vars styrda fält inte är synliga/redigerbara."
+
+#: conditional_fields.module:129
+msgid "Hide"
+msgstr "Göm"
+
+#: conditional_fields.module:129
+msgid "Show only if triggered"
+msgstr "Visa enbart om utlöst"
+
+#: conditional_fields.module:129
+msgid "Show"
+msgstr "Visa"
+
+#: conditional_fields.module:132
+msgid "On node view"
+msgstr "Vid visning av nod"
+
+#: conditional_fields.module:138
+msgid "On node edit"
+msgstr "Vid redigering av nod"
+
+#: conditional_fields.module:144
+msgid "Reset untriggered fields to default values"
+msgstr "Återställ ej utlösta fält till dess förvalda värden"
+
+#: conditional_fields.module:145
+msgid "Select this box to reset untriggered controlled fields to their default values when saving a node."
+msgstr "Markera denna ruta för att återställa ej utlösta styrda fält till ders förvalda värden när en nod sparas."
+
+#: conditional_fields.module:150
+msgid "Administrators see all fields"
+msgstr "Administratörer ser alla fält"
+
+#: conditional_fields.module:151
+msgid "Select this box to let users with the <a href=\"@access-control-page\">administer conditional fields</a> permission to view all controlled fields of a node."
+msgstr "Markera denna ruta för att låta användare med rättigheten <a href=\"@access-control-page\">administrera villkorliga fält</a> att visa alla styrda fält för en nod."
+
+#: conditional_fields.module:156
+msgid "Delete"
+msgstr "Ta bort"
+
+#: conditional_fields.module:157
+msgid "Delete all conditional fields configured for this content type. This will delete the conditional fields settings, not the fields themselves."
+msgstr "Radera alla villkorliga fält konfigurerade för denna innehållstyp. Detta kommer att radera inställningarna för villkorliga fält, inte fälten i sig."
+
+#: conditional_fields.module:162
+msgid "Save"
+msgstr "Spara"
+
+#: conditional_fields.module:179
+msgid "Conditional fields options for this content type saved."
+msgstr "Alternativ för villkorliga fält för denna innehållstyp har sparats."
+
+#: conditional_fields.module:183
+msgid "All configured conditional fields for this content type have been deleted."
+msgstr "Alla konfigurerade villkorliga fält för denna innehållstyp har tagits bort."
+
+#: conditional_fields.module:280
+msgid "Change basic information"
+msgstr "Ändra grundläggande information"
+
+#: conditional_fields.module:391
+msgid "Below is a list of all fields and groups controlled by this field. If you want to make this field controllable, you have to clear the settings for each controlled field."
+msgstr "Nedan är en lista för alla fält och grupper som är styrda av detta fält. Om du vill göra detta fält styrbart så måste dy rensa inställningarna för varje styrt fält."
+
+#: conditional_fields.module:398
+msgid "group"
+msgstr "grupp"
+
+#: conditional_fields.module:399
+msgid "<a href=\"@edit-group\">edit</a>"
+msgstr "<a href=\"@edit-group\">redigera</a>"
+
+#: conditional_fields.module:405
+msgid "field"
+msgstr "fält"
+
+#: conditional_fields.module:406
+msgid "<a href=\"@edit-field\">edit</a>"
+msgstr "<a href=\"@edit-field\">redigera</a>"
+
+#: conditional_fields.module:410
+msgid "Name"
+msgstr "Namn"
+
+#: conditional_fields.module:410
+msgid "Trigger values"
+msgstr "Utlösande värden"
+
+#: conditional_fields.module:410
+msgid "Options"
+msgstr "Alternativ"
+
+#: conditional_fields.module:417
+msgid "Choose which allowed values of available controlling fields will trigger this @context, making it visible both in node editing and view. If no value is set, the @context will be always visible. Only fields and groups within the same group as this one, and with <em>Allowed values</em> set, are available for control."
+msgstr "Välj vilka tillåtna värden av de tillgängliga styrda fälten som kommer att lösa ut detta @context vilket gör det synligt både i redigering och visning. Om inget värde är angivet så kommer @context alltid att synas. Enbart fält och grupper inom samma grupp som denna och med <em>Tillåtna värden</em> angivet är tillgängligt för styrning."
+
+#: conditional_fields.module:425
+msgid "- Not controlling -"
+msgstr "- Styr ej - "
+
+#: conditional_fields.module:440
+msgid "<a href=\"@edit-field\">Edit the allowed values</a> of %field-name."
+msgstr "<a href=\"@edit-field\">Redigera de tillåtna värdena</a> för %field-name."
+
+#: conditional_fields.module:459
+msgid "Conditional fields settings"
+msgstr "Inställningar för villkorliga fält"
+
+#: conditional_fields.module:508
+msgid "You cannot select more than one controlling field."
+msgstr "Du kan inte välja mer än ett styrande fält."
+
+#: conditional_fields.module:513
+msgid "You cannot select 'Not controlling' and other values at the same time."
+msgstr "Du kan inte välja \"Styr ej\" och andra värden på samma gång."
+
+#: conditional_fields.module:520
+msgid "If you changed or removed any allowed value from the field, you might have to review its controlled fields and fieldgroups settings."
+msgstr "Om du ändrar eller tar bort ett värde från ett fält så måste du kanske granska inställningarna för dess styrda fält och fältgrupper."
+
+#: conditional_fields.module:750;759;794
+msgid "!name field is required."
+msgstr "Fältet !name är obligatoriskt."
+
+#: conditional_fields.module:915
+msgid "You can't change the parent group of a conditional field."
+msgstr "Du kan inte ändra överliggande grupp för ett villkorligt fält."
+
+#: conditional_fields.module:1167
+msgid "<div class=\"description\">Controlled by <em>@controlling</em></div>"
+msgstr "<div class=\"description\">Styrt av <em>@controlling</em></div>"
+
+#: conditional_fields.module:1170
+msgid "<div class=\"description\">Controlling <em>@controlled</em></div>"
+msgstr "<div class=\"description\">Styr <em>@controlled</em></div>"
+
+#: conditional_fields.module:71
+msgid "administer conditional fields"
+msgstr "administrera villkorliga fält"
+
+#: conditional_fields.module:55
+msgid "Conditional fields"
+msgstr "Villkorliga fält"
+
+#: conditional_fields.info:0
+msgid "Conditional Fields"
+msgstr "Villkorliga fält"
+
+#: conditional_fields.info:0
+msgid "Content fields and groups visibility based on the values of user defined 'trigger' fields."
+msgstr "Synlighet för innehållsfält och grupper baserat på värdet för utlösande användardefinierade fält."
+
+#: conditional_fields.info:0
+msgid "CCK"
+msgstr "CCK"
+

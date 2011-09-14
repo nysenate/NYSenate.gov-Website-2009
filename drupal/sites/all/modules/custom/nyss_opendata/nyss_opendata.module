@@ -1,0 +1,628 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS OpenData
+ *  OpenData Content and Form Processing
+ *
+ */
+function nyss_opendata_menu() {
+  $items = array();
+  $items['opendata'] = array(
+    'title' => 'Open Data Search Form',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_opendata_search_form'),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ *  Implements hook_nodeapi().
+ *  We use this to do all the special sauce for the Opendata page
+ * 
+ *  Also occurring:
+ *    - A check to automatically associate tag nodes associated with committee with the issue of the same name, if no issue has been selected  
+ * 
+ */
+function nyss_opendata_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  $flag = flag_get_flag('opendata') or die('no "opendata" flag defined');
+  if ($flag->is_flagged($node->nid)) {
+    switch($op) {
+      case 'presave':
+        // Check now if an Issue has been associated
+        if (count(taxonomy_node_get_terms_by_vocabulary($node, 1)) == 0) {
+          if ($node->field_committee[0]['nid']) {
+            $committee = node_load($node->field_committee[0]['nid']);
+            if (count(taxonomy_node_get_terms_by_vocabulary($committee, 1)) == 0) {
+              $node->taxonomy[117] = taxonomy_get_term(117); // assign miscellaneous
+            }
+            else if (is_array($node->taxonomy) && is_array(taxonomy_node_get_terms_by_vocabulary($committee, 1))) {
+              $node->taxonomy = $node->taxonomy + taxonomy_node_get_terms_by_vocabulary($committee, 1);
+            }
+          }
+        }
+        break;
+      case 'insert':
+      case 'update':
+        // Start handling for Opendata stuff
+        if (!$node->field_creation[0]['value']) {
+          $node->field_creation[0]['value'] = $node->created;
+        }
+        break;
+    }
+  }
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_opendata_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items['nyss_opendata_filetypes'] = array(
+    'arguments' => array(
+      'vid' => NULL,
+    ),
+  );
+  $items['nyss_opendata_nodes'] = array(
+    'arguments' => array(
+      'form' => NULL,
+      'header' => NULL,
+    ),
+  );
+  return $items;
+}
+
+/**
+ * Opendata page gets generated here, calling the form function
+ */
+function nyss_opendata_search_form() {
+  $form = nyss_opendata_filter_form();
+  $form['nodelist']['#type'] = 'markup'; 
+  $form['nodelist']['#value'] = nyss_opendata_nodelist();
+  return $form;
+}
+
+/**
+ * Opendata form
+ */
+function nyss_opendata_filter_form() {
+  $session = &$_SESSION['nyss_opendata_filter'];
+  $session = is_array($session) ? $session : array();
+    
+  // Set up introductory information
+  $form['intro'] = array(
+    '#value' => '<div class="opendata-intro">'. t('The documents, facts, figures, and reports that affect the processes, or are a result of the processes, of the New York Senate.') .'</div>',
+  );
+
+  // Set up categories into variable $cats
+  $cats = array();
+  $vidtree = taxonomy_get_tree(1);
+  foreach($vidtree as $vid) {
+    $cats[$vid->tid] = $vid->name;
+  }
+  asort($cats);
+  $cats = array('all'=>'All Categories') + $cats;
+  // Set up committees into variable $comms
+  $comms = array();
+  $query = 'SELECT title, nid FROM {node} WHERE type = "committee" AND status = 1 GROUP BY nid ORDER BY title ASC';
+  $result = db_query($query);
+  while ($item = db_fetch_object($result)) {
+    $comms[$item->nid] = $item->title;
+  }  
+  
+  if (!$session['cats']) {
+    $session['cats'] = array();
+  }
+  if (!$session['comms']) {
+    $session['comms'] = array();
+  }
+  if (!$session['datetype']) {
+    $session['datetype'] = 'created';
+  }
+  if (!$session['filetypes']) {
+    $session['filetypes'] = array();
+  }
+  
+  // Build the form
+  $form['keywords'] = array(
+    '#prefix' => '<div class="left">',
+    '#type' => 'textfield',
+    '#title' => t('Keywords'),
+    '#size' => 35,
+    '#default_value' => $session['keywords'],
+  );
+  // Set up options of filetypes
+  $filetypes = array(
+    'csv' => 'CSV',
+    'txt' => 'TXT',
+    'pdf' => 'PDF',
+    'xls' => 'XLS',
+    'doc' => 'DOC',
+  );
+  $form['filetypes'] = array(
+    '#type' => 'checkboxes',
+    '#title' => 'Select file types',
+    '#default_value' => $session['filetypes'],
+    '#options' => $filetypes,
+    '#prefix' => '<div id="edit-filetypes-wrapper">',
+    '#suffix' => '</div>',
+    '#description' => t('Search only for documents with these filetypes.'),
+  );
+  $form['cats'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Categories'),
+    '#options' => $cats,
+    '#default_value' => $session['cats'],
+    '#prefix' => '<div id="catboxes">',
+    '#suffix' => '</div></div>',
+  );
+  $form['datetype'] = array(
+    '#prefix' => '<div class="right"><div class="edit-datetype-wrapper">',
+    '#type' => 'radios',
+    '#default_value' => $session['datetype'],
+    '#title' => t('Select date range'),
+    '#options' => array(
+      'nyss.creation' => t('Creation Date'),
+      'n.created' => t('Post Date')
+      ),
+    '#suffix' => '</div>',
+  );
+  $form['datestart'] = array(
+    '#type' => 'date_popup',
+    '#default_value' => $session['datestart'],    
+    '#date_format' => 'm/d/Y',
+    '#title' => t('From'),
+    '#description' => '',
+  );
+  $form['dateend'] = array(
+    '#type' => 'date_popup',
+    '#default_value' => $session['dateend'],
+    '#date_format' => 'm/d/Y',
+    '#title' => t('To'),
+  );
+  
+  $form['comms'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Committees'),
+    '#options' => $comms,
+    '#default_value' => $session['comms'],
+    '#prefix' => '<div id="commsboxes">',
+    '#suffix' => '</div></div>',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+    '#prefix' => '<div id="edit-submit-wrapper">',
+  );
+  $form['#submit'][] = 'nyss_opendata_filter_form_submit';
+  $form['reset'] = array(
+    '#type' => 'submit',
+    '#value' => 'Reset',
+    '#suffix' => '</div></div>',
+  );
+  $form['#action'] = url('opendata', array('fragment' => 'opendata-results'));
+  return $form;
+}
+
+function nyss_opendata_filter_form_submit($form, &$form_state) {
+  if($form_state['values']['op'] == 'Reset') {
+    unset($_SESSION['nyss_opendata_filter']);
+  }
+  else {
+    $_SESSION['nyss_opendata_filter'] = $form_state['values'];
+  }
+}
+
+/**
+ * Form builder: Builds the node administration overview.
+ */
+function nyss_opendata_nodelist() {  
+  // FILTER QUERY STARTS HERE
+  $output = '';
+  $query = '';  
+  $select = array();
+  $join = array();
+  $where = array();
+  
+  $select[] = ' nyss.*, n.created AS posted';
+  $join[]   = ' INNER JOIN {nyss_node} AS nyss ON n.nid = nyss.nid';
+   
+  $where[] = ' n.status = 1';
+  $where[] = ' n.type NOT IN ("committee", "page", "district", "senator")';
+
+  // Set up categories, and deal with 'all' being checked.
+  $cats = array();
+  if ($_SESSION['nyss_opendata_filter']['cats']) {
+    if ($_SESSION['nyss_opendata_filter']['cats']['all'] == '0') {
+      foreach($_SESSION['nyss_opendata_filter']['cats'] as $cat) {
+        if ($cat != '0') {
+          $cats[] = $cat;
+        }
+      }
+    }
+    else {
+      $cats = array_keys($_SESSION['nyss_opendata_filter']['cats']);
+      unset($cats[0]);
+    }
+  }
+  // Include categories if there are any
+  if (count($cats) > 0) {
+    $where['nyss_cat'] = ' nyss.cattid in (' . implode(',',$cats) . ')';
+  }
+
+  // Set up date range
+  if ($_SESSION['nyss_opendata_filter']['datetype'] == 'Posted') {
+    $select['d'] = 'n.changed AS date';
+  }
+  else {
+    $select['d'] = 'nyss.creation AS date';
+  }
+  if ($_SESSION['nyss_opendata_filter']['datestart'] || $_SESSION['nyss_opendata_filter']['dateend']) {
+    if ($_SESSION['nyss_opendata_filter']['datestart']) {
+      $where['nyss_ds'] = ' '. $_SESSION['nyss_opendata_filter']['datetype'] . ' >= ' . strtotime($_SESSION['nyss_opendata_filter']['datestart']);
+    }
+    if ($_SESSION['nyss_opendata_filter']['dateend']) {
+      // I'm adding 86400 seconds to include "through" the End Date.
+      $where['nyss_de'] = ' '. $_SESSION['nyss_opendata_filter']['datetype'] . ' <= ' . (strtotime($_SESSION['nyss_opendata_filter']['dateend']) + 86400);
+    } 
+  }
+  
+  // Set up filetype section
+  $filetypes = array();
+  foreach($_SESSION['nyss_opendata_filter']['filetypes'] as $type) {
+    if ($type != '0') {
+      $filetypes[] = $type;
+    }
+  }
+  foreach ($filetypes as $type) { 
+    $where_f['nyss_f_' . $type] = ' nyss.'. $type.' > 0';
+  }
+  if(count($where_f) > 0) {
+    $where['filetypes'] = implode(' OR', $where_f); 
+  }
+
+  // Set up committees
+  $comms = array();
+  if ($_SESSION['nyss_opendata_filter']['comms']) {
+    foreach($_SESSION['nyss_opendata_filter']['comms'] as $comm) {
+      if ($comm != '0') {
+        $comms[] = $comm;
+      }
+    }
+  }
+  // Include committees  if there are any
+  if (count($comms) > 0) {
+    $where['nyss_comm'] = ' nyss.commnid in (' . implode(',',$comms) . ')';
+  }
+
+  // FILTER QUERY ENDS HERE
+
+  $output  = '<div id="opendata-results" class="block">';
+  $output .= '<h2 class="title block_title">Open Data Results</h2>';
+  
+  $pagerlimit = 20;
+    
+  // DO A FULLTEXT SEARCH IF KEYWORDS HAS DATA
+  if ($_SESSION['nyss_opendata_filter']['keywords']) {
+    // Set up the table header for sorting
+    $header = array(
+      array('data' => t('Created'), 'sort' => 'desc', 'field' => 'creation', 'id' => 'od-created'),
+      array('data' => t('Posted'), 'sort' => 'desc', 'field' => 'posted', 'id' => 'od-posted'),
+      array('data' => t('Title'), 'field' => 'n.title', 'id' => 'od-title'),
+      array('data' => t('Category'), 'field' => 'nyss.category', 'id' => 'od-cat'),
+      array('data' => t('Committee'), 'field' => 'committee', 'id' => 'od-comm'),
+      array('data' => t('Senator'), 'field' => 'senlastname', 'id' => 'od-author'),
+      array('data' => t('CSV'), 'field' => 'csv', 'id' => 'od-csv'),
+      array('data' => t('TXT'), 'field' => 'txt', 'id' => 'od-txt'),
+      array('data' => t('PDF'), 'field' => 'pdf', 'id' => 'od-pdf'),
+      array('data' => t('XLS'), 'field' => 'xls', 'id' => 'od-xls'),
+      array('data' => t('DOC'), 'field' => 'doc', 'id' => 'od-doc'),
+    );
+    if (isset($form['language'])) {
+      $header[] = t('Language');
+    }
+    
+    $find = do_search($_SESSION['nyss_opendata_filter']['keywords'], 'node', ' INNER JOIN {node} AS n ON n.nid = i.sid '. implode('', $join), implode(' AND', $where), array(), 'n.title, i.relevance AS score '.', '.implode(',', $select), '', array(), tablesort_sql($header), 20);
+    foreach ($find as $node) {
+      $options = empty($item->language) ? array() : array('language' => $languages[$item->language]);
+      $form['created'][$node->nid] = array('#value' => date('m/d/y', $node->creation));
+      $form['posted'][$node->nid] = array('#value' => date('m/d/y', $node->posted));
+      $form['title'][$node->nid] = array('#value' => l($node->title, 'node/'. $node->nid, $options) .' '. theme('mark', node_mark($node->nid, $node->changed)));
+      $form['cat'][$node->nid] =  array('#value' => l($node->category, 'taxonomy/term/'. $node->cattid));
+      $form['committee'][$node->nid] = array('#value' => l($node->committee, 'node/'. $node->commnid));
+      $form['username'][$node->nid] = array('#value' => l($node->senator, 'node/'. $node->sennid));
+      $form['csv'][$node->nid] = array('#value' => $node->csv ? l('X','node/'.$node->nid) : '');
+      $form['txt'][$node->nid] = array('#value' => $node->txt ? l('X','node/'.$node->nid) : '');
+      $form['pdf'][$node->nid] = array('#value' => $node->pdf ? l('X','node/'.$node->nid) : '');
+      $form['xls'][$node->nid] = array('#value' => $node->xls ? l('X','node/'.$node->nid) : '');
+      $form['doc'][$node->nid] = array('#value' => $node->doc ? l('X','node/'.$node->nid) : '');
+          
+    }
+    $form['nodes'] = array('#type' => 'checkboxes', '#options' => $nodes);
+    $form['pager2'] = array('#value' => theme('pager', NULL, $pagerlimit, 0));
+    $output .= theme_nyss_opendata_nodes($form, $header);   
+  }  
+  // NO FULLTEXT SEARCH OCCURRED
+  else {
+    $select[] = 'n.title, n.nid AS nodenid, n.type';
+  
+    // Set up the table header for sorting
+    $header = array(
+      array('data' => t('Created'), 'sort' => 'desc', 'field' => 'creation', 'id' => 'od-created'),
+      array('data' => t('Posted'), 'sort' => 'desc', 'field' => 'posted', 'id' => 'od-posted'),
+      array('data' => t('Title'), 'field' => 'n.title', 'id' => 'od-title'),
+      array('data' => t('Category'), 'field' => 'nyss.category', 'id' => 'od-cat'),
+      array('data' => t('Committee'), 'field' => 'committee', 'id' => 'od-comm'),
+      array('data' => t('Senator'), 'field' => 'senlastname', 'id' => 'od-author'),
+      array('data' => t('CSV'), 'field' => 'csv', 'id' => 'od-csv'),
+      array('data' => t('TXT'), 'field' => 'txt', 'id' => 'od-txt'),
+      array('data' => t('PDF'), 'field' => 'pdf', 'id' => 'od-pdf'),
+      array('data' => t('XLS'), 'field' => 'xls', 'id' => 'od-xls'),
+      array('data' => t('DOC'), 'field' => 'doc', 'id' => 'od-doc'),
+    );
+    if (isset($form['language'])) {
+      $header[] = t('Language');
+    }
+          
+    // Build the query
+    $query  = 'SELECT '. implode(',', $select) .' FROM {node} AS n';
+    $query .= implode('', $join);
+    if ($where) {
+      $query .= ' WHERE';
+      $query .= implode(' AND', $where);
+    }
+    $query .= ' GROUP BY nodenid';
+    $query .= tablesort_sql($header);   
+        
+    $querycount  = 'SELECT COUNT(*) FROM ('. $query .') t';
+   
+    $result = pager_query($query, $pagerlimit, 0, $querycount);
+    $resultsoutput = '';
+    
+    $form['pager'] = array('#value' => theme('pager', NULL, $pagerlimit, 0), '#weight' => -20);
+    
+    while ($node = db_fetch_object($result)) {
+      $nodes[$node->nid] = '';
+      
+      $options = empty($node->language) ? array() : array('language' => $languages[$node->language]);
+      $form['created'][$node->nid] = array('#value' => date('m/d/y', $node->creation));
+      $form['posted'][$node->nid] = array('#value' => date('m/d/y', $node->posted));
+      $form['title'][$node->nid] = array('#value' => l($node->title, 'node/'. $node->nid, $options) .' '. theme('mark', node_mark($node->nid, $node->changed)));
+      $form['cat'][$node->nid] =  array('#value' => l($node->category, 'taxonomy/term/'. $node->cattid));
+      $form['committee'][$node->nid] = array('#value' => l($node->committee, 'node/'. $node->commnid));
+      $form['username'][$node->nid] = array('#value' => l($node->senator, 'node/'. $node->sennid));
+      $form['csv'][$node->nid] = array('#value' => $node->csv ? l('X','node/'.$node->nid) : '');
+      $form['txt'][$node->nid] = array('#value' => $node->txt ? l('X','node/'.$node->nid) : '');
+      $form['pdf'][$node->nid] = array('#value' => $node->pdf ? l('X','node/'.$node->nid) : '');
+      $form['xls'][$node->nid] = array('#value' => $node->xls ? l('X','node/'.$node->nid) : '');
+      $form['doc'][$node->nid] = array('#value' => $node->doc ? l('X','node/'.$node->nid) : '');
+          
+      if ($multilanguage) {
+        $form['language'][$node->nid] = array('#value' => empty($node->language) ? t('Language neutral') : t($languages[$node->language]->name));
+      }
+    }
+    $form['nodes'] = array('#type' => 'checkboxes', '#options' => $nodes);
+    $form['pager2'] = array('#value' => theme('pager', NULL, $pagerlimit, 0));
+    $output .= theme_nyss_opendata_nodes($form, $header);
+  }
+  
+  $output .= '</div>';
+
+  return $output;
+}
+
+/**
+ * Theme list of resultant nodes.
+ *
+ * @ingroup themeable
+ */
+function theme_nyss_opendata_nodes($form, $header = '') {
+  // If there are rows in this form, then $form['title'] contains a list of
+  // the title form elements.
+  $has_posts = isset($form['title']) && is_array($form['title']);
+  $select_header = $has_posts ? theme('table_select_header_cell') : '';
+  
+  $output = '';
+
+  global $pager_total_items;
+  global $pager_page_array;
+  
+  if($pager_total_items[0] > 0) {
+    $start = $pager_page_array[0] * 20 + 1;
+    $end = $start + 19;
+    if ($end > $pager_total_items[0]) {
+      $end = $pager_total_items[0];
+    }
+    $output .= '<div class="opendata-totalitems">' . t('(displaying @start through @end of @count total @items)', 
+      array(
+        '@start' => $start,
+        '@end' => $end,
+        '@count' => $pager_total_items[0],
+        '@items' => format_plural($pager_total_items[0], 'item', 'items'),
+      )
+    ) . '</div>';
+  }
+  else {
+    $output .= '<div class="opendata-totalitems">' . t('(no results found)') . '</div>';
+  }
+  
+  // Theme pager at the top
+  if ($form['pager']['#value']) {
+    $output .= drupal_render($form['pager']);
+  }
+  $output .= '<div class="opendata-trouble">'. t('Having trouble finding what you\'re looking for? ' . l(t('Check Open Legislation'), 'legislation') . '. ').'</div>';
+  $output .= drupal_render($form['options']);
+  if ($has_posts) {
+    foreach (element_children($form['title']) as $key) {
+      $row = array();
+      $row[] = drupal_render($form['created'][$key]);
+      $row[] = drupal_render($form['posted'][$key]);
+      $row[] = drupal_render($form['title'][$key]);
+      $row[] = drupal_render($form['cat'][$key]);
+      $row[] = drupal_render($form['committee'][$key]);
+      $row[] = drupal_render($form['username'][$key]);
+      $row[] = array('class' => 'od-xmark', 'data' => drupal_render($form['csv'][$key]));
+      $row[] = array('class' => 'od-xmark', 'data' => drupal_render($form['txt'][$key]));
+      $row[] = array('class' => 'od-xmark', 'data' => drupal_render($form['pdf'][$key]));
+      $row[] = array('class' => 'od-xmark', 'data' => drupal_render($form['xls'][$key]));
+      $row[] = array('class' => 'od-xmark', 'data' => drupal_render($form['doc'][$key]));
+      $rows[] = $row;
+    }
+  }
+  else {
+    $rows[] = array(array('data' => t('No posts available.'), 'colspan' => count(element_children($form['title']))));
+  }
+  $output .= theme('table', $header, $rows);
+  
+  // Theme pager at the bottom
+  if ($form['pager2']['#value']) {
+    $output .= drupal_render($form['pager2']);
+  }
+
+  $output .= drupal_render($form);
+
+  return $output;
+}
+
+/**
+ * Get the standard extension for a given mime filetype.
+ *
+ *  @param $file
+ *    A file array
+ *  @return
+ *    A string indicating the filetype: XLS, HTML, TXT, CSS, RTF, CSV, XML, PDF, DOC, DOCX, PPT, AVI, BMP, JPEG, MPEG or MOV.
+ */
+function nyss_opendata_get_extension($file) {
+  static $datatypes = array(
+    'application/excel' => 'XLS',
+    'application/x-excel' => 'XLS',
+    'application/x-msexcel' => 'XLS',
+    'application/vnd.ms-excel' => 'XLS',
+    'text/html' => 'HTML',
+    'text/plain' => 'TXT',
+    'text/css' => 'CSS',
+    'text/richtext' => 'RTF',
+    'text/csv' => 'CSV',
+    'text/xml' => 'XML',
+    'application/xml' => 'XML',
+    'application/pdf' => 'PDF',
+    'application/msword' => 'DOC',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'DOCX',
+    'application/mspowerpoint' => 'PPT',
+    'application/powerpoint' => 'PPT',
+    'application/vnd.ms-powerpoint' => 'PPT',
+    'application/x-mspowerpoint' => 'PPT',
+    'application/x-troff-msvideo' => 'AVI',
+    'video/avi' => 'AVI',
+    'video/msvideo' => 'AVI',
+    'video/x-msvideo' => 'AVI',
+    'image/bmp' => 'BMP',
+    'image/x-windows-bmp' => 'BMP',
+    'image/jpeg' => 'JPEG',
+    'image/pjpeg' => 'JPEG',
+    'video/mpeg' => 'MPEG',
+    'video/quicktime' => 'MOV',
+  );
+  if (isset($datatypes[$file['filemime']])) {
+    $extension = $datatypes[$file['filemime']];
+  }
+  else {
+    $extension = array_pop( explode('.', $file['filename']) );
+  }
+  return strtoupper($extension);
+}
+
+/**
+ * List the filetypes attached to a node.
+ *
+ *  @param $vid
+ *    A node's version id
+ *  @return
+ *    A string listing all of the filetypes attached to that version of the node.
+ */
+function theme_nyss_opendata_filetypes($vid) {
+  $result = db_query("SELECT field_pdf_fid FROM {content_field_pdf} WHERE vid = %d", $vid);
+  $extensions = array();
+  while ($row = db_fetch_array($result)) {
+    $file = field_file_load($row['field_pdf_fid']);
+    $extension = nyss_opendata_get_extension($file);
+    if ($extension) {
+      $extensions[$extension] = $extension;
+    }
+  }
+  return '<div class="opendata-filetypes">' . implode(', ', array_keys($extensions)) . '</div>';
+}
+
+/**
+ * List the filetypes attached to an array of files.
+ *
+ *  @param $files
+ *    An array of files
+ *  @return
+ *    A string listing all of the filetypes attached to that version of the node.
+ */
+function nyss_opendata_filetypes($files) {
+  $extensions = array();
+  foreach ($files as $file) {
+    $extension = nyss_opendata_get_extension($file);
+    if ($extension) {
+      $extensions[$extension] = $extension;
+    }
+  }
+  return implode(', ', array_keys($extensions));
+}
+
+/**
+ *  Implements hook_form_views_exposed_form_alter().
+ */
+function nyss_opendata_form_views_exposed_form_alter(&$form, $form_state) {
+  if ($form['#id'] == 'views-exposed-form-flag-opendata-page-1') {
+    // Add a checkbox group to select desired filetypes
+    $filetypes = array(
+      'csv' => 'CSV',
+      'txt' => 'TXT',
+      'pdf' => 'PDF',
+      'xls' => 'XLS',
+      'doc' => 'DOC',
+    );
+    $form['filetypes'] = array(
+      '#type' => 'checkboxes',
+      '#options' => $filetypes,
+      '#description' => t('Search only for documents with these filetypes.'),
+    );
+    $form['#info']['filter-filetypes'] = array(
+      'operator' => 'filetypes',
+      'value' => 'filetypes',
+      'label' => 'Filetypes',
+    );
+    $form['#info'] = array(
+      'filter-keys' => $form['#info']['filter-keys'],
+      'filter-filetypes' => $form['#info']['filter-filetypes'],
+      'filter-term_node_tid_depth' => $form['#info']['filter-term_node_tid_depth'],
+      'filter-date_filter' => $form['#info']['filter-date_filter'],
+      'filter-date_filter_1' => $form['#info']['filter-date_filter_1'],
+      'filter-field_committee_nid' => $form['#info']['filter-field_committee_nid'],
+    );
+    $form['submit']['#value'] = t('Search');
+  }
+}
+
+/**
+ *  Implements hook_views_query_alter().
+ */
+function nyss_opendata_views_query_alter(&$view, &$query) {
+  if ($view->name == 'flag_opendata') {
+    if (isset($view->exposed_input['filetypes'])) {
+      $filetype_wheres = array();
+      foreach($view->exposed_input['filetypes'] as $type) {
+        $filetype_wheres[] = " UPPER(node_data_field_filetypes.field_filetypes_value) LIKE UPPER('%%$type%%')";
+      }
+      $filetype_where = implode(' OR', $filetype_wheres);
+      $query->add_field('node_data_field_filetypes', 'field_filetypes_value', 'node_data_field_filetypes');
+      $query->add_where(0, $filetype_where);
+    }
+  }
+}

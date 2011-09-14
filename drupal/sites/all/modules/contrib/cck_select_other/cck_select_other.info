@@ -1,0 +1,8 @@
+name = Select Other Widget
+description = Adds a new select widget for CCK text (and related field types) that allows users to input either with a select list or a text input box.
+package = CCK
+dependencies[] = content
+dependencies[] = optionwidgets
+core = 6.x
+
+//$Id: cck_select_other.info,v 1.1 2010/02/28 20:25:12 mradcliffe Exp $

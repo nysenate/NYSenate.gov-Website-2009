@@ -1,0 +1,1064 @@
+<?php
+// $Id: gigya.module,v 1.1.2.5 2009/08/17 21:02:55 brauerranch Exp $
+/**
+ * @file
+ * This module provides a link to Gigya profiles from a users' drupal account.
+ *
+ * Development of this module is sponsered by gigya, Inc and implimented by Acquia.
+ *
+ * @version 1.0
+ * @package gigya
+ */
+/**
+ * Drupal hooks
+ */
+/**
+ * Implementation of hook_help().
+ */
+function gigya_help() {
+  switch ($path) {
+    case 'admin/settings/gigya':
+      return '<p>'. t('Server-wide setup of the gigya socialize module.') .'</p>';
+  }
+}
+/**
+ * Implementation of hook_menu().
+ */
+function gigya_menu() {
+  $items['admin/settings/gigya'] = array(
+    'type' => MENU_NORMAL_ITEM,
+    'title' => t('Gigya'),
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gigya_admin_form'),
+    'description' => t('Gigya Configuration.'),
+    'file' => 'gigya.admin.inc',
+  );
+  $items['user/%user/friends'] = array(
+    'title' => 'My Friends',
+    'page callback' => 'gigya_get_friends',
+    'type' => MENU_LOCAL_TASK,
+    'page arguments' => array(1, 'user'),
+    'access callback' => 'user_edit_access',
+    'access arguments' => array(1),
+    'file' => 'gigya.pages.inc',
+  );
+  $items['user/%user/friends/%'] = array(
+    'title' => 'My Friends',
+    'page callback' => 'gigya_get_friends',
+    'type' => MENU_LOCAL_TASK,
+    'page arguments' => array(1, 'user', 3),
+    'access callback' => 'user_edit_access',
+    'access arguments' => array(1),
+    'file' => 'gigya.pages.inc',
+  );
+  $items['user/%user/gigyainfo'] = array(
+    'title' => 'Gigya UserInfo (debug)',
+    'page callback' => 'gigya_get_user',
+    'type' => MENU_LOCAL_TASK,
+    'page arguments' => array(1, 'user'),
+    'access callback' => 'gigya_menu_access_user_debug',
+    'access arguments' => array(),
+    'file' => 'gigya.pages.inc',
+  );
+  $items['user/%user_category/edit/gigya'] = array(
+    'title' => 'Social Networks',
+    'page callback' => 'gigya_connect',
+    'page arguments' => array(1, 'user'),
+    'access callback' => 'user_edit_access',
+    'access arguments' => array(1),
+    'load arguments' => array('%map', '%index'),
+    'weight' => 10,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'gigya.pages.inc',
+  );
+  $items['socialize-login'] = array(
+    'page callback' => 'gigya_login_ajax',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    'file' => 'gigya.pages.inc',
+  );
+  $items['socialize-logout'] = array(
+    'page callback' => 'gigya_logout_ajax',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    'file' => 'gigya.pages.inc',
+  );
+  $items['user/%user/edit/gigya/unlink'] = array(
+    'title' => 'Unlink',
+    'description' => 'Unlink a network from a user.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gigya_unlink'),
+    'access callback' => 'user_edit_access',
+    'access arguments' => array(1),
+    'type' => MENU_CALLBACK,
+    'file' => 'gigya.pages.inc',
+  );
+  $items['gigya/notifyfriends/%node'] = array(
+    'page callback' => 'gigya_notify_friends',
+    'page arguments' => array(2, 'node'),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    'file' => 'gigya.pages.inc',
+  );
+  $items['gigya/setStatus/%/%'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gigya_setStatus_form', 2, 3),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    'file' => 'gigya.pages.inc',
+  );
+  return $items;
+}
+
+function gigya_menu_access_user_debug() {
+  global $user;
+  if (arg(1) == $user->uid)
+    return user_access('access devel information');
+}
+
+/**
+ *  Actions and triggers
+ */
+function gigya_action_info() {
+  $info['gigya_newsfeed_action'] = array(
+    'type' => 'system',
+    'description' => t('Post to Gigya Socialize News Feed'),
+    'configurable' => TRUE,
+    'hooks' => array(
+      'any' => TRUE,
+    ),
+  );
+  $info['gigya_status_popup_action'] = array(
+    'type' => 'system',
+    'description' => t('Update Social Networking Status with Gigya Socialize'),
+    'configurable' => TRUE,
+    'hooks' => array(
+      'any' => TRUE,
+    ),
+  );
+  return $info;
+}
+
+function gigya_newsfeed_action($object, $context) {
+  global $base_path;
+  //notification actions here, we need to figure out a way to dynamically update a status
+  //probably by showing a field, or making system configurable actions with canned action text
+  module_load_include('inc', 'gigya');
+  if ($capabilities = _gigya_getUserCapabilities($_SESSION['gigya_uid'])) {
+      if (!array_search('Actions', $capabilities)) {
+        return FALSE;
+      }
+  }
+  $xml_params = array();
+  $xml_params['action'] = $context['default_message'];
+  $xml_params['template'] = $context['template'];
+  $hook = $context['hook'];
+  switch ($hook) {
+  case 'comment':
+    $context['node'] = node_load($context[$hook]->nid);
+    if (array_search($context['node']->type, $context['newsfeed_content_types'])) {
+      $xml_params['path'] = $content['node']->path ? $content['node']->path : 'node/'. $context['node']->nid;
+      $xml_params['title'] = $context['node']->title;
+    }
+    else {
+      return;
+    }
+    break;
+  case 'user':
+    $xml_params['title'] = $context['account']->name;
+    $xml_params['path'] = 'user/'. $context['account']->uid;
+    break;
+  case 'nodeapi':
+    if (array_search($context['node']->type, $context['newsfeed_content_types'])) {
+      $xml_params['title'] = $context['node']->title;
+      $xml_params['path'] = $content['node']->path ? $content['node']->path : 'node/'.  $context['node']->nid;
+    }
+    else {
+      return;
+    }
+    break;
+  }
+  if (!empty($xml_params['title']) &&
+    !empty($xml_params['template']) &&
+    !empty($xml_params['action']) &&
+    !empty($xml_params['path']))
+    gigya_publish_user_action($_SESSION['gigya_uid'], $xml_params);
+}
+
+function gigya_status_popup_action($object, $context) {
+  global $user;
+  module_load_include('inc', 'gigya');
+
+  if ($user->setStatus_popup_hide)
+    return FALSE;
+  if ($capabilities = _gigya_getUserCapabilities($_SESSION['gigya_uid'])) {
+      if (!array_search('Status', $capabilities)) {
+        return FALSE;
+      }
+  }
+
+  $hook = $context['hook'];
+  if ($hook == 'comment') {
+    $context['node'] = node_load($context[$hook]->nid);
+  }
+  if ($hook == 'user') {
+    $_SESSION['setStatus_popup'] = TRUE;
+    $_SESSION['setStatus_uid'] = $context['account']->uid;
+    return;
+  }
+
+  if (array_search($context['node']->type, $context['status_popup_content_types'])) {
+    $_SESSION['setStatus_popup'] = TRUE;
+    $_SESSION['setStatus_nid'] = $context['node']->nid;
+  }
+}
+
+function gigya_newsfeed_action_form($context) {
+  $form['template'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Action Template'),
+    '#description' => t('Configure the template to be used for newsfeed updates. This usually should be the default setting. !wiki', array('!wiki' => l('Consult the Socialize documentation for more information', 'http://wiki.gigya.com/030_Gigya_Socialize_API_2.0/030_API_reference/010_Client_API_%28JavaScript%29/Social_service/socialize.publishUserAction'))),
+    '#default_value' => isset($context['template']) ? $context['template'] : '{actor} {action} {thing}',
+    '#required' => TRUE,
+  );
+  $form['default_message'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default Action (Verb) Message'),
+    '#description' => t('Configure the default message for this newsfeed action. Eg: "is viewing" or "has updated"'),
+    '#default_value' => isset($context['default_message']) ? $context['default_message'] : '',
+    '#required' => TRUE,
+  );
+  $form['newsfeed_content_types'] = array(
+    '#type' => 'select',
+    '#title' => t('Restrict newsfeed items to the following content types'),
+    '#options' => node_get_types('names'),
+    '#multiple' => TRUE,
+    '#default_value' => isset($context['newsfeed_content_types']) ? $context['newsfeed_content_types'] : '',
+  );
+  return $form;
+}
+
+function gigya_newsfeed_action_submit($form, $form_state) {
+  return array(
+    'template' => $form_state['values']['template'],
+    'default_message' => $form_state['values']['default_message'],
+    'newsfeed_content_types' => $form_state['values']['newsfeed_content_types'],
+  );
+}
+
+/**
+ * Form for configurable Drupal action for newsfeeds and status popups.
+ */
+function gigya_status_popup_action_form($context) {
+  $form['status_popup_content_types'] = array(
+    '#type' => 'select',
+    '#title' => t('Restrict status popup items to the following content types'),
+    '#options' => node_get_types('names'),
+    '#multiple' => TRUE,
+    '#default_value' => isset($context['status_popup_content_types']) ? $context['status_popup_content_types'] : '',
+  );
+  $form['gigya_status_user_description'] = array(
+    '#type' => 'textfield',
+    '#title' => t('User status update description'),
+    '#description' => t('Describe to your users what text should be put in the status update when looking at a user trigger'),
+    '#default_value' => variable_get('gigya_status_user_description', 'Update status. You can use !user, !profileurl, !sitename to represent the username, and link to user profile.'),
+    '#required' => TRUE,
+  );
+  $form['gigya_status_user_default_message'] = array(
+    '#type' => 'textfield',
+    '#title' => t('User default message'),
+    '#description' => t('This is the default message populated in status popups for user triggers'),
+    '#default_value' => variable_get('gigya_status_user_default_message', 'Currently looking at my friend !user on !sitename. !profileurl'),
+    '#required' => TRUE,
+  );
+  $form['gigya_status_node_description'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Node/comment status update description'),
+    '#description' => t('Describe to your users what text should be put in the status update when looking at a node/comment trigger'),
+    '#default_value' => variable_get('gigya_status_node_description', 'Update status. You can use !url, !url-alias, !tinyurl, !title and !user as replacement text.'),
+    '#required' => TRUE,
+  );
+  $form['gigya_status_node_default_message'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Node/comment defualt message'),
+    '#description' => t('This is the default message populated in status popups for node/comment triggers'),
+    '#default_value' => variable_get('gigya_status_node_default_message', '!title is awesome, come take a look: !tinyurl'),
+    '#required' => TRUE,
+  );
+  return $form;
+}
+
+function gigya_status_popup_action_submit($form, $form_state) {
+  return array(
+    'status_popup_content_types' => $form_state['values']['status_popup_content_types'],
+  );
+}
+
+function gigya_init() {
+  global $base_path, $user;
+  gigya_load_js();
+
+  if ($_SESSION['setStatus_popup']) {
+    if (is_numeric($_SESSION['setStatus_nid'])) {  //nodeapi and comments
+      $jquery_onLoad = "$(document).ready(function() { Drupal.gigya.loadSetStatusPopup('gigya/setStatus/node/". $_SESSION['setStatus_nid'] ."'); });";
+    }
+    else if (is_numeric($_SESSION['setStatus_uid'])) {  //users
+      $jquery_onLoad = "$(document).ready(function() { Drupal.gigya.loadSetStatusPopup('gigya/setStatus/user/". $_SESSION['setStatus_uid'] ."'); });";
+    }
+    drupal_add_js($jquery_onLoad, 'inline');
+    unset($_SESSION['setStatus_popup']);
+  }
+}
+
+function gigya_nodeapi(&$node, $op = 'view', $teaser, $page) {
+  global $user;
+  switch ($op) {
+    case 'update':
+    case 'insert':
+      if (!empty($node->status) && !empty($node->gigya) && !empty($node->gigya['post'])) {
+        $replacements = array('!title' => $node->title,
+                              '!url' => url('node/'. $node->nid, array('absolute' => TRUE, 'alias' => TRUE)),
+                              '!url-alias' => url('node/'. $node->nid, array('absolute' => TRUE)),
+                              '!user' => $node->name);
+        // Only generate the shortened URL if it's going to be used. No sense
+        // burning through TinyURLs without a good reason.
+        if (strstr($node->gigya['status'], '!tinyurl') !== FALSE) {
+          $replacements['!tinyurl'] = gigya_shorten_url(url('node/'. $node->nid, array('absolute' => TRUE)));
+        }
+        $status = strtr($node->gigya['status'], $replacements);
+        if ($result = gigya_setStatus($_SESSION['gigya_uid'], $status)) {
+          drupal_set_message(t('Successfully posted to social networks'));
+        }
+        else {
+          drupal_set_message(t('An error occurred when posting to your social network:'));
+        }
+      }
+      break;
+  }
+}
+function gigya_perm() {
+  return array('gigya sync', 'gigya access', 'admin gigya');
+}
+/**
+ * Implementation of hook_user().
+ *
+ * The main API for accessing, storing, and viewing the gigya bios.
+ */
+function gigya_user($op, &$edit, &$account, $category = NULL) {
+  module_load_include('inc', 'gigya');
+  switch ($op) {
+    case 'login':
+      if (arg(1) == 'reset')
+        break;
+      if (user_get_authmaps($account->name) == 0 || !user_get_authmaps($account->name)) { //make sure we aren't coming from socialize
+        $dest = drupal_get_destination();
+        if (strpos($dest, 'user%2Fregister'))
+          $_REQUEST['destination'] = 'socialize-login?destination=user';
+        else
+          $_REQUEST['destination'] = 'socialize-login?'. $dest;
+      }
+      break;
+    case 'logout':
+      drupal_goto('socialize-logout');
+    case 'update':
+      gigya_save_profile($edit, array('uid' => $account->uid, 'gigya_uid' => $edit['gigya_uid']));
+    case 'insert':
+      gigya_save_profile($edit);
+      break;
+    case 'delete':
+      gigya_delete_profile($account->uid);
+      break;
+    case 'categories':
+      return array(
+        array('name' => 'gigya',
+              'title' => t('Social Networks'),
+              'weight' => 10,
+              'access callback' => 'gigya_category_access',
+              'access arguments' => array(1, 'gigya')
+        ),
+      );
+    case 'view':
+      //get the user on the current page
+      $content = '';
+      $bio = gigya_getUserInfo(_gigya_get_gid_by_uid($account->uid) ? _gigya_get_gid_by_uid($account->uid) : $account->name);
+      if (!empty($bio['identities'])) {
+        foreach ($bio['identities']->identity as $network_obj) {
+          $network = get_object_vars($network_obj);
+          $account->content['gigya'][$network['provider']] = array(
+            '#type' => 'user_profile_category',
+            '#title' => t('!social Profile', array('!social' => $network['provider'])),
+            '#weight' => 0,
+          );
+          $account->content['gigya'][$network['provider']]['bio'] = array(
+            '#type' => 'user_profile_item',
+            '#value' => theme('gigya_user_profile', $network),
+          );
+        }
+      }
+      $account->content['user_picture'] = array(
+        '#value' => theme('gigya_user_picture', $account),
+        '#weight' => -10,
+      ); 
+      break;
+  }
+}
+/*
+ * Menu item access callback - check if a user has access to a profile category.
+ */
+function gigya_category_access($account, $category) {
+  if (user_access('administer users') && $account->uid > 0) {
+    return TRUE;
+  }
+  else {
+    return user_edit_access($account);
+  }
+}
+/**
+ * Implementation of hook_form_alter().
+ *
+ * Alters user_register, user_login, and user_login_block forms
+ */
+function gigya_form_alter(&$form, $form_state, $form_id) {
+  global $_gigya_uid;
+  /** before we do any form alter, we should know what type of user we're dealing with, and if gigya is logged in yet.
+    * below these lines, we need to get the userInfo.
+    */
+  // Replace the drupal authenticate function is it's used as validation.
+  if (isset($form['#validate']) && is_array($form['#validate']) && ($key = array_search('user_login_authenticate_validate', $form['#validate'])))
+    $form['#validate'][$key] = 'gigya_login_validate';
+  if ($form_id == 'user_profile_form') {
+    $gigya_profile = 0;
+    $account = user_load($form['#uid']);
+    if (user_get_authmaps($account->name))
+      unset($form['account']['pass']);
+
+    $form['gigya'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Social network user settings'),
+      '#weight' => -1,
+      '#collapsible' => FALSE,
+      '#collapsed' => FALSE,
+      '#description' => t('Configure your socialize behaviors')
+    );
+    if ($account->setStatus_popup_hide == 1) {
+      $form['gigya']['setStatus_popup_hide'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Never show popups for social network status updates'),
+        '#default_value' => $account->setStatus_popup_hide,
+      );
+      $gigya_profile++;
+    }
+    if ($gigya_profile == 0) {
+      unset($form['gigya']);
+    }
+    if (variable_get('user_pictures', 0) && !$register && user_get_authmaps($account->name)) {
+      $form['picture']['gigya_user_picture'] = array (
+        '#type' => 'checkbox',
+        '#title' => t('Use your photo from !loginprovider as your user avatar', array('!loginprovider' => gigya_get_loginprovider($account->uid))),
+        '#default_value' => gigya_get_userpic($account->uid,TRUE),
+        '#description' => t('Checking this option will connect your social network picture to your site avatar'),
+      );
+      $form['gigya_uid'] = array (
+       '#type' => 'value',
+       '#value' => $account->uid,
+      );
+      $form['#submit'][] = 'gigya_user_picture_submit';
+    }
+  }
+  if ($form_id == 'user_register') {
+    module_load_include('inc', 'gigya');
+    module_load_include('.inc', 'user', 'user.pages');
+    global $user;
+    $screentoggle_behavior_js = 'Drupal.behaviors.gigya_toggleScreens = Drupal.gigya.toggleScreens';
+    drupal_add_js($screentoggle_behavior_js, 'inline');
+    if (!isset($_gigya_uid)) { //we use this because the user isn't logged in yet, and thus has no session variable.
+      //if gigya is the only way to login, disable username and password block. NOTE admin can still login through /user
+      gigya_login_block_js();
+      $login_js = 'Drupal.behaviors.gigya_login = function(context){ gigya.services.socialize.isLoggedIn(Drupal.settings.gigya.conf,{callback:Drupal.gigya.login_callback}); }';
+      drupal_add_js($login_js, 'inline');
+      $form['gigya'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Social network login'),
+        '#weight' => -10,
+        '#collapsible' => FALSE,
+        '#collapsed' => FALSE,
+        '#description' => t('Use one of the following services? Login now before completing your user profile.')
+      );
+      $item = array(
+        'data' => '<div id="'. variable_get('gigya_login_uiconfig_containerID', GIGYA_DEFAULT_LOGINUI_CONTAINERID) .'"></div>',
+      );
+      $form['gigya']['gigya_login'] = array(
+        '#value' => theme('gigya_login_block', $item),
+        '#weight' => -10,
+      );
+      $form['links']['#weight'] = 2;
+      return;
+    }
+    $bio = gigya_getUserInfo($_gigya_uid);
+    if ($bio['loginProvider'] == 'Facebook') {
+      unset($bio);
+    }
+    if (!empty($bio['nickname'])) {
+      $msg = t('Hello %username, please complete your registration below.', array('%username' => $bio['nickname']));
+    }
+    else {
+      $msg = t('Please complete your registration below:');
+    }
+    //if the loginProvider has an email, populate that form item.
+    if (isset($bio['email'])) {
+      $form['account']['mail']['#default_value'] = $bio['email'];
+    }
+    //link gigya login provider profile information to the drupal proivder, if the profile module is enabled
+    if (module_exists('profile')) {
+      if ($profile_categories = profile_categories()) {
+        foreach ($profile_categories as $category) {
+          $cat_name = $category['name'];
+          foreach($form[$cat_name] as $arr_name => $arr_val) {
+            if (is_array($arr_val)) {
+              if (variable_get('gigya_profile_'. $arr_name, '') != '0') {
+                $bio_assoc = variable_get('gigya_profile_'. $arr_name, '');
+                $form[$cat_name][$arr_name]['#default_value'] = $bio[$bio_assoc];
+              }
+            }
+          }
+        }
+      }
+    }
+    unset($form['account']['pass']);
+    unset($form['pass']);
+ 
+    $form['mail']['#required'] = FALSE;
+    $form['loginProvider'] = array('#type' => 'value', '#value' => $bio['loginProvider']);
+    $form['gigya_uid'] = array('#type' => 'value', '#value' => $_gigya_uid);
+    $form['account']['pass'] = array('#type' => 'value', '#value' => user_password(20));
+    $form['#submit'][0] = 'gigya_user_register_form_submit';
+  }
+  if ($form_id == 'user_login') {
+    module_load_include('inc', 'gigya');
+    if (!isset($_gigya_uid)) {
+      if (!isset($user) || $user->uid == 0) {
+        $drupal_logged_out = array(
+          'drupal_logged_out' => TRUE,
+        );
+        drupal_add_js(array('gigya' => $drupal_logged_out), 'setting');
+      }
+      gigya_login_block_js();
+      $login_js = 'Drupal.behaviors.gigya_login = function(context){ gigya.services.socialize.isLoggedIn(Drupal.settings.gigya.conf,{callback:Drupal.gigya.login_callback}); }';
+      drupal_add_js($login_js, 'inline');
+      $item = array(
+        'data' => '<div id="'. variable_get('gigya_login_uiconfig_containerID', GIGYA_DEFAULT_LOGINUI_CONTAINERID) .'"></div>',
+      );
+      $form['gigya_login'] = array(
+        '#value' => theme('gigya_login_block', $item),
+        '#weight' => 1,
+      );
+      $form['links']['#weight'] = 2;
+    }
+    else if (!variable_get('gigya_login_surpress_login', FALSE)) {
+      $bio = gigya_getUserInfo($_gigya_uid);
+      if (!empty($bio['nickname'])) {
+        $msg = t('Welcome back, %username. Login below to connect your social network to your site login', array('%username' => $bio['nickname']));
+      }
+      else {
+        $msg = t('Login below to connect your social network to your site login');
+      }
+      $form['existing_user'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Already a site user? Click here to login and connect your social network'),
+        '#weight' => 5,
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#description' => $msg,
+        '#attributes' => array('id' => 'user-login-description'),
+      );
+      drupal_add_js($login_greeting, 'inline');
+      $form['existing_user']['name'] = $form['name'];
+      $form['existing_user']['pass'] = $form['pass'];
+      $form['existing_user']['submit'] = $form['submit'];
+      unset($form['submit']);
+      unset($form['name']);
+      unset($form['pass']);
+      $form['loginProvider'] = array('#type' => 'value', '#value' => $bio['loginProvider']);
+      $form['gigya_uid'] = array('#type' => 'value', '#value' => $_gigya_uid);
+      $form['existing_user']['submit']['#value'] = t('Login and link accounts');
+      $form['#submit'][] = 'gigya_user_register_form_submit';
+    }
+    else {
+      unset($form['submit']);
+      unset($form['name']);
+      unset($form['pass']);
+      $form = array();
+    }
+  }
+  if ($form_id == 'user_login_block') {
+    global $user;
+    module_load_include('inc', 'gigya');
+
+    if (variable_get('gigya_login_surpress_login', FALSE)) {
+      unset($form['name']);
+      unset($form['pass']);
+      unset($form['submit']);
+      unset($form['links']);
+    }
+    /** This shouldn't be needed if we are no longer linking users....
+    if (isset($_gigya_uid)) {
+          $bio = gigya_getUserInfo($_gigya_uid);
+          $form['loginProvider'] = array('#type' => 'value', '#value' => $bio['loginProvider']);
+          $form['gigya_uid'] = array('#type' => 'value', '#value' => $_gigya_uid);
+          $form['#submit'][] = 'gigya_user_register_form_submit';
+    }
+    */
+    else { //if drupal is logged out, we need to tell JS that so it logs out
+      if (!isset($user) || $user->uid == 0) {
+        $drupal_logged_out = array(
+          'drupal_logged_out' => TRUE,
+        );
+        drupal_add_js(array('gigya' => $drupal_logged_out), 'setting');
+      }
+    }
+    //if gigya is the only way to login, disable username and password block. NOTE admin can still login through /user
+    gigya_login_block_js();
+    $login_js = 'Drupal.behaviors.gigya_login = function(context){ gigya.services.socialize.isLoggedIn(Drupal.settings.gigya.conf,{callback:Drupal.gigya.login_callback}); }';
+    drupal_add_js($login_js, 'inline');
+    $item = array(
+      'data' => '<div style="margin-top: 10px; margin-left:auto; margin-right:auto;" id="'. variable_get('gigya_login_uiconfig_containerID', GIGYA_DEFAULT_LOGINUI_CONTAINERID) .'"></div>',
+      'surpress' => variable_get('gigya_login_surpress_login', FALSE),
+    );
+    $form['gigya_login'] = array(
+      '#value' => theme('gigya_login_block', $item),
+      '#weight' => 1,
+    );
+    $form['links']['#weight'] = 2;
+    //we're not logged in  and we're going to have the user login now, take us to notify login
+  }
+  /** alter the updates status upon node edit/created **/
+  if (isset($form['#node']) && $form['#node']->type .'_node_form' == $form_id) {
+    module_load_include('inc', 'gigya');
+    if ($capabilities = _gigya_getUserCapabilities($_SESSION['gigya_uid'])) {
+      if (!array_search('Status', $capabilities)) {
+        return;
+      }
+    }
+    // If we haven't enabled Gigya Socialize posting on this node type, nothing to do
+    // here.
+    $type = $form['#node']->type;
+    $allowed_types = variable_get('gigya_status_types', array('story' => 'story', 'blog' => 'blog'));
+    if (empty($allowed_types[$type])) {
+      return;
+    }
+    $gigya_status_form = gigya_status_form();
+    if (!$gigya_status_form) {
+      return;
+    }
+    $form['gigya'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Post update to Social Networks'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+      '#tree' => TRUE,
+    );
+    $form['gigya']['post'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Announce this post to your social networks'),
+      '#default_value' => (empty($form['nid']['#value'])),
+      '#id' => 'gigya-toggle',
+    );
+    $form['gigya'] += $gigya_status_form;
+    $form['gigya']['status']['#default_value'] = variable_get('gigya_default_format', 'New post: !title !tinyurl');
+    $form['gigya']['status']['#description'] = variable_get('gigya_status_description', 'The given text will be posted to your social networks. You can use !url, !url-alias, !tinyurl, !title and !user as replacement text.');
+  }
+
+  if ($form_id == 'user_pass') {
+    $form['#validate'][] = 'gigya_socialize_user_validate';
+  }
+}
+
+function gigya_socialize_user_validate($form, &$form_state) {
+  $account = $form_state['values']['account'];
+  if (user_get_authmaps($account->name)) {
+    form_set_error('user',t('This user logged in via a social network. Please login with your !loginprovider account',array('!loginprovider' => gigya_get_loginprovider($account->uid))));
+  }
+}
+
+function template_preprocess_gigya_user_picture(&$variables) {
+  $variables['picture'] = '';
+  if (variable_get('user_pictures', 0)) {
+    $account = $variables['account'];
+    if (!empty($account->picture)) {
+      if(file_exists($account->picture)) {
+        $picture = file_create_url($account->picture);
+      }
+      else if (strstr($account->picture,'http://')) {
+        $picture = url($account->picture,array('absolute' => TRUE));
+      }
+    }
+    else if (variable_get('user_picture_default', '')) {
+      $picture = variable_get('user_picture_default', '');
+    }
+
+    if (isset($picture)) {
+      $alt = t("@user's picture", array('@user' => $account->name ? $account->name : variable_get('anonymous', t('Anonymous'))));
+      $variables['picture'] = theme('image', $picture, $alt, $alt, '', FALSE);
+      if (!empty($account->uid) && user_access('access user profiles')) {
+        $attributes = array('attributes' => array('title' => t('View user profile.')), 'html' => TRUE);
+        $variables['picture'] = l($variables['picture'], "user/$account->uid", $attributes);
+      }
+    }
+  }
+}
+
+function gigya_user_picture_submit($form, &$form_state) {
+  if($form_state['values']['gigya_user_picture']) {
+    $bio = gigya_getUserInfo(_gigya_get_gid_by_uid($form_state['values']['gigya_uid']) ? _gigya_get_gid_by_uid($form_state['values']['gigya_uid']) : $form_state['values']['name']);
+    if ($bio['thumbnailURL'])
+      $userpicture = $bio['thumbnailURL'];
+    else if ($bio['photoURL'])
+      $userpicture = $$bio['photoURL'];
+    else { 
+      $userpicture = '';
+      drupal_set_message("Your social network does not have a profile picture");
+      return FALSE;
+    }
+    return gigya_save_userpic($form_state['values']['gigya_uid'],$userpicture);
+  } else {
+    if(strstr(gigya_get_userpic($form_state['values']['gigya_uid']),'http://'))
+      gigya_save_userpic($form_state['values']['gigya_uid'],'');
+  }
+}
+
+/**
+ * user validation function.
+ *
+ * If successful, sets the global $user object.
+ */
+function gigya_login_validate($form, &$form_state) {
+  module_load_include('inc', 'gigya');
+  if ($form_state['values']['form_id'] == 'user_login' || $form_state['values']['form_id'] == 'user_login_block') {
+    user_authenticate($form_state['values']);
+  }
+  else {
+    gigya_authenticate($form_state['values']);
+  }
+}
+
+function gigya_mail_alter(&$message) {
+
+  if ($message['id'] == 'user_register_no_approval_required') {
+    if (user_get_authmaps($message['params']['account']->uid != 0)) {
+      unset($message);
+    }
+  }
+}
+
+function gigya_load_params() {
+  $params = array();
+  date_default_timezone_set('GMT');
+  $params['apiKey'] = variable_get('gigya_APIKey', FALSE);
+  $params['nonce'] = mktime() . rand();
+  $params['timestamp'] = gmmktime();
+  return $params;
+}
+/**
+ * gigya javascript bootstrap
+ *
+ * This function is used in all the gigya modules to load up the core APIkey and gigya JS being loaded from gigya socialize
+ * IMPORTANT - when coding, make sure this function is not called twice. If called twice, gigya will be in an endless 'waiting' loop
+ *    *todo* check to make sure this function hasn't been called yet
+ *
+ */
+function gigya_load_js() {
+  module_load_include('inc', 'gigya');
+  $path = drupal_get_path('module', 'gigya');
+  // get the chosen networks .. defaults to all if none selected
+  $networks = variable_get('gigya_selected_networks', gigya_get_networks());
+  if(!$networks) {
+    drupal_set_message(t("the gigya module is enabled but not configured. !configure",array("!configure" => l("Please configure it now","admin/settings/gigya"))));  
+    return;
+  }
+    
+  // we dont care about the friendly titles, and when the checkboxes in the system settings area
+  // are saved, all the keys are saved but with a 0 for the unselected values. if we swap the keys
+  // with values all the unselected ones except for the last get automatically unset
+  $networks = array_flip($networks);
+  // unset the last unselected network
+  unset($networks[0]);
+  $gigya_js_settings = array(
+    'conf' => array(
+      "APIKey" => variable_get('gigya_APIKey', FALSE),
+      "enabledProviders" => implode(', ', array_values($networks)),
+    ),
+  );
+  drupal_set_html_head('<script src="'. check_url(url('http://cdn.gigya.com/JS/gigya.js?services=socialize')) .'" type="text/javascript"></script>');
+  drupal_add_js(array('gigya' => $gigya_js_settings), 'setting');
+  drupal_add_js($path .'/gigya.js');
+  drupal_add_js($path .'/gigya.behaviors.js');
+}
+/**
+ * gigya javascript settings for login block
+ *
+ * This function loads up the needed capabilities and vairables for login parameters.
+ */
+function gigya_login_block_js() {
+  $gigya_login_requiredCapabilities = implode(", ", variable_get('gigya_login_requiredCapabilities', FALSE));
+  $gigya_login_requiredCapabilities = drupal_substr($gigya_login_requiredCapabilities, 0, strpos($gigya_login_requiredCapabilities, ', 0'));
+  $gigya_params = array(
+    'params' => array(
+    "requiredCapabilities" => implode(", ", variable_get('gigya_login_requiredCapabilities', FALSE)),
+    "callback" => "Drupal.gigya.printResponse",
+    "context" => "context",
+  ));
+  drupal_add_js(array('gigya' => $gigya_params), 'setting');
+  if (variable_get('gigya_login_uiconfig_raw', '')) {
+    $login_UIConfig = variable_get('gigya_login_uiconfig_raw', '');
+  }
+  else {
+    $login_UIConfig = "<config><body><captions background-color=\"". variable_get('gigya_login_uiconfig_color_caption_background', GIGYA_DEFAULT_LOGINUI_COLOR_CAPTION_BACKGROUND) ."\" color=\"". variable_get('gigya_login_uiconfig_color_caption_text', GIGYA_DEFAULT_LOGINUI_COLOR_CAPTION_TEXT) ."\"></captions><texts color=\"". variable_get('gigya_login_uiconfig_color_text', GIGYA_DEFAULT_LOGINUI_COLOR_TEXT) ."\"><links color=\"". variable_get('gigya_login_uiconfig_color_link', GIGYA_DEFAULT_LOGINUI_COLOR_LINK) ."\"></links></texts><controls><snbuttons buttonsize=\"". variable_get('gigya_login_uiconfig_iconsize', GIGYA_DEFAULT_ICONSIZE) ."\" color=\"". variable_get('gigya_login_uiconfig_color_button_text', GIGYA_DEFAULT_LOGINUI_COLOR_BUTTON_TEXT) ."\"></snbuttons><scrollingarrow color=\"". variable_get('gigya_login_uiconfig_color_navigation_arrow', GIGYA_DEFAULT_LOGINUI_COLOR_NAVIGATION_ARROW) ."\"></scrollingarrow></controls><background background-color=\"". variable_get('gigya_login_uiconfig_color_background', GIGYA_DEFAULT_LOGINUI_COLOR_BACKGROUND) ."\" frame-color=\"". variable_get('gigya_login_uiconfig_color_frame', GIGYA_DEFAULT_LOGINUI_COLOR_FRAME) ."\"></background></body></config>";
+  }
+  $gigya_login_params = array(
+    'login_params' => array(
+      "headerText" => variable_get('gigya_login_uiconfig_title', ''),
+      "width" => variable_get('gigya_login_uiconfig_width', 120),
+      "height" => variable_get('gigya_login_uiconfig_height', 110),
+      "requiredCapabilities" => $gigya_login_requiredCapabilities,
+      "containerID" => variable_get('gigya_login_uiconfig_containerID', GIGYA_DEFAULT_LOGINUI_CONTAINERID),
+      "showTermsLink" => variable_get('gigya_login_uiconfig_terms', TRUE),
+      "hideGigyaLink" => variable_get('gigya_login_uiconfig_branding', TRUE),
+      "useFacebookConnect" => variable_get('gigya_login_advanced_facebookconnect', GIGYA_DEFAULT_LOGINUI_FBCONNECT),
+      "redirectURL" => url('socialize-login'),
+      "UIConfig" => $login_UIConfig,
+    ),
+  );
+  if(variable_get('gigya_login_advanced_custombuttons', ''))
+    $gigya_login_params['login_params']["SNButtonsResourceURL"] = variable_get('gigya_login_advanced_custombuttons', '');
+  
+  drupal_add_js(array('gigya' => $gigya_login_params), 'setting');
+}
+/**
+ * GIGYA Javascript Wrappers
+ *
+ * The following functions inject gigya JS for their respective function name
+ */
+/**
+ * Wrapper for the gigya javascript NotifyLogin function.
+ *
+ * @param string $username this is the gigya username to be passed into notifyLogin
+ */
+function gigya_notify_login($username) {
+  global $base_path;
+  //setup the timestamp for validation through gigya_verify_signature
+  date_default_timezone_set('GMT');
+  $timestamp = date('Y-m-d H:i:s');
+  if (strpos($_REQUEST['destination'], 'user%2Fregister')) {
+    $destination = 'user';
+  }
+  else {
+    $destination = $_REQUEST['destination'];
+  }
+  
+  $signature = _gigya_verify_signature($timestamp, $username, variable_get('gigya_SecretKey', FALSE));
+  $gigya_login_redirect = array(
+    'login_redirect' => array($destination),
+    );
+  drupal_add_js(array('gigya' => $gigya_login_redirect), 'setting');
+  $gigya_notify_login = array(
+    'notify_login_params' => array(
+    "siteUID" => $username,
+    "timestamp" => $timestamp,
+    "signature" => $signature,
+    "context" => array("method" => "notifyLogin"),
+  ));
+  drupal_add_js(array('gigya' => $gigya_notify_login), 'setting');
+
+  return $destination;
+}
+function gigya_link($type, $node = NULL, $teaser = FALSE) {
+  module_load_include('inc', 'gigya');
+  global $user;
+  $links = array();
+  if ($capabilities = _gigya_getUserCapabilities($_SESSION['gigya_uid'])) {
+    if (array_search('Notifications', $capabilities) && array_search('Friends', $capabilities)) {
+      $allowed_types = variable_get('gigya_share_types', array('story' => 'story', 'blog' => 'blog'));
+      if ($type == 'node' && !empty($allowed_types[$node->type])) {
+        $links['socialize_notify_friends'] = array(
+          'title' => variable_get('gigya_share_link_title', GIGYA_DEFAULT_SHARE_LINK_TITLE),
+          'href' => "gigya/notifyfriends/$node->nid",
+          'attributes' => array('title' => t('Tell your friends about !nodetitle.', array('!nodetitle' => $node->title)), 'class' => 'popups-form'),
+        );
+      }
+    }
+  }
+  return $links;
+}
+/**
+ * Implementation of hook_theme().
+ */
+function gigya_theme() {
+  return array(
+    'gigya_user_picture' => array(
+      'arguments' => array('account' => NULL),
+      'template' => 'gigya-user-picture',
+    ),    
+    'gigya_connect_display' => array(
+      'arguments' => array('element'),
+    ),
+    'gigya_login_block' => array(
+      'arguments' => array('element'),
+    ),
+    'gigya_user_profile' => array(
+      'arguments' => array('bio'),
+    ),
+    'gigya_friends' => array(
+      'arguments' => array('friends'),
+    ),
+    'gigya_notify_friends' => array(
+      'arguments' => array('title', 'subj', 'msg'),
+    ),
+  );
+}
+function theme_gigya_friends($friends) {
+  global $user;
+  $content = '<div id="gigya_friends">';
+  $content .= '<table id="gigya_friends_table" style="border:0" cellpadding="0" cellspacing="0">';
+  $content .= '<tr class="gigya table">';
+  $site_friends = array();
+  $friend_count = 0;
+  foreach ($friends as $friend) {
+    $friend_bio = $friend['identities']->identity;
+    if (_gigya_get_uid_by_gid($friend_bio->UID)) {
+      $site_friends[] = $friend_bio;
+      $friend_count++;
+    }
+  }
+  $rows = $friend_count / 5;
+  $tail = $friend_count % 5;
+  $rowcount = 1;
+  $colcount = 0;
+  foreach ($site_friends as $site_friend) {
+    $colcount++;
+    if (isset($site_friend->thumbnailURL))
+      $friend_photo = $site_friend->thumbnailURL;
+    else if (isset($site_friend->photoURL))
+      $friend_photo = $site_friend->photoURL;
+    else
+      $friend_photo = $base_path .'/'. drupal_get_path('module', 'gigya') .'/silhouette.gif';
+    $friend_link =  l($site_friend->nickname, 'user/'. _gigya_get_uid_by_gid($site_friend->UID));
+    $content .= '<td width="20%" class="friend_bio"><img width="50" height="50" src="'. $friend_photo .'" /><br /><span class="friend_nickname">'. $friend_link .'</span></td>';
+    if (($colcount * $rowcount) == $friend_count) {
+      $remainer = 5 - $colcount;
+      $content .= '<td width="'. (20 * $remainer) .'%" colspan="'. $remainer .'">&nbsp;</td></tr>';
+    }
+    else if ($colcount == 5) {
+      $content .= '</tr><tr class="gigya table">';
+      $rowcount++;
+      $colcount = 0;
+    }
+  }
+  if ($colcount == 0 && $rowcount == 1)
+    $content .= '<td><span class="gigya no-friends">You currently have no social network friends connected to this site. '. l('Have you connected to a social network?', 'user/'. $user->uid .'/edit/gigya') .'</span></td></tr>';
+  $content .= '</table>';
+  $content .= "</div>";
+  return $content;
+}
+function theme_gigya_user_profile($bio) {
+  $content = '<div id="'. $bio['provider'] .'_profile">';
+  if ($bio['thumbnailURL'])
+    $content .= '<img id="photo" src="'. $bio['thumbnailURL'] .'" />';
+  else if ($bio['photoURL'])
+    $content .= '<img id="photo" src="'. $bio['photoURL'] .'" />';
+  else
+    $content .= '<img id="photo" src="'. $base_path .'/'. drupal_get_path('module', 'gigya') .'/silhouette.gif'.'" />';
+  if ($bio['nickname']) {
+    $content .= '<div class="socialize_nickname">';
+    $content .= $bio['profileURL'] ? l($bio['nickname'], $bio['profileURL']) : $bio['nickname'];
+    $content .= '</div>';
+  }
+  $content .= '</div>';
+  return $content;
+}
+/**
+ * Display actions assigned to this hook-op combination in a table.
+ *
+ * @param array $element
+ *   The fieldset including all assigned actions.
+ * @return
+ *   The rendered form with the table prepended.
+ *
+ * @ingroup themeable
+ */
+function theme_gigya_connect_display($element) {
+  $header = array();
+  $rows = array();
+  if (is_array($element['assigned']['#value'])) {
+    $header = array(array('data' => t('Login Provider')), array('data' => t('Operation')));
+    $rows = array();
+    foreach ($element['assigned']['#value'] as $aid => $info) {
+      $rows[] = array(
+        $info['description'],
+        $info['link']
+      );
+    }
+  }
+  if (count($rows)) {
+    $output = theme('table', $header, $rows) . drupal_render($element);
+  }
+  else {
+    $output = drupal_render($element);
+  }
+  return $output;
+}
+function theme_gigya_login_block($element) {
+  if (!isset($element['surpress']) || $element['surpress'] == FALSE) {
+    $title = t('Login using social networks');
+    $output = '<h2 style="text-align: left !important; margin-top:10px;">'. $title .'</h2>';
+  }
+  else {
+    $output = '';
+  }
+  $data = $element['data'];
+  $output .= '<div class="gigya-login">';
+  $output .= $data;
+  $output .= '</div>';
+  return $output;
+}
+/**
+ * Theme funciton for gigya_notify_friends
+ */
+function theme_gigya_notify_friends($title, $subj = '', $msg = '') {
+  //disable providers who don't have friends abilities
+  if (variable_get('gigya_friends_uiconfig_raw', '')) {
+    $login_UIConfig = variable_get('gigya_friends_uiconfig_raw', '');
+  }
+  else {
+    $friends_uiconfig = "<config><body><captions background-color=\"". variable_get('gigya_friends_uiconfig_color_caption_background', GIGYA_DEFAULT_FRIENDSUI_COLOR_CAPTION_BACKGROUND) ."\" color=\"". variable_get('gigya_friends_uiconfig_color_caption_text', GIGYA_DEFAULT_FRIENDSUI_COLOR_CAPTION_TEXT) ."\"></captions><texts color=\"". variable_get('gigya_friends_uiconfig_color_text', GIGYA_DEFAULT_FRIENDSUI_COLOR_TEXT) ."\"><links color=\"". variable_get('gigya_friends_uiconfig_color_link', GIGYA_DEFAULT_FRIENDSUI_COLOR_LINK) ."\"></links></texts><controls><snbuttons color=\"". variable_get('gigya_friends_uiconfig_color_button_text', GIGYA_DEFAULT_FRIENDSUI_COLOR_BUTTON_TEXT) ."\"></snbuttons><scrollingarrow color=\"". variable_get('gigya_friends_uiconfig_color_navigation_arrow', GIGYA_DEFAULT_FRIENDSUI_COLOR_NAVIGATION_ARROW) ."\"></scrollingarrow></controls><background background-color=\"". variable_get('gigya_friends_uiconfig_color_background', GIGYA_DEFAULT_FRIENDSUI_COLOR_BACKGROUND) ."\" frame-color=\"". variable_get('gigya_friends_uiconfig_color_frame', GIGYA_DEFAULT_FRIENDSUI_COLOR_FRAME) ."\"></background></body></config>";
+  }
+  $gigya_friends_params = array(
+    'friendsUI_params' => array(
+      "width" => variable_get('gigya_friends_uiconfig_width', GIGYA_DEFAULT_FRIENDSUI_WIDTH),
+      "height" => variable_get('gigya_friends_uiconfig_height', GIGYA_DEFAULT_FRIENDSUI_HEIGHT),
+      "containerID" => variable_get('gigya_friends_uiconfig_containerID', GIGYA_DEFAULT_FRIENDSUI_CONTAINERID),
+      "showCaption" => variable_get('gigya_friends_uiconfig_showCaption', GIGYA_DEFAULT_FRIENDSUI_SHOWCAPTION),
+      "captionText" => variable_get('gigya_friends_uiconfig_captionText', GIGYA_DEFAULT_FRIENDSUI_CAPTIONTEXT),
+      "UIConfig" => $friends_UIConfig,
+    ),
+  );
+  drupal_add_js(array('gigya' => $gigya_friends_params), 'setting');
+  $behaviors_js = 'Drupal.behaviors.gigya_notifyFriends = function(){ gigya.services.socialize.getUserInfo(Drupal.settings.gigya.conf, {callback:Drupal.gigya.notifyFriends_callback}); gigya.services.socialize.addEventHandlers(Drupal.settings.gigya.conf, { onConnect:Drupal.gigya.notifyFriends_callback, onDisconnect:Drupal.gigya.notifyFriends_callback });}';
+  drupal_add_js($behaviors_js, 'inline');
+  $attach_behaviors_js = 'Drupal.attachBehaviors()';
+  drupal_add_js($attach_behaviors_js, 'inline');
+  $notification_setting = array(
+    'notifyMsg' => $context->title,
+  );
+  drupal_add_js(array('gigya' => $notification_setting), 'setting');
+  $output = '
+   <h2>'. $title .'</h2>
+   <form name="notification">
+   <div id="socialize_notification_msg">
+      <label>Subject</label><input name="subject" size="53" maxlength="140" value="'. $subj .'" /><br />
+      <label>Message</label><textarea name="body" rows="5" cols="51">'. $msg .'</textarea></div>
+   <div id="'. variable_get('gigya_friends_uiconfig_containerID', GIGYA_DEFAULT_FRIENDSUI_CONTAINERID) .'" style="width:'. variable_get('gigya_friends_uiconfig_width', GIGYA_DEFAULT_FRIENDSUI_WIDTH) .'px; height:'. variable_get('gigya_friends_uiconfig_height', GIGYA_DEFAULT_FRIENDSUI_HEIGHT) .'px; padding-left:40px;"></div>
+   </form>
+   <div id="status"></div>';
+  return $output;
+}

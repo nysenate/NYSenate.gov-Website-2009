@@ -1,0 +1,671 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  Migrate NYSS legacy data.
+ */
+
+/**
+ *  Implements hook_menu().
+ */
+function nyss_migrate_menu() {
+  $items = array();
+  $items['admin/nyss/nyss/migrate'] = array(
+      'title' => 'NYSS Migrate legacy data',
+      'description' => 'Migrate legacy news and senate reports.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('nyss_migrate_admin_settings'),
+      'access arguments' => array('administer site configuration'),
+    );
+  return $items;
+}
+
+/**
+ *  Callback for admin/settings/nyss-migrate.
+ *  Defines the form to import legacy data.
+ */
+function nyss_migrate_admin_settings() {
+// variable_set('nyss_migrate_full', 0);
+  $full = variable_get('nyss_migrate_full', 0);
+  if (!$full) {
+    $full = db_result(db_query("SELECT COUNT(*) FROM migrate_news.newsnew"));
+    variable_set('nyss_migrate_full', $full);
+  }
+// variable_set('nyss_migrate_current', 0);
+  $current = variable_get('nyss_migrate_current', 0);
+
+  $form = array();
+
+  $form['nyss_migrate_count'] = array(
+    '#type' => 'item',
+    '#title' => t('Completed: @current of @full', array('@full' => $full, '@current' => $current)),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  variable_set('nyss_migrate_nid_test_dupes', 0);
+  return $form;
+}
+
+function nyss_migrate_admin_settings_submit($form, &$form_state) {
+  $batch = array(
+    'title' => t('Migrating legacy news and senate reports...'),
+    'finished' => 'nyss_migrate_finished_callback',
+  );
+  $total = db_result(db_query("SELECT COUNT(*) FROM {node} WHERE type in ('blog', 'in_the_news', 'report')", 0, 1));
+//   $total = variable_get('nyss_migrate_total_batch_count', variable_get('nyss_migrate_full', 0) - variable_get('nyss_migrate_current', 0));
+//    $total = 500;
+//   $total = db_result(db_query("SELECT COUNT(*) FROM migrate_news.newsnew WHERE nid = 0"));
+//   $total = 33;
+$total = 1;
+  while ($count < $total) {
+    $batch['operations'][] = array('nyss_migrate_news', array());
+//     $count ++;
+    $count += variable_get('nyss_migrate_fetch_results', 25);
+  }
+  batch_set($batch);
+}
+
+function nyss_migrate_finished_callback() {
+  drupal_set_message(t('Completed migration.'));
+}
+
+/**
+ *  Find all nodes in the range of 3/25 to 3/27 that are also stored in the legacy table.
+ */
+function nyss_migrate_news_legacy_date() {
+// The following query collates node w/ the 2 legacy tables to grab the date from the first.
+//   $results = db_query_range("SELECT n.nid, n.title, n.created, o.pubDt FROM {node} n INNER JOIN migrate_news.newsnew nn ON nn.nid = n.nid INNER JOIN migrate_news.news o ON o.Title = nn.Title WHERE n.created > %d GROUP BY n.nid ORDER BY o.pubDt", time() - (3600 * 24 * 14), 0, variable_get('nyss_migrate_fetch_results', 25));
+
+// The following query skips collation with the original data.
+  $results = db_query("SELECT n.nid, n.title, n.created FROM {node} n INNER JOIN migrate_news.newsnew nn ON nn.nid = n.nid WHERE n.created > %d GROUP BY n.nid", time() - (3600 * 24 * 14));//, 0, variable_get('nyss_migrate_fetch_results', 25));
+
+// The following query attempts to find a match with the original table.
+//   $results = db_query("SELECT n.nid, n.title, n.created, o.pubDt FROM {node} n INNER JOIN migrate_news.news o ON o.Title = n.title WHERE n.created > %d AND n.uid = %d GROUP BY n.nid", time() - (3600 * 24 * 14), variable_get('nyss_migrate_uid', 38)); //, 0, variable_get('nyss_migrate_fetch_results', 25));
+
+  while ($result = db_fetch_object($results)) {
+    drupal_set_message(url('node/'. $result->nid, array('absolute' => TRUE)));
+//     drupal_set_message($result->nid .' - '. l($result->title, 'node/'. $result->nid) .': '. format_date($result->created) . ' ('. $result->pubDt .': '. l('edit', 'node/'. $result->nid .'/edit') .')');
+/*    $node = node_load($result->nid);
+    $node->date = $result->pubDt;
+    $node->created = !empty($node->date) ? strtotime($node->date) : time();
+    node_save($node);
+    drupal_set_message($node->nid .' - '. l($node->title, 'node/'. $node->nid) .': '. format_date($node->created) . ' ('. $result->pubDt .')');
+    drupal_set_message('------------------------------------------');*/
+  }
+}
+
+function nyss_migrate_news_save_pdfs() {
+  //   $current = variable_get('nyss_migrate_kill_dupes', 16630);
+  $origrange = db_query_range("SELECT nid FROM migrate_news.dupes WHERE nid > 0 ORDER BY nid", 0, 1);
+  $orig = db_fetch_object($origrange);
+  $current = $orig->nid;
+// $current = 1305;
+  $results = db_query("SELECT n.nid FROM {node} n WHERE n.nid=%d", $current);
+  while ($result = db_fetch_object($results)) {
+    $node = node_load($result->nid);
+//     dpm($node);
+    $pattern = '@href\s*=\s*[\'"]([^\'"]+\.pdf)[\'"]@i';
+    preg_match_all($pattern, $node->body, $matches);
+
+    if (sizeof($matches[1]) > 1) {
+      drupal_set_message('more than one pdf at '. l($node->title, 'node/'. $node->nid));
+      break;
+    }
+    foreach ($matches[1] as $url) {
+      $file = nyss_migrate_file_object($url, $node);
+      if (is_string($file)) {
+        drupal_set_message($file .' ('. l($url, $url) .'): '. l($node->title, 'node/'. $node->nid), 'error');
+        break;
+      }
+      drupal_write_record('files', $file);
+
+      $file->list = TRUE;
+      $file->data = array(
+        'description' => $file->filename,
+      );
+      $node->field_pdf = array(
+        0 => (array) $file,
+      );
+
+      $node->body = preg_replace('@href\s*=\s*[\'"]'. $url .'[\'"]@i', 'PDFREPLACE', $node->body);
+      preg_match('@<\s*a[^>][^P>]*PDFREPLACE\s*>([^<]*)<\s*/a\s*>@i', $node->body, $pdfs);
+      $name = $pdfs[1] ? $pdfs[1] : $file->filename;
+      $node->body = preg_replace('@<\s*a[^>][^P>]*PDFREPLACE\s*>[^<]*<\s*/a\s*>@i', 'PDFLINK', $node->body);
+      $node->body = str_replace('PDFLINK', l($name, $file->filepath), $node->body);
+      $node->body = str_replace('PDFREPLACE', '', $node->body);
+
+//       dpm($node->body);
+
+      node_save($node);
+      drupal_set_message(l($node->title, 'node/'. $node->nid));
+    }
+//     dpm($node);
+  }
+  db_query("DELETE FROM migrate_news.dupes WHERE nid = %d", $current);
+}
+
+function nyss_migrate_news_find_pdfs() {
+  $current = variable_get('nyss_migrate_nid_test_dupes', 0);
+  $results = db_query_range("SELECT n.nid, r.body FROM {node} n INNER JOIN {node_revisions} r ON r.vid = n.vid WHERE n.nid>%d ORDER BY nid", $current, 0, variable_get('nyss_migrate_fetch_results', 100));
+//   dpm($results);
+  while ($node = db_fetch_object($results)) {
+    // Now find any PDF's in the body.
+    $pattern = '@href\s*=\s*[\'"]([^\'"]+\.pdf)[\'"]@i';
+    preg_match_all($pattern, $node->body, $matches);
+
+    if ($matches[1]) {
+      db_query("INSERT INTO migrate_news.dupes (nid) VALUES (%d)", $node->nid);
+      drupal_set_message('match found at '. l($node->nid, 'node/'. $node->nid));
+    }
+
+    variable_set('nyss_migrate_nid_test_dupes', $node->nid);
+  }
+}
+
+function nyss_migrate_news_collate_dupes() {
+  $current = variable_get('nyss_migrate_nid_test_dupes', 0);
+  $results = db_query_range("SELECT nid, original FROM migrate_news.dupes WHERE original > %d ORDER BY original", $current, 0, variable_get('nyss_migrate_fetch_results', 100));
+  while ($result = db_fetch_object($results)) {
+    variable_set('nyss_migrate_nid_test_dupes', $result->nid);
+  }
+}
+
+function nyss_migrate_news_kill_dupes() {
+//   $current = variable_get('nyss_migrate_kill_dupes', 16630);
+  $origrange = db_query_range("SELECT original FROM migrate_news.dupes", 0, 1);
+  $orig = db_fetch_object($origrange);
+  $current = $orig->original;
+// $current = 1305;
+  $results = db_query("SELECT nid FROM migrate_news.dupes WHERE original=%d", $current);
+  while ($result = db_fetch_object($results)) {
+    $node = node_load($result->nid);
+    if ($node->nid) {
+      $node->field_feature_image = array();
+      $node->field_pdf = array();
+      $node->field_extra_images = array();
+      node_save($node);
+      node_delete($node->nid);
+    }
+  }
+  db_query("DELETE FROM migrate_news.dupes WHERE original = %d", $current);
+}
+
+function nyss_migrate_news_find_dupes() {
+  $current = variable_get('nyss_migrate_nid_test_dupes', 0);
+  $results = db_query_range("SELECT n.nid, n.title, n.type, c.field_senator_nid FROM {node} n INNER JOIN {content_field_senator} c ON c.vid = n.vid WHERE n.title<>'' AND n.nid>%d AND n.type in ('blog', 'in_the_news', 'report') ORDER BY nid", $current, 0, variable_get('nyss_migrate_fetch_results', 100));
+//   dpm($results);
+  while ($result = db_fetch_object($results)) {
+    $check = db_result(db_query("SELECT nid FROM migrate_news.dupes WHERE nid=%d", $result->nid));
+    if (!$check) {
+      $dupes = db_query("SELECT n.nid, c.field_senator_nid FROM {node} n INNER JOIN {content_field_senator} c ON c.vid = n.vid WHERE n.title = '%s' AND n.nid > %d AND n.type = '%s'", $result->title, $result->nid, $result->type);
+      $count = 0;
+      while ($node = db_fetch_object($dupes)) {
+        if ($node->field_senator_nid == $result->field_senator_nid) {
+//           $original = node_load($result);
+//           $node = node_load($node->nid);
+//           if ($node->body == $original->body) {
+            db_query("INSERT INTO migrate_news.dupes (nid, original) VALUES (%d, %d)", $node->nid, $result->nid);
+      //       drupal_set_message($result->nid . ': ' .$node->nid);
+            $count++;
+//           }
+        }
+  //       drupal_set_message(t('(@nid) !edit !view', array('@nid' => $node->nid, '!edit' => l('edit', 'node/'. $node->nid .'/edit'), '!view' => l('view', 'node/' . $node->nid))));
+      }
+      if ($count) {
+        drupal_set_message($result->nid .': ('. $count .') '. l('original', 'node/'. $result->nid));
+      }
+    }
+/*    $node = node_load($result->nid);
+    $node = (array) $node;
+    unset($node['teaser']);
+    $node = node_submit($node);
+    node_save($node);*/
+    variable_set('nyss_migrate_nid_test_dupes', $result->nid);
+  }
+}
+
+function nyss_migrate_news_original() {
+  $current = variable_get('nyss_migrate_current', 0);
+  db_query("SET NAMES 'latin1'");
+//   $results = db_query_range("SELECT m.District, m.Title, m.Category, m.Content, t.pubDt FROM migrate_news.newsnew m INNER JOIN migrate_news.news t ON t.District=m.District AND t.Title=m.Title AND t.Category=m.Category WHERE m.reason = 'broken remote image' ORDER BY RAND()", 0, variable_get('nyss_migrate_fetch_results', 10));
+  $results = db_query_range("SELECT m.District, m.Title, m.Category, m.Content FROM migrate_news.newsnew m WHERE m.nid=0 ORDER BY RAND()", 0, variable_get('nyss_migrate_fetch_results', 33));
+  db_query("SET NAMES 'utf8'");
+  while ($result = db_fetch_object($results)) {
+    $node = nyss_migrate_save_node($result);
+    if (is_string($node) && $node) {
+      drupal_set_message($node);
+      db_query("UPDATE migrate_news.newsnew SET nid = %d, reason = '%s' WHERE District = %d AND Title = '%s' AND Category = '%s'", -1, $node, $result->District, $result->Title, $result->Category);
+    }
+    else if ($node->nid) {
+      drupal_set_message('saved! '. $node->nid);
+      // Save the nid in the legacy table.
+      db_query("UPDATE migrate_news.newsnew SET nid = %d, reason = '' WHERE District = '%s' AND Title = '%s' AND Category = '%s'", $node->nid, $result->District, $result->Title, $result->Category);
+      // Update our count.
+      variable_set('nyss_migrate_current', ++$current);
+      watchdog('nyss_migrate', 'Created new @type node: !title.', array('@type' => $node->type, '!title' => l($node->title, $node->nid)), WATCHDOG_NOTICE, l(t('view'), 'node/'. $node->nid));
+    }
+    else {
+      drupal_set_message('error!', 'error');
+      dpm($node);
+    }
+  }
+}
+
+/**
+ *  This turns an image URL into a file.
+ *
+ *  @param $image
+ *    The URL to the original image.
+ *  @param $node
+ *    The node object we're working with.
+ */
+function nyss_migrate_image_to_file($image, $node) {
+  // Grab any associated metadata.
+  preg_match('@<table.*'. $image .'.*<td[^>]*>(.+)</td>@i', $node->body, $matches);
+
+  // If there was no metadata in the table, look in a div just in case.
+  if (!$matches[1]) {
+    preg_match('@<div[^>]*>.*'. $image .'.*(.+)</div>@i', $node->body, $matches);
+  }
+  // Store any found metadata.
+  $metadata = $matches[1];
+
+  // Fetch an associated file object for the image.
+  $file = nyss_migrate_file_object($image, $node);
+  if (!$file) {
+    return t("no local image");
+  }
+  else if (is_string($file)) {
+    return $file;
+  }
+
+  // Save the file so we have an FID.
+  drupal_write_record('files', $file);
+
+  $file->list = TRUE;
+  $file->data = array(
+    'description' => $metadata,
+  );
+
+  return $file;
+}
+
+function nyss_migrate_save_node($result) {
+  $node = array();
+  $node = (object) $node;
+
+  $node->date = $result->pubDt;
+
+  switch ($result->Category) {
+    case 'News':
+      $node->type = 'in_the_news';
+      break;
+    case 'Senate Report':
+      $node->type = 'report';
+      break;
+    case 'Senate Update':
+    default:
+      $node->type = 'blog';
+      break;
+  }
+  $node->is_new = TRUE;
+  $node->title = ucwords(strtolower(strip_tags($result->Title)));
+  $node->status = 1;
+  $node->comment = 2;
+  $result->District = intval($result->District);
+  if ($result->District) {
+    $district = nyss_migrate_district_senator_nid($result->District);
+    if (!$district) {
+//       drupal_set_message(t("Unable to associate district (@d) to %title.", array('@d' => $result->District, '%title' => $result->Title)), 'error');
+      return FALSE;
+    }
+    $node->field_senator[0]['nid'] = $district['senator'];
+    $node->field_district[0]['nid'] = $district['district'];
+    $node->field_authored_by_senator[0]['value'] = 1;
+    $senator = $district['senator_node'];
+  }
+  $node->body = $result->Content;
+
+  // On the off chance the senator has an assigned editor, we assign that UID as the author.
+  // Otherwise, we use the default user.
+  $node->uid = $senator->field_editors[0]['uid'] ? $senator->field_editors[0]['uid'] : variable_get('nyss_migrate_uid', 38);
+  $author = user_load(array('uid' => $node->uid));
+  $node->name = $author->name;
+/*  drupal_set_message('uid: '. $node->uid);
+  dpm($senator);*/
+  $node->format = 1;
+
+  $node->body = preg_replace("@\s+@", ' ', $node->body);
+
+  $pattern = '@<\s*img[^>]*src\s*=\s*[\'"]([^"\']+)[\'"]@i';
+  preg_match_all($pattern, $node->body, $matches);
+
+// drupal_set_message('test images');
+  $image = array_shift($matches[1]);
+  if ($image) {
+//     if ($node->type == 'report') {
+//       return t('report has images');
+//     }
+    $file = nyss_migrate_image_to_file($image, $node, $table);
+
+    if (is_string($file)) {
+//       return $file;
+    }
+    else {
+
+      $node->field_feature_image = array(
+        0 => (array) $file,
+      );
+    }
+  }
+// drupal_set_message('images pass');
+  $node->field_extra_images = array();
+  foreach ($matches[1] as $image) {
+    $file = nyss_migrate_image_to_file($image, $node, $table);
+
+    if (is_string($file)) {
+//       return $file;
+    }
+    else {
+      $node->field_extra_images[] = array(
+        0 => (array) $file,
+      );
+    }
+  }
+
+  // Now handle any PDF's in the body.
+  $pattern = '@href\s*=\s*[\'"]([\'"]+\.pdf)[\'"]@i';
+  preg_match_all($pattern, $node->body, $matches);
+
+  if (sizeof($matches[1]) > 1) {
+//     drupal_set_message(t('More than one PDF is mentioned in %title.', array('%title' => $node->title)), 'error');
+//     dpm($node);
+    return t('more than 1 pdf');
+  }
+  else {
+    foreach ($matches[1] as $pdf) {
+//       drupal_set_message(t('A PDF was found at %title.', array('%title' => $node->title)));
+//       dpm($matches);
+      $file = nyss_migrate_file_object($matches[1][0], $node);
+
+      if (!$file) {
+//         drupal_set_message('Unable to save file.', 'error');
+        return t('no local pdf');
+      }
+
+      drupal_write_record('files', $file);
+
+      $file->list = TRUE;
+      $file->data = array(
+        'description' => $file->filename,
+      );
+      $node->field_pdf = array(
+        0 => (array) $file,
+      );
+
+      // @TODO: remove this when we do for real
+//       drupal_set_message('PDF was successful.');
+//       return FALSE;
+    }
+  }
+
+  // Remove all images from the body.
+  $node->body = preg_replace('@<\s*img[^>]*>@i', '', $node->body);
+
+  // Remove all tables from the body.
+  $node->body = preg_replace('@<\s*table.*</table>@i', '', $node->body);
+
+      $node = (array) $node;
+
+    $node_type_default = variable_get('node_options_'. $node['type'], array('status', 'promote'));
+    $node['promote'] = in_array('promote', $node_type_default);
+    $node['comment'] = variable_get('comment_'. $node['type'], 2);
+    $node['revision'] = in_array('revision', $node_type_default);
+    $node['format'] = FILTER_FORMAT_DEFAULT;
+//     dpm($node['body']);
+    $node['body'] = preg_replace('@<\s*p[^>]*>\s*<\s*/p\s*>@i', '', $node['body']);
+    $node['body'] = preg_replace('@<\s*p[^>]*>\s*<\s*p[^>]*>@i', '<p>', $node['body']);
+    $node['body'] = preg_replace('@<!--table-->@i', '', $node['body']);
+    $node['body'] = preg_replace('@<>@i', '', $node['body']);
+    $node['body'] = preg_replace('@&nbsp;@i', '', $node['body']);
+//     preg_replace('@p@i', 'TEST', $node['body']);
+//     dpm($node['body']);
+    unset($node['teaser']);
+//     dpm($node);
+    $node = node_submit($node);
+    node_save($node);
+
+//   drupal_set_message(t('!node (!delete)', array('!node' => l($node->title, 'node/'. $node->nid), '!delete' => l(t('delete'), 'node/'. $node->nid .'/delete'))));
+//   dpm($node);
+
+  return $node;
+}
+
+function nyss_migrate_file_object($url, $node) {
+  global $user;
+
+  $url = str_replace('images_wms', 'images_WMS', $url);
+
+  // Create a file object for our image.
+  $extensions = '';
+  foreach ($user->roles as $rid => $name) {
+    $extensions .= ' '. variable_get("upload_extensions_$rid",
+    variable_get('upload_extensions_default', 'jpg jpeg gif png txt html doc xls pdf ppt pps odt ods odp'));
+  }
+  $path = parse_url($url, PHP_URL_PATH);
+  $file = array();
+  $file = (object) $file;
+  $file->filename = file_munge_filename(trim(basename($path), '.'), $extensions);
+  $file->filepath = file_directory_path() . $path;
+
+  if (!file_exists($file->filepath)) {
+    // Look for a file that has a different camelcase spelling.
+//     drupal_set_message($url .' ('. l($file->filepath, $file->filepath) .') is not on the local system. Attempting to find CaMeLcAsE match.', 'error');
+    $directory = file_scan_directory(pathinfo(file_directory_path() . $path, PATHINFO_DIRNAME), '.+');
+    $lower = array();
+    $flag = FALSE;
+    $test = strtolower($file->filepath);
+//     dpm($directory);
+    foreach ($directory as $key => $value) {
+      if ($test == strtolower($key)) {
+        // We found a match with a different case, so let's use that.
+        $file->filepath = $value->filename;
+        $file->filename = $value->basename;
+        $flag = TRUE;
+//         drupal_set_message(t('Successfully matched !path.', array('!path' => l($file->filepath, $file->filepath))), 'error');
+        break;
+      }
+    }
+    if (!$flag) {
+      // We couldn't match the file, so we see if we can save it locally.
+      $file = nyss_migrate_fetch_remote_image($url);
+      if (is_string($file)) {
+        return $file;
+      }
+    }
+  }
+
+  // Populate the other file fields.
+  $file->uid = $node->uid;
+  $file->status = FILE_STATUS_PERMANENT;
+  $file->filemime = file_get_mimetype($file->filename);
+  $file->filesize = filesize($file->filepath);
+  $file->timestamp = filemtime($file->filepath);
+
+  return $file;
+}
+
+function nyss_migrate_district_senator_nid($district) {
+  static $districts;
+
+  if (!isset($districts)) {
+    $districts = array();
+  }
+
+  if ($district) {
+    if (!isset($districts[$district])) {
+      $district_nid = db_result(db_query("SELECT n.nid FROM {node} n INNER JOIN {content_type_district} d ON d.vid = n.vid AND d.field_district_number_value = %d", $district));
+      if (!$district_nid) {
+        drupal_set_message(t('WARNING: There is no district node in place for %d.', array('%d' => $district)), 'error');
+        $districts[$district] = FALSE;
+      }
+      else {
+        $district_node = node_load($district_nid);
+        $senator_node = nyss_senator_node($district_node);
+        if (!$senator_node) {
+          $districts[$district] = FALSE;
+          drupal_set_message(t("WARNING: There is no senator node in place for !d.", array('!d' => l($district_node->title, 'node/'. $district_node->nid))), 'error');
+        }
+        else {
+          $districts[$district]['senator'] = $senator_node->nid;
+          $districts[$district]['district'] = $district_node->nid;
+          $districts[$district]['senator_node'] = $senator_node;
+        }
+      }
+    }
+    return $districts[$district];
+  }
+}
+
+function nyss_migrate_news_recovery() {
+  $first = variable_get('nyss_migrate_first_redo_date', 0);
+//   dpm($first);
+//   $results = db_query_range("SELECT m.nid FROM migrate_news.newsnew m WHERE m.nid > %d ORDER BY m.nid", $first, 0, variable_get('nyss_migrate_fetch_results', 10));
+  $results = db_query_range("SELECT m.nid, t.pubDt FROM migrate_news.newsnew m INNER JOIN migrate_news.news t ON t.District=m.District AND t.Title=m.Title AND t.Category=m.Category WHERE m.nid>%d ORDER BY m.nid", $first, 0, variable_get('nyss_migrate_fetch_results', 20));
+  while ($result = db_fetch_object($results)) {
+    $node = node_load($result->nid);
+    $node->date = $result->pubDt;
+    $node = (array) $node;
+
+    $node_type_default = variable_get('node_options_'. $node['type'], array('status', 'promote'));
+    $node['promote'] = in_array('promote', $node_type_default);
+    $node['comment'] = variable_get('comment_'. $node['type'], 2);
+    $node['revision'] = in_array('revision', $node_type_default);
+    $node['format'] = FILTER_FORMAT_DEFAULT;
+//     dpm($node['body']);
+    $node['body'] = preg_replace('@<\s*p[^>]*>\s*<\s*/p\s*>@i', '', $node['body']);
+    $node['body'] = preg_replace('@<\s*p[^>]*>\s*<\s*p[^>]*>@i', '<p>', $node['body']);
+    $node['body'] = preg_replace('@<!--table-->@i', '', $node['body']);
+    $node['body'] = preg_replace('@<>@i', '', $node['body']);
+    $node['body'] = preg_replace('@&nbsp;@i', '', $node['body']);
+//     preg_replace('@p@i', 'TEST', $node['body']);
+//     dpm($node['body']);
+    unset($node['teaser']);
+//     dpm($node);
+    $node = node_submit($node);
+    node_save($node);
+    variable_set('nyss_migrate_first_redo_date', $node->nid);
+//     drupal_set_message(l($node->title, 'node/'. $node->nid));
+//     dpm($result);
+  }
+}
+
+function nyss_migrate_news_teasers() {
+  $current = variable_get('nyss_migrate_nid_to_revert_teaser', 0);
+  $results = db_query_range("SELECT nid FROM {node} WHERE nid>%d AND type in ('blog', 'in_the_news', 'report') ORDER BY nid", $current, 0, variable_get('nyss_migrate_fetch_results', 20));
+  while ($result = db_fetch_object($results)) {
+    $node = node_load($result->nid);
+    $node = (array) $node;
+    unset($node['teaser']);
+    $node = node_submit($node);
+    node_save($node);
+    variable_set('nyss_migrate_nid_to_revert_teaser', $node->nid);
+  }
+}
+
+function nyss_migrate_fetch_remote_image($url) {
+    if ($url) {
+      global $user;
+
+      $image = file_get_contents($url);
+      if ($image) {
+
+        // Add in our check of the the file name length.
+        $validators['file_validate_name_length'] = array();
+
+        if (module_exists('transliteration')) {
+          $url = transliteration_get($url);
+        }
+
+        $basename = pathinfo(str_replace(' ', '-', str_replace('%20','-' , $url)), PATHINFO_BASENAME);
+        $directory = file_directory_path() . '/nyss-migrate';
+
+        $filepath = file_create_filename($basename, $directory);
+
+        // Begin building file object.
+        $file = new stdClass();
+        $file->uid = $user->uid;
+        // Strip out the query if provided.
+        $file->filename = parse_url($basename, PHP_URL_PATH);
+        $file->filepath = parse_url($filepath, PHP_URL_PATH);
+
+        $file->filemime = module_exists('mimedetect') ? mimedetect_mime($file) : file_get_mimetype($file->filename);
+
+        // Rename potentially executable files, to help prevent exploits.
+        if (preg_match('/\.(php|pl|py|cgi|asp|js)$/i', $file->filename) && (substr($file->filename, -4) != '.txt')) {
+          $file->filemime = 'text/plain';
+          $file->filepath .= '.txt';
+          $file->filename .= '.txt';
+        }
+
+        // If the destination is not provided, or is not writable, then use the
+        // temporary directory.
+//         if (empty($dest) || file_check_path($dest) === FALSE) {
+//           $dest = file_directory_temp();
+//         }
+
+        $file->source = 'emthumb_fetch_remote_thumbnail';
+        $file->destination = file_destination($file->filepath, $replace);
+        $file->filesize = strlen($image);
+
+        // Call the validation functions.
+        $errors = array();
+        foreach ($validators as $function => $args) {
+          array_unshift($args, $file);
+          $errors = array_merge($errors, call_user_func_array($function, $args));
+        }
+
+        // Check for validation errors.
+        if (!empty($errors)) {
+          $message = t('The selected file %name could not be saved.', array('%name' => $file->filename));
+          if (count($errors) > 1) {
+            $message .= '<ul><li>'. implode('</li><li>', $errors) .'</li></ul>';
+          }
+          else {
+            $message .= ' '. array_pop($errors);
+          }
+          drupal_set_message($message);
+          return 'could not save image';
+        }
+
+        if (!file_save_data($image, $file->filepath, FILE_EXISTS_RENAME)) {
+          drupal_set_message(l($url, $url));
+          dpm($file);
+          drupal_set_message(t('Image error. Could not copy image @url.', array('@url' => $url)), 'error');
+          return "could not copy image";
+        }
+        // If we made it this far it's safe to record this file in the database.
+//         $file->status = FILE_STATUS_TEMPORARY;
+        $file->timestamp = time();
+//         drupal_write_record('files', $file);
+
+        // Let modules add additional properties to the yet barebone file object.
+        foreach (module_implements('file_insert') as $module) {
+          $function =  $module .'_file_insert';
+          $function($file);
+        }
+
+        return $file;
+      }
+      else {
+        return 'broken remote image';
+      }
+    }
+    else {
+      return 'missing url';
+    }
+}

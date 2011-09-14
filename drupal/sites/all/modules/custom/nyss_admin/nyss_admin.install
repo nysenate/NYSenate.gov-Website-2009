@@ -1,0 +1,12 @@
+<?php
+
+/**
+* Hook sets nyss_admin 'weight' to 1.
+* This ensures that its hook_nodeapi runs after override_node_settings module.
+*
+*/
+function nyss_admin_install() {
+  $ret = array();
+  $ret[] = db_query("UPDATE {system} SET weight = 1 WHERE name = 'nyss_admin'");
+  return $ret;
+}

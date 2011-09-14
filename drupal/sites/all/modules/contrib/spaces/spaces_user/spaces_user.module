@@ -1,0 +1,335 @@
+<?php
+
+define('SPACES_USER_ENABLED', 1);
+
+/**
+ * Spaces user must be included after the Spaces module. We check this
+ * condition here -- if the check fails, at least we don't break Drupal.
+ */
+if (function_exists('spaces_menu')) {
+  class space_user implements space {
+    var $account = NULL;
+    var $title = NULL;
+
+    /**
+     * Constructor
+     */
+    function __construct($type, $sid = NULL, $is_active = FALSE) {
+      if ($sid) {
+        $this->account = user_load(array('uid' => $sid));
+        $this->title = $this->account->name;
+        $this->purl = 'space-'. spaces_user_make_purl($this->account->name);
+      }
+      else {
+        $this->account = new StdClass();
+      }
+    }
+
+    /**
+     * Implementation of space->save().
+     */
+    function save() {
+      if (!$this->save_once) {
+        user_save($this->account);
+      }
+      return;
+    }
+
+    /**
+     * Implementation of space->delete().
+     */
+    function delete() {
+      // We do not delete the user here:
+      // 1. to allow the user to remain and perhaps later be re-registered as a user space
+      // 2. to avoid recursion
+      return;
+    }
+
+    /**
+     * Implementation of space->feature_access().
+     */
+    function feature_access($feature = NULL) {
+      if (user_access('access content') && isset($this->features[$feature]) && $this->features[$feature] == SPACES_USER_ENABLED) {
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * Implementation of space->admin_access().
+     */
+    function admin_access() {
+      global $user;
+      if ($this->account->uid == $user->uid) {
+        return true;
+      }
+      else if (user_access('administer users')) {
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * Implementation of space->feature_options().
+     */
+    function feature_options() {
+      return array(
+        SPACES_FEATURE_DISABLED => t('Disabled'),
+        SPACES_USER_ENABLED => t('Enabled'),
+      );
+    }
+
+    /**
+     * Implementation of space->user_links().
+     */
+    function user_links() {
+      return array();
+    }
+
+    /**
+     * Implementation of space->admin_links().
+     */
+    function admin_links() {
+      $item = menu_get_item("user/{$this->sid}/edit");
+      if ($item && $item['access']) {
+        $links['settings'] = array(
+          'title' => t('Account settings'),
+          'href' => $item['href'],
+        );
+      }
+    }
+
+    /**
+     * Implementation of space->form().
+     */
+    function form() {
+      return;
+    }
+
+    /**
+     * Implementation of space->preset_validate().
+     */
+    function validate($values) {
+      return;
+    }
+
+    /**
+     * Implementation of space->preset_submit().
+     */
+    function submit($values) {
+      // Only process group form options on preset form
+      if (!$this->sid) {
+      }
+      return array();
+    }
+
+    /**
+     * Implementation of space->preset_enforce().
+     */
+    function preset_enforce($preset) {
+    }
+
+    /**
+     * Implementation of space->redirect().
+     */
+    function redirect($op = 'home') {
+      switch ($op) {
+        case 'home':
+          // use the menu path of the selected feature as homepage
+          if ($home = $this->settings['home']) {
+            if (menu_get_item($home)) {
+              purl_goto($home, array('purl' => array('provider' => 'spaces_user', 'id' => $this->sid)));
+            }
+          }
+          // send the user to the features page if no homepage is set
+          global $user;
+          if ($user->uid == $this->sid) {
+            purl_goto("user/{$this->sid}/edit", array('purl' => array('provider' => 'spaces_user', 'id' => $this->sid)));
+          }
+          else {
+            purl_goto("user/{$this->sid}", array('purl' => array('provider' => 'spaces_user', 'id' => $this->sid)));
+          }
+          break;
+        case 'features':
+          purl_goto("user/{$this->sid}/spaces/features", array('purl' => array('provider' => 'spaces_user', 'id' => $this->sid)));
+          break;
+      }
+    }
+
+    /**
+     * Implementation of space->menu_access().
+     */
+    function menu_access($op, $object = NULL, $is_active = TRUE) {
+      // @TODO: implement privacy settings so only some people can view your user space & content.
+      switch ($op) {
+        case 'user':
+          // Do not allow users to view other users' profiles in the context of their userspace.
+          $space = spaces_get_space();
+          if (!$is_active && is_object($space) && $space->type == 'user') {
+            return FALSE;
+          }
+          break;
+      }
+      return TRUE;
+    }
+
+    /**
+     * Implementation of space->router().
+     */
+    function router($op, $object = NULL, $is_active = TRUE) {
+      switch ($op) {
+        case 'menu':
+          if ($is_active && drupal_is_front_page()) {
+            $this->redirect('home');
+          }
+          break;
+        case 'node':
+          $node = $object;
+          if ($is_active && $node->uid != $this->sid) {
+            purl_goto($_GET['q'], array('purl' => array('disabled' => TRUE)));
+          }
+          break;
+        case 'user':
+          global $user;
+          $account = $object;
+
+          // Bail if we're editing a user profile and destination is set --
+          // it's likely we came from an admin view or other page where the user
+          // expects to return successfully to the specified destination.
+          if (isset($_GET['destination']) && arg(0) == 'user' && arg(2) == 'edit') {
+            return;
+          }
+
+          // Always send user visitors to the user's space if trying to view the profile.
+          // @TODO: This is very greedy -- may need reconsideration
+          if (!$is_active) {
+            purl_goto($_GET['q'], array('purl' => array('provider' => 'spaces_user', 'id' => $account->uid)));
+          }
+          // Do not allow users to view other users' profiles in the context of their userspace.
+          else if ($account->uid != $this->sid) {
+            purl_goto($_GET['q'], array('purl' => array('disabled' => TRUE)));
+          }
+          else if ($is_active) {
+            // Use homepage instead of user view
+            $item = menu_get_item();
+            if ($item['page_callback'] == 'user_view' && !empty($this->settings['home'])) {
+              $this->redirect('home');
+            }
+          }
+          break;
+      }
+    }
+
+    // Implementation of views_filter().
+    function views_filter(&$query, $base_table = '', $relationship = '') {
+      switch ($base_table) {
+        case 'node':
+        case 'users':
+          $table = $query->ensure_table('users', $relationship);
+          $query->add_where(0, "$table.uid  = %d", $this->sid);
+          break;
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function spaces_user_menu() {
+  $items = spaces_active_space_menu('user', true, 'user/%user');
+  $items['user/%user/spaces'] = $items['user/%user/spaces/features'];
+  return $items;
+}
+
+/**
+ * Implementation of hook_menu_alter().
+ */
+function spaces_user_menu_alter(&$items) {
+  // Remove the "View" local task from the user menu, since we are pushing
+  // visitors to the user's configured space homepage anyway.
+  $items['user/%user/view']['type'] = MENU_CALLBACK;
+}
+
+/**
+ * Implementation of hook_spaces_types().
+ */
+function spaces_user_spaces_types() {
+  return array(
+    'user' => array(
+      'class' => 'space_user',
+      'title' => t('User space'),
+      'custom prefixes' => FALSE,
+      'base path' => 'user/%sid',
+      // @TODO: implement custom prefixes as an optional setting
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_purl_modifiers().
+ */
+function spaces_user_purl_modifiers($reset = FALSE) {
+  static $modifiers;
+  if (!isset($modifiers) || $reset) {
+    $modifiers = array();
+    $result = db_query("SELECT uid, name FROM {users} WHERE status = 1");
+    while($row = db_fetch_object($result)) {
+      $modifiers[] = array(
+        'value' => 'space-'. spaces_user_make_purl($row->name),
+        'id' => $row->uid,
+      );
+    }
+  }
+  return array('spaces_user' => $modifiers);
+}
+
+/**
+ * Implementation of hook_user().
+ */
+function spaces_user_user($op, &$edit, &$account, $category = NULL) {
+  switch ($op) {
+    case 'form':
+      if ($category == 'account') {
+        $space = spaces_load('user', $account->uid);
+        $form = array(
+          'spaces_preset' => spaces_form_presets($space),
+        );
+        return $form;
+      }
+      break;
+    case 'submit':
+      // Disable PURL for the current redirect
+      purl_disable(TRUE);
+      break;
+    case 'insert':
+    case 'update':
+      if (isset($edit['preset'])) {
+        $space = spaces_load('user', $account->uid);
+        $space->preset = $edit['preset'];
+        spaces_save($space);
+      }
+      break;
+  }
+}
+
+/**
+ * Helper function to make usernames more suitable for path prefixing.
+ */
+function spaces_user_make_purl($username) {
+  return check_url(str_replace(' ', '-', strtolower($username)));
+}
+
+/**
+ * Implementation of hook_context_links_alter().
+ */
+function spaces_user_context_links_alter(&$links) {
+  // Disallow users from submitting ANY content in other people's spaces : )
+  $space = spaces_get_space();
+  if ($space && $space->type == 'user') {
+    global $user;
+    if ($user->uid != $space->sid) {
+      $links = array();
+    }
+  }
+}

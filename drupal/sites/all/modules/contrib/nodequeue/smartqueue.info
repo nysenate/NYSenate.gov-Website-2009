@@ -1,0 +1,13 @@
+name = Smartqueue taxonomy
+description = Creates a node queue for each taxonomy vocabulary
+package = Nodequeue
+core = 6.x
+dependencies[] = nodequeue 
+dependencies[] = taxonomy
+
+; Information added by drupal.org packaging script on 2011-05-20
+version = "6.x-2.10"
+core = "6.x"
+project = "nodequeue"
+datestamp = "1305935816"
+

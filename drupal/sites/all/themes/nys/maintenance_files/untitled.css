@@ -1,0 +1,14 @@
+.main {
+	position: relative;
+	border-width: 0;
+
+}
+
+body {
+	background: #262353 url(senateseal1000-opt.png) no-repeat fixed center center;
+}
+
+p.message{
+	color: white;
+	font: bold 1.5em arial,serif;
+}

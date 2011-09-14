@@ -1,0 +1,11 @@
+; $Id: taxonomy_list.info,v 1.1.2.1.2.1 2008/03/25 18:11:12 nancyw Exp $
+name = Taxonomy List
+description = List terms under a specific vocabulary
+dependencies[] = taxonomy
+core = 6.x
+; Information added by drupal.org packaging script on 2009-02-12
+version = "6.x-1.3"
+core = "6.x"
+project = "taxonomy_list"
+datestamp = "1234453591"
+

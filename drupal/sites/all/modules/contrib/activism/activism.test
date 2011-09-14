@@ -1,0 +1,193 @@
+<?php
+// $Id: activism.test,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * SimpleTests for activism.module.
+ *
+ * @todo Can't test sending of the campaign auto-responder e-mail message.
+ */
+
+class ActivismTestCase extends DrupalWebTestCase {
+  function getInfo() {
+    return array(
+      'name' => t('Activism'),
+      'description' => t('Functionality and unit tests for core activism.module.'),
+      'group' => t('Activism'),
+    );
+  }
+
+  /**
+   * Enable modules and create users with specific permissions.
+   */
+  function setUp() {
+    parent::setUp('activism', 'activism_tellafriend', 'token');
+    $this->admin_user   = $this->drupalCreateUser(array('administer activism', 'create campaign content', 'edit any campaign content', 'delete any campaign content'));
+    $this->allowed_user = $this->drupalCreateUser(array('create campaign content', 'edit own campaign content', 'delete own campaign content'));
+    $this->normal_user  = $this->drupalCreateUser(array('access content'));
+  }
+
+  /**
+   * Test that redirects to CTA tab work.
+   */
+  function testCampaignInsertRedirect() {
+    $edit = array(
+      'body'                              => $this->randomName(32),
+      'title'                             => $this->randomName(8),
+      'activism_campaign_description'     => $this->randomName(32),
+      'activism_campaign_footer_message'  => $this->randomName(32),
+      'activism_cta_module'               => 'activism_tellafriend',
+    );
+
+    // test CTA tab redirect is working.
+    $this->drupalLogin($this->allowed_user);
+    $this->drupalGet('node/add/campaign');
+    $this->drupalPost('node/add/campaign', $edit, 'Save');
+    $this->assertRaw(t('Campaign configuration'), t('New campaign creation redirects to CTA tab.'));
+
+    // edits should NOT go to the CTA tab nor allow type changes.
+    $node = node_load(array('title' => $edit['title']), NULL, TRUE);
+    $this->drupalGet('node/' . $node->nid . '/edit'); // the radios are gone entirely on an edit; replaced with FAPI #type item.
+    $this->assertNoPattern('/<input type="radio".*name="activism_cta_module"/', t('Edited campaigns disable changing the Campaign type.'));
+    $this->drupalPost('node/' . $node->nid . '/edit', array(), 'Save'); // you know, i like this data just the way you are!
+    $this->assertRaw($edit['body'], t('Edited campaigns do not redirect to the CTA tab.'));
+  }
+
+  /**
+   * Test basic campaign functionality (expiration dates, footers, etc.).
+   */
+  function testCampaignBasicFunctionality() {
+    $edit = array(
+      'type'                                  => 'campaign',
+      'uid'                                   => $this->allowed_user->uid,
+      'body'                                  => $this->randomName(32),
+      'title'                                 => $this->randomName(8),
+      'activism_campaign_description'         => $this->randomName(32),
+      'activism_campaign_footer_message'      => $this->randomName(32),
+      'activism_cta_module'                   => 'activism_tellafriend',
+      'activism_cta_goal'                     => 500,
+      'activism_cta_destination'              => 'http://www.trellon.com/',
+      'activism_campaign_expired_date'        => format_date(time() + 86400, 'custom', 'Y-m-d'),
+      'activism_campaign_expired_message'     => $this->randomName(32),
+      'activism_cta_mail_autoresponder_subject' => $this->randomName(32),
+      'activism_cta_mail_autoresponder_body'    => $this->randomName(32),
+      'activism_cta_mail_autoresponder_body_format' => FILTER_FORMAT_DEFAULT,
+      'activism_cta_mail_list'                => 1,
+      'activism_cta_mail_list_default'        => 1,
+      'activism_cta_mail_list_title'          => 'Morbus can spam me!',
+    );
+
+    $node = $this->drupalCreateNode($edit);
+    $node = node_load($node->nid, NULL, TRUE);
+    foreach ($edit as $key => $value) { // this is all elementary but still needs to be tested. yum.
+      $this->assertEqual($node->$key, $value, t("@key was properly set on node creation and loaded successfully.", array('@key' => $key)));
+    }
+
+    // test one with a future expiration date.
+    $this->drupalGet('node/' . $node->nid);
+    $this->assertRaw($edit['activism_campaign_footer_message'], t('Campaign footer message shown on campaign node view.'));
+    $this->assertNoRaw($edit['activism_campaign_description'], t('Campaign description is not shown on campaign node view.'));
+    $this->assertNoRaw($edit['activism_campaign_expired_message'], t('Campaign expired message is not shown on campaign node view with future expiration date.'));
+
+    // and test one with an expired expiration date.
+    $edit['activism_campaign_expired_date'] = format_date(time() + 86400, 'custom', 'Y-m-d');
+    $node = $this->drupalCreateNode($edit); // please be creatink the node.
+    $this->drupalGet('node/' . $node->nid); // thank you kind sirrah. cookie for you!
+    $this->assertNoRaw($edit['activism_campaign_expired_message'], t('Campaign expired message is shown on campaign node view with past expiration date.'));
+
+    // test that the mailing list stuff is shown.
+    $this->assertPattern('/<input type="checkbox".*name="activism_signup_mail_list"/', t('Mailing list opt-in checkbox is shown when configured properly.'));
+    $this->assertPattern('/<input type="checkbox".*name="activism_signup_mail_list".*checked="checked"/', t('Mailing list opt-in checkbox defaults to being checked as configured.'));
+    $this->assertRaw($edit['activism_cta_mail_list_title'], t('Mailing list display title was replaced with campaign settings.'));
+
+    // reconfigure the mailing list and retest.
+    $edit['activism_cta_mail_list_default'] = 0;
+    $edit['activism_cta_mail_list_title'] = NULL;
+    $node = $this->drupalCreateNode($edit); // i have these voices talking in my ear.
+    $this->drupalGet('node/' . $node->nid); // they call themselves teh YouTubezz.
+    $this->assertNoPattern('/<input type="checkbox".*name="activism_signup_mail_list".*checked="checked"/', t('Mailing list opt-in is not checked when the default option is not set.'));
+    $this->assertRaw('Sign up for our mailing list', t('Mailing list display title was set to the default when not overridden in the campaign settings.'));
+
+    // make sure the admin overview works
+    $this->drupalLogin($this->admin_user);
+    $this->drupalGet('admin/content/activism');
+    $this->assertRaw($edit['title'], t('Created campaigns appear on administrative overview page.'));
+    $this->assertRaw('<td class="activism-cta-goal">500</td>', t("A campaign's CTA goal appears on administrative overview page."));
+  }
+
+  /**
+   * Test our signup form element builder.
+   */
+  function testCampaignSignupElements() {
+    $form = array(); // required for reference.
+    foreach (array('first_name', 'last_name', 'mail') as $required_element) {
+      activism_signup_form_element($form, $required_element); // if these are returned, they should also default to being #required in the form.
+      $this->assertTrue($form['activism_signup_' . $required_element]['#required'], t('@required_element was set to #required by activism_signup_form_element().', array('@required_element' => $required_element)));
+    }
+
+    foreach (array('street_address', 'city', 'state', 'postal_code', 'phone', 'mobile') as $standard_element) {
+      activism_signup_form_element($form, $standard_element); // just check that these things are actually returned and exist.
+      $this->assertTrue(isset($form['activism_signup_' . $standard_element]), t('@standard_element was returned by activism_signup_form_element().', array('@standard_element' => $standard_element)));
+    }
+
+    // and this is a junk element that SHOULD NOT exist.
+    activism_signup_form_element($form, 'morbus_rules'); // well, it's true, I do rule, but I'm a bit non-standard. MmMh. Poetry, folks, poetry.
+    $this->assertFalse(isset($form['activism_signup_morbus_rules']), t('Non-standard element was not returned by activism_signup_form_element().'));
+  }
+
+  /**
+   * Test call to action submissions - signup stored and redirected.
+   */
+  function testCampaignCTASubmission() {
+    // create a tell a friend campaign and test storage and redirects.
+    $edit = array(
+      'type'                                  => 'campaign',
+      'uid'                                   => $this->allowed_user->uid,
+      'body'                                  => $this->randomName(32),
+      'title'                                 => $this->randomName(8),
+      'activism_campaign_description'         => $this->randomName(32),
+      'activism_cta_module'                   => 'activism_tellafriend',
+      'activism_cta_destination'              => 'http://www.example.com/',
+      'activism_tellafriend_mail_subject'     => '[Example TAF subject]',
+      'activism_tellafriend_mail_header'      => '[Example TAF header]',
+      'activism_tellafriend_mail_footer'      => '[Example TAF footer]',
+      'activism_tellafriend_mail_header_format' => FILTER_FORMAT_DEFAULT,
+      'activism_tellafriend_mail_footer_format' => FILTER_FORMAT_DEFAULT,
+    );
+    $node = $this->drupalCreateNode($edit);
+    $node = node_load($node->nid, NULL, TRUE);
+    $post = array(
+      'activism_signup_first_name'        => 'Morbus',
+      'activism_signup_last_name'         => 'Iff',
+      'activism_signup_mail'              => 'morbus@example.com',
+      'activism_tellafriend_recipient[0][activism_tellafriend_recipient_name]' => 'Imam',
+      'activism_tellafriend_recipient[0][activism_tellafriend_recipient_mail]' => 'imam@example.com',
+      'activism_tellafriend_mail_body'    => "I'm the mail's body and that's the bottom line cos Stone Cold said so.",
+    );
+    $this->drupalLogin($this->allowed_user);
+    $this->drupalPost('node/' . $node->nid, $post, 'Send this message');
+    $this->assertEqual($this->url, $edit['activism_cta_destination'], t('Submitted call to action redirects user to destination URL.'));
+    $result = db_fetch_array(db_query('SELECT * FROM {activism_signups} WHERE nid = %d AND uid = %d', $node->nid, $this->allowed_user->uid));
+    foreach (array('first_name', 'last_name', 'mail') as $element) { // @todo this doesn't test the complete range of signup storage fields.
+      $this->assertEqual($result[$element], $post['activism_signup_' . $element], t('@element was properly saved into the activism_signups table.', array('@element' => $element)));
+    }
+
+    // with CTA submitted, check reports.
+    $this->drupalLogin($this->admin_user);
+    $this->drupalGet('admin/content/activism'); // main administrative overview page.
+    $this->assertRaw('<td class="activism-cta-goal-current">1</td>', t("A campaign's current CTA count appears on administrative overview page."));
+    $this->drupalGet('node/' . $node->nid . '/activism_report'); // campaign-specific reporting page, with a list of signups. placeholder for views.
+    $this->assertRaw($edit['activism_campaign_description'], t("A campaign's administrative description appears on the campaign-specific Report tab."));
+    $this->assertRaw("$post[activism_signup_first_name] $post[activism_signup_last_name]", t("The full name of a CTA signup appears on the campaign-specific Report tab."));
+    $this->assertRaw($post['activism_signup_mail'], t("The e-mail address of a CTA signup appears on the campaign-specific Report tab."));
+    // @todo like the assertEquals above, this doesn't test the complete range of storage signup fields displayed on the Report tab.
+
+    // and finally, check that CSV exports are working.
+    $this->drupalGet('node/' . $node->nid . '/activism_export');
+    $this->assertRaw('"nid","uid","timestamp","first_name"', t('The fields header line appears in the CTA signup CSV export.'));
+    $this->assertRaw('"' . $post['activism_signup_first_name'] . '",', t('first_name appears in the CTA signup CSV export.'));
+    $this->assertRaw('"' . $post['activism_signup_last_name'] . '",', t('last_name appears in the CTA signup CSV export.'));
+    $this->assertRaw('"' . $post['activism_signup_mail'] . '",', t('mail appears in the CTA signup CSV export.'));
+    // @todo again, since this is only a Tell a Friend, we're not testing all possible storage signup fields.
+  }
+}

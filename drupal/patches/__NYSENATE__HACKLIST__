@@ -1,0 +1,33 @@
+*********************************
+* START FILE: /.htaccess
+**********************************
+Numerous rewrite rules have been added to .htaccess to redirect URLs which refer to senate districts, names
+of individual senators, and senate initiatives.
+*********************************
+* END FILE: /modules/search/search.module
+**********************************
+
+*********************************
+* START FILE: /modules/search/search.module
+**********************************
+function search_index() is modified beginning at line 1238 to add a searchtext_alter hook.
+
+http://drupal.org/node/33809 may end up addressing the following two hacks, to allow variable search limits in do_search() function.
+
+Add extra argument to function do_search() line # 918 so it looks like this:
+  function do_search($keywords, $type, $join1 = '', $where1 = '1 = 1', $arguments1 = array(), $columns2 = 'i.relevance AS score', $join2 = '', $arguments2 = array(), $sort_parameters = 'ORDER BY score DESC', $searchlimit = '10') {
+
+Modify the pager_query function like #958 to look like this:
+  $result = pager_query("$select $sort_parameters", $searchlimit, 0, $count_select, $arguments);
+*********************************
+* END FILE: /modules/search/search.module
+**********************************
+
+/misc/feed.png has been replaced with a different graphic file.
+
+File /robots.txt has been deleted and is instead being generated dynamically using the robots.txt module.
+
+A couple of files have been added for the purpose of Google site verification. These can probably be removed:
+/google00dfbaefc00b6c21.html
+/google5ebd22a406baf325.html
+

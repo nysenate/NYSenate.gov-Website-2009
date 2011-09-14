@@ -1,0 +1,11 @@
+name = "RPX"
+description = Adds the RPX Sign In widget to your site
+core = 6.x
+php = 5.2
+
+; Information added by drupal.org packaging script on 2011-02-25
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "rpx"
+datestamp = "1298620100"
+

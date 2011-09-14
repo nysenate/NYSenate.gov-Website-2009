@@ -1,0 +1,316 @@
+# $Id: revision_deletion.pot,v 1.1.2.2 2009/08/27 03:53:59 nancyw Exp $
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  revision_deletion.admin.inc,v 1.1.2.7 2009/08/23 21:18:31 nancyw
+#  revision_deletion.module,v 1.2.2.18 2009/08/12 15:38:48 nancyw
+#  revision_deletion.info: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2009-08-26 23:46-0400\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: revision_deletion.admin.inc:16
+msgid "Yes"
+msgstr ""
+
+#: revision_deletion.admin.inc:16
+msgid "No"
+msgstr ""
+
+#: revision_deletion.admin.inc:23
+msgid "Manual"
+msgstr ""
+
+#: revision_deletion.admin.inc:26
+msgid "Always"
+msgstr ""
+
+#: revision_deletion.admin.inc:33
+msgid "Revision Mass Deletion Settings"
+msgstr ""
+
+#: revision_deletion.admin.inc:53
+msgid "Content types"
+msgstr ""
+
+#: revision_deletion.admin.inc:58
+msgid "Select which content types are subject to revision deletion. Types in <strong>bold</strong> have revisions enabled by default. Multiple types may be selected."
+msgstr ""
+
+#: revision_deletion.admin.inc:66
+msgid "Automatic deletion interval"
+msgstr ""
+
+#: revision_deletion.admin.inc:70
+msgid "Frequency of the scheduled mass revision deleton. Select \"Manual\" to disable the automatic deletion."
+msgstr ""
+
+#: revision_deletion.admin.inc:78
+msgid "Revision Age"
+msgstr ""
+
+#: revision_deletion.admin.inc:81
+msgid "Age of revisions that should be deleted."
+msgstr ""
+
+#: revision_deletion.admin.inc:89
+msgid "Current Revision Age"
+msgstr ""
+
+#: revision_deletion.admin.inc:92
+msgid "Age of current revision before the previous can be deleted. \"Always\" means the previous revision will be deleted regardless of how old the current one is."
+msgstr ""
+
+#: revision_deletion.admin.inc:100
+msgid "List settings"
+msgstr ""
+
+#: revision_deletion.admin.inc:103
+msgid "These options are used on revisions lists."
+msgstr ""
+
+#: revision_deletion.admin.inc:111
+msgid "Take over revisions list"
+msgstr ""
+
+#: revision_deletion.admin.inc:114
+msgid "This determines whether or not you wish to replace the core revisions list function."
+msgstr ""
+
+#: revision_deletion.admin.inc:122
+msgid "Number of Revisions per Page"
+msgstr ""
+
+#: revision_deletion.admin.inc:125
+msgid "This is the number of revisions that should be shown in the lists."
+msgstr ""
+
+#: revision_deletion.admin.inc:131
+msgid "Show additional labels"
+msgstr ""
+
+#: revision_deletion.admin.inc:134
+msgid "Should the additional labels (e.g \"current\" or \"last for date\") be shown? CSS classes are also set so those rows can be styled differently."
+msgstr ""
+
+#: revision_deletion.admin.inc:142
+msgid "Keep original"
+msgstr ""
+
+#: revision_deletion.admin.inc:145
+msgid "Should the original version be unchecked?"
+msgstr ""
+
+#: revision_deletion.admin.inc:153
+msgid "Keep last revison per date"
+msgstr ""
+
+#: revision_deletion.admin.inc:156
+msgid "Should the last version for a date be unchecked? This probably should not be used at the same time as \"Keep original\" above."
+msgstr ""
+
+#: revision_deletion.admin.inc:163
+msgid "Save configuration"
+msgstr ""
+
+#: revision_deletion.admin.inc:169
+msgid "Reset to defaults"
+msgstr ""
+
+#: revision_deletion.admin.inc:189
+msgid "Configuration options have been reset to defaults."
+msgstr ""
+
+#: revision_deletion.admin.inc:211
+msgid "Configuration options have been saved."
+msgstr ""
+
+#: revision_deletion.module:22
+msgid "This module will greatly speed up the task of deleting old revisions of nodes. The database clutter and space can be quickly reclaimed as this module, on cron runs, will delete aged revisions (never the current revision) of nodes older than a set period of time. Options include frequency of the cron deletion job, and the age of revisions before being deleted. Cron.php must be run to execute."
+msgstr ""
+
+#: revision_deletion.module:25
+msgid "Delete old revisions of nodes quickly."
+msgstr ""
+
+#: revision_deletion.module:29
+msgid "Using revisions is a good way to improve the integrity of your node content; however it may result in a significant increase in your database size. This page lists the nodes that currently have revisions meeting the deletion criteria and allows you to delete them."
+msgstr ""
+
+#: revision_deletion.module:32
+msgid "These settings control which revisions may be deleted, how often, and from which types of content."
+msgstr ""
+
+#: revision_deletion.module:193
+msgid "Current revision"
+msgstr ""
+
+#: revision_deletion.module:204
+msgid "Young current"
+msgstr ""
+
+#: revision_deletion.module:212
+msgid "Original version"
+msgstr ""
+
+#: revision_deletion.module:219
+msgid "Last for !date"
+msgstr ""
+
+#: revision_deletion.module:280
+msgid "Revisions for \"@title\""
+msgstr ""
+
+#: revision_deletion.module:287;424
+msgid "Delete"
+msgstr ""
+
+#: revision_deletion.module:288;426
+msgid "Revision ID"
+msgstr ""
+
+#: revision_deletion.module:289;427
+msgid "User"
+msgstr ""
+
+#: revision_deletion.module:290;428
+msgid "Date/Time"
+msgstr ""
+
+#: revision_deletion.module:291
+msgid "Operations"
+msgstr ""
+
+#: revision_deletion.module:295;434
+msgid "Notes"
+msgstr ""
+
+#: revision_deletion.module:334
+msgid "revert"
+msgstr ""
+
+#: revision_deletion.module:335
+msgid "delete"
+msgstr ""
+
+#: revision_deletion.module:342
+msgid "Note that there is no confirmation for this action."
+msgstr ""
+
+#: revision_deletion.module:344
+msgid "Delete selected"
+msgstr ""
+
+#: revision_deletion.module:408
+msgid "No revisions deleted."
+msgstr ""
+
+#: revision_deletion.module:425
+msgid "Title"
+msgstr ""
+
+#: revision_deletion.module:429
+msgid "Type"
+msgstr ""
+
+#: revision_deletion.module:452
+msgid "view !type"
+msgstr ""
+
+#: revision_deletion.module:453
+msgid "list revisions"
+msgstr ""
+
+#: revision_deletion.module:457
+msgid "view revision"
+msgstr ""
+
+#: revision_deletion.module:489
+msgid "Click the title to view the current content; click the revision ID to view the revision. Clicking on the \"Run Revision Deletion\" button will delete all of the selected revisions, even if they are shown on other pages."
+msgstr ""
+
+#: revision_deletion.module:492
+msgid "Automatic deletion is scheduled to run every !interval."
+msgstr ""
+
+#: revision_deletion.module:496
+msgid "Automatic deletion is not currently scheduled."
+msgstr ""
+
+#: revision_deletion.module:500
+msgid "It was last run !last_update_time (!last_update_ago ago)."
+msgstr ""
+
+#: revision_deletion.module:508
+msgid "It has never run automatically."
+msgstr ""
+
+#: revision_deletion.module:511
+msgid "It will delete revisions that are older than !age_interval."
+msgstr ""
+
+#: revision_deletion.module:521
+msgid "Run Revision Deletion"
+msgstr ""
+
+#: revision_deletion.module:574
+msgid "No content with deletable revisions found."
+msgstr ""
+
+#: revision_deletion.module:246 revision_deletion.info:0
+msgid "Revision Deletion"
+msgstr ""
+
+#: revision_deletion.module:246
+msgid "@type: node @nid, deleted %title, revision @revision."
+msgstr ""
+
+#: revision_deletion.module:405
+msgid "Deleted one revision."
+msgid_plural "Deleted @count revisions."
+msgstr[0] ""
+msgstr[1] ""
+
+#: revision_deletion.module:13
+msgid "mass delete revisions"
+msgstr ""
+
+#: revision_deletion.module:42
+msgid "Revisions to Mass Delete"
+msgstr ""
+
+#: revision_deletion.module:46
+msgid "Configure or manually run the revision deletion module"
+msgstr ""
+
+#: revision_deletion.module:50
+msgid "List"
+msgstr ""
+
+#: revision_deletion.module:58
+msgid "Settings"
+msgstr ""
+
+#: revision_deletion.module:64
+msgid "Configure settings for the revision deletion module"
+msgstr ""
+
+#: revision_deletion.module:0
+msgid "revision_deletion"
+msgstr ""
+
+#: revision_deletion.info:0
+msgid "Enables the ability to mass delete aging node revisions."
+msgstr ""
+

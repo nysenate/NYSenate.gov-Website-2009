@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Migrate
+description = Migrate the legacy data.
+package = NYSS
+core = 6.x
+dependencies[] = date

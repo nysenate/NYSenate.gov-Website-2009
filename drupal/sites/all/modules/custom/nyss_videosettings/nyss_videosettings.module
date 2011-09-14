@@ -1,0 +1,471 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Internal Users
+ *
+ *  This module controls provides an administrative settings page for video feeds.
+ *
+ */
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_videosettings_menu() {
+  $items = array();
+  $items['admin/nyss/nyss/videosettings'] = array(
+    'title' => 'Video settings',
+    'description' => 'Specify settings to control display of NY Senate video feeds.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_videosettings'),
+    'access arguments' => array('administer site configuration'),
+  );
+  return $items;
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_videosettings_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items['nyss_videosettings_modal_generic'] = array(
+    'arguments' => array(
+      'field' => NULL,
+      'item' => NULL,
+      'formatter' => NULL,
+      'node' => NULL,
+      'options' => array(),
+    ),
+  );
+  $items['nyss_videosettings_emvideo_livestream_flash'] = array(
+    'arguments' => array(
+      'embed' => NULL,
+      'width' => NULL,
+      'height' => NULL,
+      'autoplay' => TRUE,
+      'options' => array(),
+    ),
+  );
+  return $items;
+}
+
+/**
+ * Form builder. Configure settings for handling video offline and high-traffic conditions.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function nyss_videosettings() {
+  $form = array();
+  $form['nyss_videosettings_main_livestream_channel'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Senatewide Livestream Channel'),
+    '#default_value' => variable_get('nyss_videosettings_main_livestream_channel', 'nysenate'),
+    '#description' => t('Enter the main channel that is being used to broadcast Senatewide events such as sessions.'),
+  );
+  $form['nyss_videosettings_livestream_working'] = array(
+    '#type' => 'radios',
+    '#title' => t('LiveStream video is currently'),
+    '#options' => array(
+      t('Working'), 
+      t('Not working'),
+    ),
+    '#default_value' => variable_get('nyss_videosettings_livestream_working', 0),
+  );
+  $form['nyss_videosettings_allow_internal_livestream'] = array(
+    '#type' => 'radios',
+    '#title' => t('Show LiveStream links to internal visitors'),
+    '#options' => array(
+      t('Yes'), 
+      t('No'),
+    ),
+    '#default_value' => variable_get('nyss_videosettings_allow_internal_livestream', 0),
+    '#description' => t('Turn this off during especially high-traffic times to minimize usage of LiveStream video by users of the NY Senate\'s internal network.'),
+  );
+  $form['nyss_videosettings_livestream_channels'] = array(
+    '#type' => 'radios',
+    '#title' => t('Set status of Livestream channels'),
+    '#options' => array(
+      t('Automatically'), 
+      t('Live'),
+      t('Not live'),
+    ),
+    '#default_value' => variable_get('nyss_videosettings_livestream_channels', 0),
+    '#description' => t('"Automatically" retrieves the status of Livestream video channels automatically using Livestream\'s API. ' . 
+      '"Live" and "Not live" let you manually override Livestream\'s API. The manual overrides apply globally to all Livestream channels, not to an individual channel.'),
+  );
+
+  $form['status_messages'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Video status messages'),
+    '#description' => t('Set the messages which display indicating the status of event videos.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  
+  $form['status_messages']['live_streamed'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Live streamed events'),
+    '#description' => t('Events that are supposed to be live streamed.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  
+  $form['status_messages']['live_streamed']['nyss_videosettings_message_before_live_streamed'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Before'),
+    '#description' => t('This message displays on events that have not happened yet.'),
+    '#cols' => 60,
+    '#rows' => 5,
+    '#default_value' => variable_get('nyss_videosettings_message_before_live_streamed', 'Video of this event will be live streamed. Visit this page during the hours posted to watch.'),
+  );
+  
+  $form['status_messages']['live_streamed']['nyss_videosettings_message_during_live_streamed'] = array(
+    '#type' => 'textarea',
+    '#title' => t('During but video unavailable'),
+    '#description' => t('This message displays on events that are supposed to be live streamed if the video is not actually live.'),
+    '#cols' => 60,
+    '#rows' => 5,
+    '#default_value' => variable_get('nyss_videosettings_message_during_live_streamed', 
+      'Video stream currently unavailable: the start of this event may be delayed, ' . 
+      'the event may have already adjourned, or this live stream could be experiencing a technical problem. ' .
+      'Please continue to monitor this page for video coverage. A recording of the completed event will also be posted on this page once it is available.'
+    ),
+  );
+  
+  $form['status_messages']['live_streamed']['nyss_videosettings_message_after_live_streamed'] = array(
+    '#type' => 'textarea',
+    '#title' => t('After'),
+    '#description' => t('This message displays on events after they have ended if a recording has not been posted yet.'),
+    '#cols' => 60,
+    '#rows' => 5,
+    '#default_value' => variable_get('nyss_videosettings_message_after_live_streamed', 
+      'This event has finished and a recording will be posted on this page once it is available.'
+    ),
+  );
+
+  $form['status_messages']['committee_sessions'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Committee meetings and sessions'),
+    '#description' => t('These events are usually supposed to be live streamed, but these messages display in cases where live streaming is impossible.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+
+  $form['status_messages']['committee_sessions']['nyss_videosettings_message_committee_before_no_streaming'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Before'),
+    '#description' => t('This message displays on events that have not happened yet.'),
+    '#cols' => 60,
+    '#rows' => 5,
+    '#default_value' => variable_get('nyss_videosettings_message_committee_before_no_streaming', 
+      'This event will not be live streamed. A recording of the event will be posted on this page once it is available.'
+    ),
+  );
+
+  $form['status_messages']['committee_sessions']['nyss_videosettings_message_committee_during_no_streaming'] = array(
+    '#type' => 'textarea',
+    '#title' => t('During'),
+    '#description' => t('This message displays on events in process that are not being live streamed.'),
+    '#cols' => 60,
+    '#rows' => 5,
+    '#default_value' => variable_get('nyss_videosettings_message_committee_during_no_streaming', 
+      'This event is not being live streamed. Please visit this page later to see a video archive.'
+    ),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Form builder. Configure settings for handling video offline and high-traffic conditions.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function nyss_videosettings_channels() {
+  $result = db_query("SELECT FROM {nyss_videochannels}");
+  
+  $form['nyss_videosettings_livestream_working'] = array(
+    '#type' => 'radios',
+    '#title' => t('LiveStream video is currently'),
+    '#options' => array(
+      t('Working'), 
+      t('Not working'),
+    ),
+    '#default_value' => variable_get('nyss_videosettings_livestream_working', 0),
+  );
+  $form['nyss_videosettings_allow_internal_livestream'] = array(
+    '#type' => 'radios',
+    '#title' => t('Show LiveStream links to internal visitors'),
+    '#options' => array(
+      t('Yes'), 
+      t('No'),
+    ),
+    '#default_value' => variable_get('nyss_videosettings_allow_internal_livestream', 0),
+    '#description' => t('Turn this off during especially high-traffic times to minimize usage of LiveStream video by users of the NY Senate\'s internal network.'),
+  );
+  $form['nyss_videosettings_livestream_channels'] = array(
+    '#type' => 'radios',
+    '#title' => t('Set status of Livestream channels'),
+    '#options' => array(
+      t('Automatically'), 
+      t('Live'),
+      t('Not live'),
+    ),
+    '#default_value' => variable_get('nyss_videosettings_livestream_channels', 0),
+    '#description' => t('"Automatically" retrieves the status of Livestream video channels automatically using Livestream\'s API. ' . 
+      '"Live" and "Not live" let you manually override Livestream\'s API. The manual overrides apply globally to all Livestream channels, not to an individual channel.'),
+  );
+  return system_settings_form($form);
+}
+
+function nyss_videosettings_livestream_working() {
+  return (variable_get('nyss_videosettings_livestream_working', 0) == 0);
+}
+
+function nyss_videosettings_allow_internal_livestream() {
+  return (variable_get('nyss_videosettings_allow_internal_livestream', 0) == 0);
+}
+
+/**
+ *  A list of video event types
+ *
+ * @return
+ *   An alphabetically-sorted array.
+ */
+function nyss_videosettings_types() {
+  $types = nyss_event_types();
+  $additional_types = array(
+      8 => t('Public Service Announcement'),
+    	9 => t('Legislative Update'),
+      10 => t('Newsclip'),
+      11 => t('Floor Comments'),
+    );
+  $types = $types + $additional_types;
+  natcasesort($types);
+  return $types;
+}
+
+/**
+ *  Determines whether a node's video is live or not
+ *
+ * @param $nid
+ *   A node id.
+ * @return
+ *   TRUE if the channel is currently live.
+ */
+function nyss_videosettings_is_live($nid) {
+  static $live_statuses;
+  if (!isset($live_statuses[$nid])) {
+    $live_statuses[$nid] = FALSE;
+    $node = node_load($nid);
+    if ($node->field_video[0]['provider'] == 'livestream') {
+      $url = trim($node->field_video[0]['embed']);
+      $channel_code = trim($node->field_video[0]['value']);
+      $result = drupal_http_request('http://channel.api.livestream.com/1.0/livestatus?channel=' . $channel_code);
+      $parser = drupal_xml_parser_create($result->data);
+      $vals = array();
+      $index = array();
+      xml_parse_into_struct($parser, $result->data, $vals, $index);
+      xml_parser_free($parser);
+      $response = array();
+      $level = array();
+      $start_level = 1;
+      foreach ($vals as $xml_elem) {
+        if ($xml_elem['type'] == 'open') {
+          if (array_key_exists('attributes', $xml_elem)) {
+            list($level[$xml_elem['level']], $extra) = array_values($xml_elem['attributes']);
+          }
+          else {
+            $level[$xml_elem['level']] = $xml_elem['tag'];
+          }
+        }
+        if ($xml_elem['type'] == 'complete') {
+          $php_stmt = '$response';
+          while ($start_level < $xml_elem['level']) {
+            $php_stmt .= '[$level['. $start_level .']]';
+            $start_level++;
+          }
+          $php_stmt .= '[$xml_elem[\'tag\']][] = $xml_elem[\'value\'];'. $php_stmt .'[$xml_elem[\'tag\']][] = $xml_elem[\'attributes\'];';
+          eval($php_stmt);
+          $start_level--;
+        }
+      }
+      $live_statuses[$nid] = $response['http://channel.api.livestream.com/1.0/']['LS:ISLIVE'][0] == 'true';
+    }
+  }
+  return $live_statuses[$nid];
+}
+
+/**
+ *  Determines whether a livestream channel's video is live or not
+ *
+ * @param $channel_code
+ *   The unique ID of a livestream channel.
+ * @return
+ *   TRUE if the channel is currently live.
+ */
+function nyss_videosettings_channel_is_live($channel_code) {
+  static $live_statuses;
+  if (!isset($live_statuses[$channel_code])) {
+    $live_statuses[$channel_code] = FALSE;
+    $result = drupal_http_request('http://channel.api.livestream.com/1.0/livestatus?channel=' . $channel_code);
+    $parser = drupal_xml_parser_create($result->data);
+    $vals = array();
+    $index = array();
+    xml_parse_into_struct($parser, $result->data, $vals, $index);
+    xml_parser_free($parser);
+    $response = array();
+    $level = array();
+    $start_level = 1;
+    foreach ($vals as $xml_elem) {
+      if ($xml_elem['type'] == 'open') {
+        if (array_key_exists('attributes', $xml_elem)) {
+          list($level[$xml_elem['level']], $extra) = array_values($xml_elem['attributes']);
+        }
+        else {
+          $level[$xml_elem['level']] = $xml_elem['tag'];
+        }
+      }
+      if ($xml_elem['type'] == 'complete') {
+        $php_stmt = '$response';
+        while ($start_level < $xml_elem['level']) {
+          $php_stmt .= '[$level['. $start_level .']]';
+          $start_level++;
+        }
+        $php_stmt .= '[$xml_elem[\'tag\']][] = $xml_elem[\'value\'];'. $php_stmt .'[$xml_elem[\'tag\']][] = $xml_elem[\'attributes\'];';
+        eval($php_stmt);
+        $start_level--;
+      }
+    }
+    $live_statuses[$channel_code] = $response['http://channel.api.livestream.com/1.0/']['LS:ISLIVE'][0] == 'true';
+  }
+  return $live_statuses[$channel_code];
+}
+
+/**
+ *  Themable function to display livestream flash video
+ *
+ * @see theme_emvideo_livestream_flash().
+ */
+function theme_nyss_videosettings_emvideo_livestream_flash($embed, $width, $height, $autoplay=TRUE, $options = array()) {
+  $options['autoplay'] = nyss_videosettings_channel_is_live($embed);
+  return theme_emvideo_livestream_flash($embed, $width, $height, $autoplay, $options);
+}
+
+/**
+ * Theme emvideo thickboxes
+ *
+ * @see theme_emvideo_modal_generic().
+ */
+function theme_nyss_videosettings_modal_generic($field, $item, $formatter, $node, $options = array()) {
+  $has_video = TRUE;
+  $thumbnail_text = '';
+  // The default thumbnail video size is set to 265 pixels wide in the emfield CCK settings, so it needs to be themed smaller
+  // on gallery pages.
+  
+  // Just resize the video on these pages.
+  if (
+      (arg(0) == 'senator' && (arg(2) == 'video' || arg(2) == 'gallery')) || 
+      arg(0) == 'video' || 
+      (arg(0) == 'node' && substr(drupal_get_path_alias('node/'.arg(1)), 0, 6) == 'event/') 
+    ) {
+    $options['width'] = 120;
+    $options['height'] = 90;
+  }
+  
+  // For these pages, resize the video, but redirect to an appropriate 'video not available message' if video doesn't exist.
+  else if (
+      (arg(0) == 'sessions' && is_numeric(arg(1))) || 
+      (arg(0) == 'hearings' && is_numeric(arg(1))) || 
+      (arg(0) == 'video_events') || 
+      (arg(0) == 'committee' && arg(2) == 'event_list')
+    ) {
+    $options['width'] = 120;
+    $options['height'] = 90;
+    $node = node_load($node->nid);
+    $thumbnail_text = t('Video available');
+    if (substr($item['embed'], 0, 25) == 'http://www.livestream.com') {
+      if ($node->current_status['when'] == 'before') {
+        $destination = 'nyss_event_not_playing';
+      }
+      else if ($node->current_status['ended']) {
+        $destination = 'nyss_event_no_video_message';
+        $options['thumbnail_url'] = drupal_get_path('theme', 'nys') . '/images/nyss_no_video.png';
+      }
+      else if (!nyss_videosettings_is_live($node->nid)) {
+        $destination = 'nyss_event_livestream_not_live';
+      }
+    } else if (!$node->current_status['has_video']) {
+      return '';
+    }
+  }
+  // The "Live today" page needs to be handled a little differently.
+  else if (arg(0) == 'live_today') {
+    $options['width'] = 120;
+    $options['height'] = 90;
+    $node = node_load($node->nid);
+    $thumbnail_text = t('Live now');
+    $options['thumbnail_url'] = drupal_get_path('theme', 'nys') . '/images/click_for_video.png';
+    if ($node->current_status['when'] == 'before') {
+      $destination = 'nyss_event_not_playing';
+      $options['thumbnail_url'] = drupal_get_path('theme', 'nys') . '/images/nyss_no_video.png';
+    }
+    else if ($node->current_status['ended'] && substr($item['embed'], 0, 25) == 'http://www.livestream.com') {
+      $destination = 'nyss_event_no_video_message';
+      $options['thumbnail_url'] = drupal_get_path('theme', 'nys') . '/images/nyss_no_video.png';
+    }
+    else if (!nyss_videosettings_is_live($node->nid)) {
+      $destination = 'nyss_event_livestream_not_live';
+      $options['thumbnail_url'] = drupal_get_path('theme', 'nys') . '/images/nyss_no_video.png';
+    }
+  }
+  
+  // The lightbox for cases where video is unavailable gets sized differently, depending on the message 
+  // to be displayed.
+  switch ($destination) {
+    case 'nyss_event_not_playing':
+      $thumbnail_text = t('Will have video');
+      $has_video = FALSE;
+      $width = '350px';
+      $height = '150px';
+      break;
+    
+    case 'nyss_event_no_video_message':
+      $thumbnail_text = t('Video not ready yet');
+      $has_video = FALSE;
+      $width = '350px';
+      $height = '150px';
+      break;
+
+    case 'nyss_event_livestream_not_live':
+      $thumbnail_text = '';
+      $has_video = FALSE;
+      $width = '350px';
+      $height = '200px';
+      break;
+  }
+  
+  // Then either return the modal lightbox thumbnail to play the video,...
+  if ($has_video) {
+    return theme_emvideo_modal_generic($field, $item, $formatter, $node, $options) . $thumbnail_text;
+  }
+  // ... or return a thumbnail icon with an explanation of why video isn't currently available.
+  else {
+    $options += array(
+      'attributes' => array(
+        'class' => 'thickbox',
+        'rel' => module_exists('lightbox2') ? 'lightmodal[|width:' . $width . '; height:' . $height . ';][ ]' : $field['type_name'],
+      ),
+      'link_title' => 'See explanation',
+      'query' => NULL,
+      'fragment' => NULL,
+      'absolute' => FALSE,
+      'html' => TRUE,
+    );
+    $thumbnail = theme('emvideo_video_thumbnail', $field, $item, 'video_thumbnail', $node, TRUE, $options);
+    $output = '<div class="emvideo-modal emvideo-lightbox2">'. l($thumbnail, $destination, $options) .'</div>';
+    return $output . $thumbnail_text;
+  }
+}

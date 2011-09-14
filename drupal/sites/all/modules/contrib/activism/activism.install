@@ -1,0 +1,212 @@
+<?php
+// $Id: activism.install,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * Installation file for Activism module.
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function activism_schema() {
+  $schema['activism_campaign'] = array(
+    'description' => 'Additional data necessary for campaign nodes.',
+    'fields' => array(
+      'nid' => array(
+        'description'   => 'The {node} this version belongs to.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+      'vid' => array(
+        'description'   => 'The primary identifier for this version.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+      'campaign_description' => array(
+        'default'       => '',
+        'description'   => 'This description is for administrative purposes and will not be shown to users.',
+        'size'          => 'normal',
+        'type'          => 'text',
+      ),
+      'campaign_footer_message' => array(
+        'default'       => '',
+        'description'   => "The footer message is displayed at the bottom of a campaign's user-intended display.",
+        'size'          => 'normal',
+        'type'          => 'text',
+      ),
+      'campaign_expired_date' => array(
+        'default'       => '',
+        'description'   => "The datestamp (as 2009-03-26T00:00:00) of when this campaign expires.",
+        'length'        => '20',
+        'type'          => 'varchar',
+      ),
+      'campaign_expired_message' => array(
+        'default'       => '',
+        'description'   => "This message is displayed in place of the action form when the campaign has expired.",
+        'size'          => 'normal',
+        'type'          => 'text',
+      ),
+      'cta_module' => array(
+        'default'       => '',
+        'description'   => "The internal name of the call to action enabled for this campaign.",
+        'length'        => '255',
+        'type'          => 'varchar',
+      ),
+      'cta_goal' => array(
+        'description'   => 'How many actions should be performed before this campaign is considered successful?',
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+      'cta_mail_autoresponder_subject' => array(
+        'default'       => '',
+        'description'   => 'The subject line of the auto-responder message e-mailed to the user as a confirmation of taking the action.',
+        'length'        => 255,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'cta_mail_autoresponder_body' => array(
+        'default'       => '',
+        'description'   => 'The message body of the auto-responder message will be e-mailed to the user as a confirmation of taking the action.',
+        'size'          => 'normal',
+        'type'          => 'text',
+      ),
+      'cta_mail_autoresponder_format' => array(
+        'description'   => "The input filter format used by the auto-responder message body.",
+        'type'          => 'int',
+        'not null'      => TRUE,
+        'default'       => 0,
+      ),
+      'cta_destination' => array(
+        'default'       => '',
+        'description'   => "If present, the URL where the user will be redirected after taking the action.",
+        'length'        => '255',
+        'type'          => 'varchar',
+      ),
+      'cta_mail_list' => array(
+        'default'       => 0,
+        'description'   => "If enabled, a user can indicate interest in being put on a mailing list.",
+        'not null'      => TRUE,
+        'type'          => 'int',
+      ),
+      'cta_mail_list_default' => array(
+        'default'       => 0,
+        'description'   => "Boolean indicating whether the mailing list checkbox is checked by default.",
+        'not null'      => TRUE,
+        'type'          => 'int',
+      ),
+      'cta_mail_list_title' => array(
+        'default'       => '',
+        'description'   => "The mailing list title displayed on the signup form.",
+        'length'        => '255',
+        'type'          => 'varchar',
+      ),
+    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+    'primary key' => array('vid'),
+  );
+
+  $schema['activism_signups'] = array(
+    'description' => 'Data storage for user signups of any call to action.',
+    'fields' => array(
+      'nid' => array(
+        'description'   => 'The {node} this signup belongs to.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+      'uid' => array(
+        'default'       => 0,
+        'description'   => 'The {users}.uid that signed up for the particular action.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+      ),
+      'timestamp' => array(
+        'default'       => 0,
+        'description'   => 'The Unix timestamp when this submission was performed.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+      ),
+      'first_name' => array(
+        'length'        => 60,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'last_name' => array(
+        'length'        => 60,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'mail' => array(
+        'default'       => '',
+        'length'        => 64,
+        'not null'      => FALSE,
+        'type'          => 'varchar',
+      ),
+      'street_address' => array(
+        'length'        => 255,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'city' => array(
+        'length'        => 60,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'state' => array(
+        'length'        => 60,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'postal_code' => array(
+        'length'        => 60,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'phone' => array(
+        'length'        => 60,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'mobile' => array(
+        'length'        => 60,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'comment' => array(
+        'default'       => '',
+        'size'          => 'normal',
+        'type'          => 'text',
+      ),
+      'mail_list' => array(
+        'default'       => 0,
+        'description'   => 'Boolean indicating if the user has signed up for the mailing list.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function activism_install() {
+  drupal_install_schema('activism');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function activism_uninstall() {
+  drupal_uninstall_schema('activism');
+}

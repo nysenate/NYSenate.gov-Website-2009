@@ -1,0 +1,30 @@
+<?php
+// $Id: node_export.install,v 1.1.2.5 2010/12/01 02:27:00 danielb Exp $
+
+/**
+ * @file
+ * The Node Export install file.
+ */
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function node_export_uninstall() {
+  variable_del('node_export_method');
+  variable_del('node_export_code');
+  variable_del('node_export_filename');
+  variable_del('node_export_file_list');
+  variable_del('node_export_bulk_code');
+  variable_del('node_export_bulk_filename');
+  variable_del('node_export_omitted');
+  variable_del('node_export_nodes_without_confirm');
+  $types = node_get_types('names');
+  foreach ($types as $type => $name) {
+    variable_del('node_export_reset_'. $type);
+    variable_del('node_export_reset_created_'. $type);
+    variable_del('node_export_reset_menu_'. $type);
+    variable_del('node_export_reset_path_'. $type);
+    variable_del('node_export_reset_book_mlid_'. $type);
+  }
+}
+

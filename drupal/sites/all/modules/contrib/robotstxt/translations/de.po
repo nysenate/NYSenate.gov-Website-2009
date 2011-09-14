@@ -1,0 +1,67 @@
+# $Id: de.po,v 1.1.4.5 2009/03/07 10:27:47 hass Exp $
+#
+# LANGUAGE translation of Drupal (robotstxt.module)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from file:
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: German translation for robotstxt module\n"
+"POT-Creation-Date: 2009-03-07 11:18+0100\n"
+"PO-Revision-Date: 2009-03-07 11:27+0100\n"
+"Last-Translator: Alexander Haß\n"
+"Language-Team: Alexander Hass\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"X-Poedit-Language: German\n"
+"X-Poedit-Country: GERMANY\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+#: robotstxt.admin.inc:17
+msgid "Contents of robots.txt"
+msgstr "Inhalt der robots.txt"
+
+#: robotstxt.module:10
+msgid "In a multisite environment, there is no mechanism for having a separate robots.txt file for each site. This module addresses that need by letting you administer the robots.txt file from the settings interface."
+msgstr "In einer Umgebung mit mehreren Webseiten gibt es keine Möglichkeit getrennte robots.txt Dateien für jede Seite zu erstellen. Dieses Modul bietet Abhilfe und ermöglicht eine Verwaltung der robots.txt Datei über die Einstellungsoberfläche."
+
+#: robotstxt.module:15
+msgid "One or more problems have been detected with the RobotsTxt configuration. Check the <a href=\"@status\">status report</a> for more information."
+msgstr "Eines oder mehrere Probleme wurden in der RobotsTxt-Konfiguration erkannt. Weitere Information befindet sich im <a href=\"@status\">Statusbericht</a>."
+
+#: robotstxt.module:17
+msgid "See <a href=\"http://www.robotstxt.org/\">http://www.robotstxt.org/</a> for more information concerning how to write your <a href=\"@robotstxt\">robots.txt</a> file."
+msgstr "Weitere Informationen zum Aufbau einer <a href=\"@robotstxt\">robots.txt</a> Datei befinden sich auf <a href=\"http://www.robotstxt.org/\">http://www.robotstxt.org/</a>."
+
+#: (duplicate) robotstxt.module:32
+#: robotstxt.install:36
+#: ;45
+msgid "RobotsTxt"
+msgstr "RobotsTxt"
+
+#: robotstxt.module:33
+msgid "Manage your robots.txt file."
+msgstr "Verwalten der robots.txt-Datei."
+
+#: robotstxt.module:0
+msgid "robotstxt"
+msgstr "robotstxt"
+
+#: (duplicate) robotstxt.install:38
+msgid "<a href=\"!clean_url\">Clean URLs</a> are mandatory for this module."
+msgstr "<a href=\"!clean_url\">Lesbare URLs</a> sind für dieses Modul zwingend erforderlich."
+
+#: (duplicate) robotstxt.install:47
+msgid "RobotsTxt module works only if you remove the existing robots.txt file in your website root."
+msgstr "Damit das RobotsTxt Modul einwandfrei funktioniert muss die vorhandene robots.txt-Datei im Stammverzeichnis der Website entfernt werden."
+
+#: robotstxt.info:0
+msgid "robots.txt"
+msgstr "robots.txt"
+
+#: robotstxt.info:0
+msgid "Generates the robots.txt file dynamically and gives you the chance to edit it, on a per-site basis, from the web UI."
+msgstr "Erstellt dynamisch die robots.txt-Datei und bietet die Möglichkeit diese pro Website, über die Weboberfläche anzupassen."
+

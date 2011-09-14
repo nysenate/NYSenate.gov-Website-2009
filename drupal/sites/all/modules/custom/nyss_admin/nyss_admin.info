@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Admin Page
+description = Creates the custom Senator Content Admin Page.
+package = NYSS
+core = 6.x

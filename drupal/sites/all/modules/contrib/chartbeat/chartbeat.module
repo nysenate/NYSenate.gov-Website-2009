@@ -1,0 +1,70 @@
+<?php
+// $Id: chartbeat.module,v 1.1.2.4 2010/03/05 16:26:54 robloach Exp $
+
+/**
+ * Implementation of hook_menu().
+ */
+function chartbeat_menu() {
+  $items['admin/settings/chartbeat'] = array(
+    'title' => 'Chartbeat',
+    'description' => 'Change the setting configuration when using Chartbeat.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('chartbeat_admin_settings'),
+    'access arguments' => array('administer chartbeat settings'),
+    'file' => 'chartbeat.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function chartbeat_perm() {
+  return array(
+    'administer chartbeat settings',
+  );
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function chartbeat_init() {
+  $uid = variable_get('chartbeat_uid', '');
+  if (is_numeric($uid)) {
+    drupal_set_html_head('<script type="text/javascript">var _sf_startpt=(new Date()).getTime()</script>');
+    drupal_add_js(array('chartbeat' => array(
+      'uid' => (int)$uid,
+      'domain' => variable_get('chartbeat_domain', ''),
+    )), 'setting');
+  }
+}
+
+/**
+ * Implementation of hook_footer().
+ */
+function chartbeat_footer() {
+  $uid = variable_get('chartbeat_uid', '');
+  if (is_numeric($uid)) {
+    $output = <<<EOT
+<script type="text/javascript">
+  var _sf_async_config=Drupal.settings.chartbeat;
+  (function(){
+    function loadChartbeat() {
+      window._sf_endpt=(new Date()).getTime();
+      var e = document.createElement('script');
+      e.setAttribute('language', 'javascript');
+      e.setAttribute('type', 'text/javascript');
+      e.setAttribute('src',
+         (("https:" == document.location.protocol) ? "https://s3.amazonaws.com/" : "http://") +
+         "static.chartbeat.com/js/chartbeat.js");
+      document.body.appendChild(e);
+    }
+    var oldonload = window.onload;
+    window.onload = (typeof window.onload != 'function') ?
+       loadChartbeat : function() { oldonload(); loadChartbeat(); };
+  })();
+</script>
+EOT;
+    return $output;
+  }
+}

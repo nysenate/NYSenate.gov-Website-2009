@@ -1,0 +1,105 @@
+<?php
+// $Id: gigya.install,v 1.1.2.5 2009/08/17 21:02:55 brauerranch Exp $
+
+/**
+ * @file
+ * Install file for gigya user module
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function gigya_schema() {
+  $schema['gigya'] = array(
+    'description' => t('gigya per-user settings.'),
+    'fields' => array(
+      'uid' => array(
+        'description' => t('Primary key: user ID'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'gigya_uid' => array(
+        'description' => t('Gigya User ID'),
+        'type' => 'varchar',
+        'length' => 950,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'loginProvider' => array(
+        'description' => t('Service representing gigya id'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('uid'),
+  );
+
+  switch ($GLOBALS['db_type']) {
+    case 'mysqli':
+    case 'mysql':
+      if(db_version() < '5.0.3') {
+        $schema['gigya']['gigya_uid']['type'] = 'text';
+        unset($schema['gigya']['gigya_uid']['length']);
+      }
+  }
+
+  return $schema;
+}
+
+function gigya_install() {
+  drupal_install_schema('gigya');
+}
+
+function gigya_uninstall() {
+  drupal_uninstall_schema('gigya');
+  $key = variable_get('gigya_APIKey', '');
+  $secret = variable_get('gigya_SecretKey', '');
+
+  $variables = db_query("SELECT name FROM {variable} WHERE name LIKE 'gigya%%'");
+  while ($variable = db_fetch_object($variables)) {
+    variable_del($variable->name);
+  }
+  //clear the actions out
+  $aidres = db_query("SELECT aid FROM {actions} WHERE callback LIKE 'gigya%%'");
+  while ($aids = db_fetch_array($aidres)) {
+    actions_delete($aids['aid']);
+  }
+  //$actions = db_query("DELETE from {actions} AS act, {actions_aid} AS a, {trigger_assignments} AS trigger WHERE callback LIKE 'gigya%%' and act.aid = a.aid and trigger.aid = a.aid");
+
+  //keep the API key and secret. makes reinstalling the module much less annoying.
+  variable_set('gigya_APIKey', $key);
+  variable_set('gigya_SecretKey', $secret);
+}
+
+function gigya_update_6003() {
+  switch ($GLOBALS['db_type']) {
+    case 'mysqli':
+    case 'mysql':
+      if(db_version() < '5.0.3') {
+        db_change_field($ret, 'gigya', 'gigya_uid', 'gigya_uid', array('type' => 'text', 'not null' => TRUE, 'default' => ''));
+        return $ret;
+      }
+  }
+  //if we weren't caught by the mysql < 5.0.3 change the field to varchar / 500
+  db_change_field($ret, 'gigya', 'gigya_uid', 'gigya_uid', array('type' => 'varchar', 'length' => 950, 'not null' => TRUE, 'default' => ''));
+  return $ret;
+}
+/**
+ *
+ //don't really need this at all.... since we store the user picture in the user table
+function gigya_update_6001() {
+  db_add_field($ret, 'gigya', 'userpicture',
+    array('description' => t('User Picture of loginProvider'),
+          'type' => 'varchar',
+          'length' => 128,
+          'not null' => FALSE,
+          'default' => '',
+    ));
+  return $ret;
+}
+
+*/

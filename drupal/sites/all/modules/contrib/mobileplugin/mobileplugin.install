@@ -1,0 +1,94 @@
+<?php
+// $Id: mobileplugin.install,v 1.7 2010/01/26 17:01:42 teemule Exp $
+
+/**
+ * Defines the database schema.
+ * @return the database schema
+ */
+function mobileplugin_schema() {
+	$schema = array();
+	$schema['mobileplugin_groups'] = array(
+		'description' => 'Mobileplugin group settings.',
+		'fields' => array(
+			'name' => array(
+				'description' => 'The group name.',
+				'type' => 'varchar',
+				'length' => 60,
+				'not null' => true),
+			'theme' => array(
+				'description' => 'A theme name.',
+				'type' => 'varchar',
+				'length' => 60,
+				'not null' => true),
+			'data' => array(
+				'description' => 'Serialized settings.',
+				'type' => 'text',
+				'not null' => true)
+		),
+		'primary key' => array('name')
+	);
+	$schema['mobileplugin_rules'] = array(
+		'description' => 'Mobileplugin detection rules.',
+		'fields' => array(
+			'rid' => array(
+				'description' => 'The rule id.',
+				'type' => 'serial',
+				'unsigned' => true,
+				'not null' => true),
+			'capability' => array(
+				'description' => 'A capability to compare.',
+				'type' => 'varchar',
+				'length' => 60,
+				'not null' => true),
+			'operator' => array(
+				'description' => 'A comparison operator.',
+				'type' => 'varchar',
+				'length' => 2,
+				'not null' => true),
+			'value' => array(
+				'description' => 'A value to compare with.',
+				'type' => 'varchar',
+				'length' => 60,
+				'not null' => true),
+			'group_name' => array(
+				'description' => 'A group name to assign.',
+				'type' => 'varchar',
+				'length' => 60,
+				'not null' => true),
+			'weight' => array(
+				'description' => 'A rule weight.',
+				'type' => 'int',
+				'not null' => true)
+		),
+		'primary key' => array('rid')
+	);
+	return $schema;
+}
+
+/**
+ * Installs the module.
+ */
+function mobileplugin_install() {
+	drupal_install_schema('mobileplugin');
+	db_query('INSERT INTO {mobileplugin_groups} (name,theme,data) values ("mobile","mobile_garland","")');
+	db_query('INSERT INTO {mobileplugin_rules} (capability,operator,value,group_name,weight) values ("USERAGENT","=~","'
+		.implode("\n", array('Windows NT', 'PPC Mac OS X', 'Intel Mac OS X'))
+		.'","no",1)');
+	db_query('INSERT INTO {mobileplugin_rules} (capability,operator,value,group_name,weight) values ("USERAGENT","=~","'
+		.implode("\n", array('Series60/5.0', 'Maemo', 'iPhone', 'iPod', 'webOS'))
+		.'","mobile,1",2)');
+	db_query('INSERT INTO {mobileplugin_rules} (capability,operator,value,group_name,weight) values ("USERAGENT","=~","'
+		.implode("\n", array('Series60', 'webKit', 'Android'))
+		.'","mobile,0",3)');
+	db_query('INSERT INTO {mobileplugin_rules} (capability,operator,value,group_name,weight) values ("is_wireless_device","==","true","mobile",10)');
+
+	// Trying to make new menu items active.
+	menu_rebuild();
+}
+
+/**
+ * Uninstalls the module.
+ */
+function mobileplugin_uninstall() {
+	drupal_uninstall_schema('mobileplugin');
+}

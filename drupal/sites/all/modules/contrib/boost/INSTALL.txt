@@ -1,0 +1,70 @@
+// $Id: INSTALL.txt,v 1.1.2.1.2.3.2.8 2009/06/08 05:09:12 mikeytown2 Exp $
+
+REQUIREMENTS
+------------
+This version of Boost is designed for Drupal 6.x running on a Unix platform.
+Drupal's clean URLs MUST be enabled and working properly.
+
+The `path' and `pathauto' modules are recommended.
+
+In order for the static files to be correctly expired, the Drupal cron job
+must be correctly setup to execute more often than, or as often as, the
+cache lifetime interval you specify.
+
+Since the static page caching is implemented with mod_rewrite directives,
+Apache version 1.3 or 2.x with mod_rewrite enabled is required (if Drupal's
+clean URLs work for you, you're fine; if not, get them working first).
+Other web servers, such as Lighttpd, are NOT supported at present.
+
+INSTALLATION
+------------
+
+  1. Go to [Administer >> Site configuration >> Clean URLs] and ensure that
+     Drupal's clean URLs are enabled and working correctly on your site.
+
+  2. Copy all the module files into a subdirectory called
+     sites/all/modules/boost/ under your Drupal installation directory.
+
+  3. Go to [Administer >> Site building >> Modules] and enable the Boost
+     module. You will find it in the section labelled "Caching".
+
+  4. Go to [Administer >> Site configuration >> Performance], specify the
+     cache directory (must be writable by the web server) and enable static
+     caching. Keeping the default directory is highly recommended.
+
+  5. IMPORTANT: after backing up the original .htaccess file in your Drupal
+     installation directory, add the rules found in boosted1.txt
+     right below
+       # RewriteBase /
+     and above
+       # Rewrite URLs of the form 'x' to the form 'index.php?q=x'.
+     boosted1.txt is found in the sites/all/modules/boost/htaccess/ directory.
+     The default.txt file shows you the exact placement of where the rules go,
+     incase your not shure. If you fail to do this step, static page caching
+     will NOT work! Rules from boosted1.txt can also be found on the
+     Performance page.
+
+     Should you have any trouble getting static pages served using the
+     boosted1.txt configuration, try the boosted2.txt file before posting a
+     support issue on drupal.org.
+
+     (For the technically inclined, the difference between the two supplied
+     .htaccess templates is due to boosted1.txt relying on SERVER_NAME
+     versus boosted2.txt using HTTP_HOST. There exist valid use cases for
+     both, especially in more advanced, multi-site Drupal installations.)
+
+  6. Log out from Drupal (or use another browser) to browse around your site
+     as the anonymous user. Ensure that static files are indeed being
+     generated into the Boost cache directory you specified above (#4).
+
+  7. Set $base_url variable in /sites/default/settings.php ( 125 line or so )
+     so cron runs error free and clears the cache properly when invoked like
+     'php5 /path/to/cron.php' or 'drush cron'.
+
+     Guide for editing settings.php
+     http://drupal.org/node/367081#comment-1504894
+
+  8. Check the status page [Administer >> Reports >> Status report] for any
+     errors or notices.
+
+  9. (See README.txt for information on submitting bug reports.)

@@ -1,0 +1,14 @@
+; $Id: graphael_example.info,v 1.1 2010/07/22 20:22:48 mikl Exp $
+
+name = gRaphaël example
+description = Example module, demonstrating the power of the gRaphaël module.
+core = 6.x
+dependencies[] = graphael
+
+
+; Information added by drupal.org packaging script on 2010-12-21
+version = "6.x-1.0"
+core = "6.x"
+project = "raphael"
+datestamp = "1292953283"
+

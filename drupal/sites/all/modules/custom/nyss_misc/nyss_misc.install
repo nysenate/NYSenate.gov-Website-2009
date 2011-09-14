@@ -1,0 +1,55 @@
+<?php
+
+/**
+* Hook sets nyss_misc 'weight' to 5.
+* This ensures that it can access the Pathauto stuff.
+*
+*/
+function nyss_misc_install() {
+  drupal_install_schema('nyss_misc');
+  $ret = array();
+  $ret[] = db_query("UPDATE {system} SET weight = 5 WHERE name = 'nyss_misc'");
+  return $ret;
+}
+
+/**
+* Implementation of hook_uninstall().
+*
+*/
+function nyss_misc_uninstall() {
+  drupal_uninstall_schema('nyss_misc');
+}
+
+
+/**
+ * Implementation of hook_schema().
+ */
+function nyss_misc_schema() {
+  $system_schema = system_schema();
+  $schema = array();
+  $schema['cache_nyss_misc'] = $system_schema['cache'];
+  return $schema;
+}
+
+/**
+ * Convert menu and some cache tables to InnoDB.  This will help with locking and allow us to use transactions.
+ */
+function nyss_misc_update_1() {
+  $return = array();
+  $return[] = update_sql('ALTER TABLE {cache} ENGINE = InnoDB');
+  $return[] = update_sql('ALTER TABLE {cache_menu} ENGINE = InnoDB');
+  $return[] = update_sql('ALTER TABLE {cache_filter} ENGINE = InnoDB');
+  $return[] = update_sql('ALTER TABLE {menu_links} ENGINE = InnoDB');
+  $return[] = update_sql('ALTER TABLE {menu_router} ENGINE = InnoDB');
+  $return[] = update_sql('ALTER TABLE {menu_custom} ENGINE = InnoDB');
+  return $return;
+}
+
+function nyss_misc_update_6001() {
+  $ret = array();
+  $schema = nyss_misc_schema();
+  foreach ($schema as $name => $table) {
+    db_create_table($ret, $name, $table);
+  }
+  return $ret;
+}

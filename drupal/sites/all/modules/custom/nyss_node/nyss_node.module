@@ -1,0 +1,346 @@
+<?php
+// $Id$
+
+
+function nyss_node_menu() {
+  $items = array();
+  $items['nyss/nyss/node_rebuild'] = array(
+    'title' => 'NYSS Node Rebuild',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_node_rebuild'),
+    'access arguments' => array('administer nodes'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function nyss_node_rebuild($form) {
+  $form['intro'] = array(
+    '#value' => '<p>' . t('Are you sure you want to rebuild the NYSS Node Table?'). '<br/>'.t('This should only need to happen once, and will take a long, long time.'). '</p>',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Sure I\'m sure! Let me at it!',
+  );
+  $output .= $form;
+  return $form;
+}
+
+// THIS IS THE SUBMIT FUNCTION FOR THE REBUILD FORM, WHICH SETS UP THE BATCH OPERATION (IN THE HOUSE THAT JACK BUILT)
+function nyss_node_rebuild_submit($form, &$form_state) {
+  //dpm($form);
+
+  db_query("DELETE FROM {nyss_node}");
+  $batch = array(
+    'title' => t('Rebuilding NYSS Node table'),
+    'operations' => array(
+      array('_nyss_node_rebuild_batch_operation', array()),
+    ),
+    'finished' => '_nyss_node_rebuild_batch_finished'
+  );
+  batch_set($batch);
+
+}
+
+// THIS HANDLES THE BATCHES OF NODES IN GROUPS OF 20
+function _nyss_node_rebuild_batch_operation(&$context) {
+  if (empty($context['sandbox'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current_node'] = 0;
+    $context['sandbox']['max'] = db_result(db_query("SELECT COUNT(*) FROM (SELECT n.nid, n.title, n.vid, n.created, cf_creation.field_creation_value AS creation, cfc_n.title AS committee, cfc_n.nid AS commnid,
+      cfs_n.title AS senator, cfs_n.nid AS sennid, cts.field_last_name_value AS lastname,
+      cfp.field_pdf_fid AS fid, f.filename AS filename, f.filemime AS filetype,
+      t_d.tid AS cattid, t_d.name AS category,
+      nyss_node.nid AS nyss
+  FROM `node` AS n
+  LEFT JOIN `content_field_committee` AS cfc ON n.vid = cfc.vid
+  LEFT JOIN `node` AS cfc_n ON cfc_n.nid = cfc.field_committee_nid
+  LEFT JOIN `content_field_senator` AS cfs ON n.vid = cfs.vid
+  LEFT JOIN `node` AS cfs_n ON cfs_n.nid = cfs.field_senator_nid
+  
+  LEFT JOIN `content_type_senator` AS cts ON cfs_n.vid = cts.vid
+  
+  LEFT JOIN `content_field_pdf` AS cfp ON cfp.vid = n.vid
+  LEFT JOIN `files` AS f ON f.fid = cfp.field_pdf_fid
+  
+  LEFT JOIN `term_node` AS t_n ON t_n.vid = n.vid
+  LEFT JOIN `term_data` as t_d ON t_d.tid = t_n.tid
+  
+  LEFT JOIN `nyss_node` ON nyss_node.nid = n.nid
+  
+  LEFT JOIN `flag_content` AS flag ON flag.content_id = n.nid
+  
+  LEFT JOIN `content_field_creation` AS cf_creation ON cf_creation.vid = n.vid
+  
+  WHERE n.status = 1 AND flag.fid = '16' AND flag.content_type = 'node' AND n.type NOT IN ('page', 'senator', 'committee') GROUP BY nid) AS t"));
+  }
+  $limit = 40;
+  $result = db_query_range("SELECT n.nid, n.title, n.vid, n.created, cf_creation.field_creation_value AS creation, cfc_n.title AS committee, cfc_n.nid AS commnid,
+      cfs_n.title AS senator, cfs_n.nid AS sennid, cts.field_last_name_value AS lastname,
+      cfp.field_pdf_fid AS fid, f.filename AS filename, f.filemime AS filetype,
+      t_d.tid AS cattid, t_d.name AS category,
+      nyss_node.nid AS nyss
+  FROM `node` AS n
+  LEFT JOIN `content_field_committee` AS cfc ON n.vid = cfc.vid
+  LEFT JOIN `node` AS cfc_n ON cfc_n.nid = cfc.field_committee_nid
+  LEFT JOIN `content_field_senator` AS cfs ON n.vid = cfs.vid
+  LEFT JOIN `node` AS cfs_n ON cfs_n.nid = cfs.field_senator_nid
+  
+  LEFT JOIN `content_type_senator` AS cts ON cfs_n.vid = cts.vid
+    
+  LEFT JOIN `content_field_pdf` AS cfp ON cfp.vid = n.vid
+  LEFT JOIN `files` AS f ON f.fid = cfp.field_pdf_fid
+  
+  LEFT JOIN `term_node` AS t_n ON t_n.vid = n.vid
+  LEFT JOIN `term_data` as t_d ON t_d.tid = t_n.tid
+  
+  LEFT JOIN `nyss_node` ON nyss_node.nid = n.nid
+    
+  LEFT JOIN `flag_content` AS flag ON flag.content_id = n.nid 
+    
+  LEFT JOIN `content_field_creation` AS cf_creation ON cf_creation.vid = n.vid
+  
+  WHERE n.status = 1 AND flag.fid = '16' AND flag.content_type = 'node' AND n.type NOT IN ('page', 'senator', 'committee') AND n.nid > %d GROUP BY nid", $context['sandbox']['current_node'], 0, $limit);
+  
+  while ($row = db_fetch_array($result)) {
+    
+    if ($row['fid']) {
+      $node = node_load($row['nid']);
+      foreach($node->field_pdf as $file) {
+          switch($file['filemime']) {
+            case 'text/csv':
+              $nyss_node['csv'] = 1;
+              break;
+            case 'text/plain':
+              $nyss_node['txt'] = 1;
+              break;
+            case 'application/pdf':
+              $nyss_node['pdf'] = 1;
+              break;
+            case 'application/vnd.ms-excel':
+              $nyss_node['xls'] = 1;
+              break;
+            case 'application/msword':
+              $nyss_node['doc'] = 1;
+              break;
+          }
+        }
+    }
+    
+    $nyss_node['nid'] = $row['nid'];
+    $nyss_node['creation'] = $row['creation'];
+    if(!$nyss_node['creation']) {
+      $nyss_node['creation'] = $row['created'];
+    }
+    $nyss_node['senator'] = $row['senator'];
+    $nyss_node['sennid'] = $row['sennid'];
+    $nyss_node['senlastname'] = $row['lastname'];
+    $nyss_node['committee'] = $row['committee'];
+    $nyss_node['commnid'] = $row['commnid'];
+    $nyss_node['category'] = $row['category'];
+    $nyss_node['cattid'] = $row['cattid'];
+    
+    $context['results'][] = $row['nid'] .' : '. $row['title'];
+    $context['sandbox']['progress']++;
+    $context['sandbox']['current_node'] = $row['nid'];
+    $context['message'] = $row['title'];
+     
+    drupal_write_record('nyss_node', $nyss_node);
+    unset($nyss_node);
+  }
+  if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+  }
+}
+
+function _nyss_node_rebuild_batch_finished($success, $results, $operations) {
+  if ($success) {
+    $message = format_plural(count($results), 'One post processed.', '@count posts processed.');
+  }
+  else {
+    $message = t('Finished with an error.');
+  }
+
+  drupal_set_message($message);
+  // Providing data for the redirected page is done through $_SESSION.
+  foreach ($results as $result) {
+    $items[] = t('Loaded node %title.', array('%title' => $result));
+  }
+  $_SESSION['my_batch_results'] = $items;
+}
+
+/**
+ *  Implements hook_nodeapi().
+ *  We use this to do all the special sauce for the Opendata page
+ * 
+ *  Also occurring:
+ *    - A check to automatically associate tag nodes associated with committee with the issue of the same name, if no issue has been selected  
+ * 
+ */
+function nyss_node_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  switch($op) {
+    case 'delete':
+      // Also delete from Opendata node table.
+      db_query('DELETE FROM {nyss_node} WHERE nid = %d', $node->nid);
+      break;
+/*
+    case 'presave':
+      // Check now if an Issue has been associated
+      if (count(taxonomy_node_get_terms_by_vocabulary($node, 1)) == 0) {
+        if ($node->field_committee[0]['nid']) {
+          $committee = node_load($node->field_committee[0]['nid']);
+          if (count(taxonomy_node_get_terms_by_vocabulary($committee, 1)) == 0) {
+            $node->taxonomy[117] = taxonomy_get_term(117); // assign miscellaneous
+          }
+          else if (is_array($node->taxonomy) && is_array(taxonomy_node_get_terms_by_vocabulary($committee, 1))) {
+            $node->taxonomy = $node->taxonomy + taxonomy_node_get_terms_by_vocabulary($committee, 1);
+          }
+        }
+      }
+      break;
+*/
+    case 'insert':
+    case 'update':
+      // Start handling for Opendata stuff
+      if ($op == 'update' && $node->flag['opendata'] != 1) {
+        db_query('DELETE FROM {nyss_node} WHERE nid = %d', $node->nid);
+      }
+      else if ($node->flag['opendata'] == 1) {
+        foreach($node->field_pdf as $file) {
+          switch($file['filemime']) {
+            case 'text/csv':
+              $nyss_node['csv'] = 1;
+              break;
+            case 'text/plain':
+              $nyss_node['txt'] = 1;
+              break;
+            case 'application/pdf':
+              $nyss_node['pdf'] = 1;
+              break;
+            case 'application/vnd.ms-excel':
+              $nyss_node['xls'] = 1;
+              break;
+            case 'application/msword':
+              $nyss_node['doc'] = 1;
+              break;
+          }
+        }
+        if ($node->field_committee[0]['nid']) {
+          $result = db_result(db_query('SELECT title FROM {node} WHERE nid = %d', $node->field_committee[0]['nid']));       
+          $nyss_node['committee'] = $result;
+          $nyss_node['commnid']   = $node->field_committee[0]['nid'];
+        }
+        if ($node->field_senator[0]['nid']) {
+          $result = (db_query('SELECT title, cts.field_last_name_value AS lastname FROM {node} AS n LEFT JOIN {content_type_senator} AS cts ON cts.vid = n.vid WHERE n.nid = %d', $node->field_senator[0]['nid']));
+          while ($row = db_fetch_array($result)) {
+            $nyss_node['senator'] = $row['title'];
+            $nyss_node['sennid']  = $node->field_senator[0]['nid'];
+            $nyss_node['senlastname'] = $row['lastname'];
+          }
+        }
+        if (count($node->taxonomy[1]) > 0) {
+          foreach ($node->taxonomy[1] as $tid) {
+            $query = 'SELECT name FROM {term_data} WHERE tid = %d';
+            $result = db_result(db_query($query, $tid));
+            $nyss_node['category'] = $result;
+            $nyss_node['cattid']   = $tid;
+            break;
+          }
+        }
+        if ($node->field_creation[0]['value']) {
+          $nyss_node['creation']   = $node->field_creation[0]['value'];
+        }
+        else {
+          $nyss_node['creation']   = $node->created;
+        }
+        
+        $nyss_node['nid'] = $node->nid;
+
+        if($op == 'insert') {
+          drupal_write_record('nyss_node', $nyss_node);
+        }
+        else {
+          db_query('UPDATE {nyss_node} SET creation = "%d", senator = "%s", sennid = "%d", senlastname = "%s", committee = "%s", commnid = "%d", category = "%s", cattid = "%d", csv = "%d", txt = "%d", pdf = "%d", xls = "%d", doc = "%d" WHERE nid = %d', $nyss_node['creation'], $nyss_node['senator'], $nyss_node['sennid'], $nyss_node['senlastname'], $nyss_node['committee'], $nyss_node['commnid'], $nyss_node['category'], $nyss_node['cattid'], $nyss_node['csv'], $nyss_node['txt'], $nyss_node['pdf'], $nyss_node['xls'], $nyss_node['doc'], $nyss_node['nid']);
+        }
+        break;
+        // End Opendata handling
+    }
+  }
+}
+
+// This function is an implementation of hook_flag. If you flag content as Opendata, it will be added to the database.
+// If you deflag it, it will be removed from the database. Makes sense, huh?
+function nyss_node_flag($action, $flag, $content_id, $account) {
+  if ($flag->fid == 16) {
+    switch($action) {
+      case 'flag':
+        $query = "SELECT n.nid, n.title, n.vid, n.created, cf_creation.field_creation_value AS creation, cfc_n.title AS committee, cfc_n.nid AS commnid,
+      cfs_n.title AS senator, cfs_n.nid AS sennid, cts.field_last_name_value AS lastname,
+      cfp.field_pdf_fid AS fid, f.filename AS filename, f.filemime AS filetype,
+      t_d.tid AS cattid, t_d.name AS category,
+      nyss_node.nid AS nyss
+  FROM `node` AS n
+  LEFT JOIN `content_field_committee` AS cfc ON n.vid = cfc.vid
+  LEFT JOIN `node` AS cfc_n ON cfc_n.nid = cfc.field_committee_nid
+  LEFT JOIN `content_field_senator` AS cfs ON n.vid = cfs.vid
+  LEFT JOIN `node` AS cfs_n ON cfs_n.nid = cfs.field_senator_nid
+  
+  LEFT JOIN `content_type_senator` AS cts ON cfs_n.vid = cts.vid
+  
+  LEFT JOIN `content_field_pdf` AS cfp ON cfp.vid = n.vid
+  LEFT JOIN `files` AS f ON f.fid = cfp.field_pdf_fid
+  
+  LEFT JOIN `term_node` AS t_n ON t_n.vid = n.vid
+  LEFT JOIN `term_data` as t_d ON t_d.tid = t_n.tid
+  
+  LEFT JOIN `nyss_node` ON nyss_node.nid = n.nid
+    
+  LEFT JOIN `flag_content` AS flag ON flag.content_id = n.nid
+  
+  LEFT JOIN `content_field_creation` AS cf_creation ON cf_creation.vid = n.vid
+  
+  WHERE n.nid = %d";
+        $result = db_query($query, $content_id);
+        while ($row = db_fetch_array($result)) {
+          if ($row['fid']) {
+            $result2 = db_query("SELECT f.fid, f.filename, f.filemime FROM `content_field_pdf` cfp LEFT JOIN `files` f ON f.fid = cfp.field_pdf_fid WHERE nid = %d", $row['nid']);
+            while ($filerow = db_fetch_array($result2)) {
+              switch($row['filetype']) {
+                case 'text/csv':
+                  $nyss_node['csv'] = 1;
+                  break;
+                case 'text/plain':
+                  $nyss_node['txt'] = 1;
+                  break;
+                case 'application/pdf':
+                  $nyss_node['pdf'] = 1;
+                  break;
+                case 'application/vnd.ms-excel':
+                  $nyss_node['xls'] = 1;
+                  break;
+                case 'application/msword':
+                  $nyss_node['doc'] = 1;
+                  break;
+              }
+            }
+          }
+          
+          $nyss_node['nid'] = $row['nid'];
+          $nyss_node['creation'] = $row['creation'];
+          $nyss_node['senator'] = $row['senator'];
+          $nyss_node['sennid'] = $row['sennid'];
+          $nyss_node['senlastname'] = $row['lastname'];
+          $nyss_node['committee'] = $row['committee'];
+          $nyss_node['commnid'] = $row['commnid'];
+          $nyss_node['category'] = $row['category'];
+          $nyss_node['cattid'] = $row['cattid'];
+          
+          drupal_write_record('nyss_node', $nyss_node);
+        }
+        break;
+      case 'unflag':
+        db_query('DELETE FROM {nyss_node} WHERE nid = %d', $content_id);
+        break;
+    }
+  }
+}

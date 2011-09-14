@@ -1,0 +1,38 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ *
+ * This module provides a way to automatically create Events from OpenLeg info
+ *
+ * @author: Sam Richard
+ */
+
+/**
+ * Implements hook_enable().
+ */
+function openleg_parser_enable() {
+  cache_clear_all('plugins:feeds:plugins', 'cache');
+}
+ 
+/**
+ * Implementation of hook_feeds_plugins()
+ */
+
+function openleg_parser_feeds_plugins() {
+  $info = array();
+  $info['OpenLegFeedsSimplePieParser'] = array(
+    'name' => 'OpenLeg Parser',
+    'description' => 'Parses OpenLeg Data',
+    'handler' => array(
+      'parent' => 'FeedsSimplePieParser',
+      'class' => 'OpenLegFeedsSimplePieParser',
+      'file' => 'OpenLegFeedsSimplePieParser.inc',
+      'path' => drupal_get_path('module', 'openleg_parser'),
+      ),
+    );
+    
+    return $info;
+}
+

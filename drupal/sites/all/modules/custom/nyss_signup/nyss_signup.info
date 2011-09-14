@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Signup
+description = Handle signup and mailing list functionality (interfaces with Bronto and mCommons).
+package = NYSS
+core = 6.x

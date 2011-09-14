@@ -1,0 +1,12 @@
+; $Id: mobileplugin.info,v 1.3 2010/01/26 17:01:42 teemule Exp $
+name = Mobile Plugin
+description = Drupal mobile optimization package
+package = Mobile
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-01-26
+version = "6.x-2.0"
+core = "6.x"
+project = "mobileplugin"
+datestamp = "1264526408"
+

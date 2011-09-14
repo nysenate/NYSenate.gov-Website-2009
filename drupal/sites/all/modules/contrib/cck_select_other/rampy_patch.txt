@@ -1,0 +1,87 @@
+Index: cck_select_other.module
+===================================================================
+--- cck_select_other.module	(revision 2808)
++++ cck_select_other.module	(working copy)
+@@ -36,10 +36,33 @@
+         '#description' => t('CCK Select Other uses a separate text area to generate options. You may also put restricted values in the Allowed Values text area.'),
+         '#default_value' => $widget['select_list_options'],
+       );
++      $form['select_list_options_fieldset']['advanced_options'] = array(
++        '#type' => 'fieldset',
++        '#title' => t('PHP code'),
++        '#collapsible' => TRUE,
++        '#collapsed' => empty($widget['select_list_options_php']),
++      );
++      if (user_access('Use PHP input for field settings (dangerous - grant with care)')) {
++        $form['select_list_options_fieldset']['advanced_options']['select_list_options_php'] = array(
++          '#type' => 'textarea',
++          '#title' => t('Code'),
++          '#default_value' => !empty($widget['select_list_options_php']) ? $widget['select_list_options_php'] : '',
++          '#rows' => 6,
++          '#description' => t('Advanced usage only: PHP code that returns a keyed array of proposed select list options. Should not include &lt;?php ?&gt; delimiters. If this field is filled out, the array returned by this code will override the proposed select list options above.'),
++        );
++      }
++      else {
++        $form['select_list_options_fieldset']['advanced_options']['markup_select_list_options_php'] = array(
++          '#type' => 'item',
++          '#title' => t('Code'),
++          '#value' => !empty($widget['select_list_options_php']) ? '<code>'. check_plain($widget['select_list_options_php']) .'</code>' : t('&lt;none&gt;'),
++          '#description' => empty($widget['select_list_options_php']) ? t("You're not allowed to input PHP code.") : t('This PHP code was set by an administrator and will override the allowed values list above.'),
++        );
++      }
+       return $form;
+       break;
+     case 'save':
+-      return array('select_list_options'); 
++      return array('select_list_options', 'select_list_options_php'); 
+      break;
+   }
+ }
+@@ -143,33 +166,29 @@
+ 
+ /**
+  * Helper function for finding the options list for this field.
+- *
+- * See if there is a module hook for the option values.
+- * Otherwise, try content_allowed_values() for an options list.
+  */
+ function cck_select_other_options($field) {
+-
+-  $options = array();
+-
+-  $options_str = $field['widget']['select_list_options'];
+-  if (!empty($options_str)) {
+-    $options_arr = preg_split("/[\r]?[\n]/", $options_str);
+-    if (count($options_arr) > 0) {
+-      foreach($options_arr as $option_str) {
+-        $option_arr = preg_split("/\|/", $option_str);
+-        if (count($option_arr) == 2) {
+-          $options[$option_arr[0]] = $option_arr[1];
++  $options = eval($field['widget']['select_list_options_php']);
++  if (!$options) {
++    $options_str = $field['widget']['select_list_options'];
++    if (!empty($options_str)) {
++      $options_arr = preg_split("/[\r]?[\n]/", $options_str);
++      if (count($options_arr) > 0) {
++        foreach($options_arr as $option_str) {
++          $option_arr = preg_split("/\|/", $option_str);
++          if (count($option_arr) == 2) {
++            $options[$option_arr[0]] = $option_arr[1];
++          }
++          else {
++            $options["$option_arr[0]"] = $option_arr[0];
++          }
+         }
+-        else {
+-          $options["$option_arr[0]"] = $option_arr[0];
+-        }
+       }
+     }
+   }
+   if (!isset($options['other'])) {
+     $options['other'] = t('Other');
+   }
+-
+   return $options;
+ }
+ 

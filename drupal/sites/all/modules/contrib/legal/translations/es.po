@@ -1,0 +1,173 @@
+# Traducción al español del módulo legal
+# Esta traducción ha sido financiada por NII Holdings, Inc.
+#
+#
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Drupal 4.7\n"
+"POT-Creation-Date: 2006-12-21 12:58-0800\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: Juan Felipe Rincón <juanfe@yahoo.com>\n"
+"Language-Team: Spanish <juanfe@yahoo.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);"
+
+#: legal.module:9
+msgid "Adds Terms & Conditions statement to the registration page."
+msgstr "Agrega Términos y condiciones de uso a la página de registro."
+
+#: legal.module:12
+msgid "Adds Terms & Conditions statement to the registration page, requires visitor to accept Terms & Conditions to register."
+msgstr "Agrega Términos y condiciones para registrar."
+
+#: legal.module:13
+msgid "When a user creates an account they are required to accept your Terms & Conditions to complete their registration."
+msgstr "Cuando un usuario crea una cuenta, se le requiere que acepte los Términos y condiciones de uso para completar su registro."
+
+#: legal.module:16
+msgid "Adds a Terms & Conditions statement to the registration page, and requires visitor to accept the T&C to register. "
+msgstr "Agrega una declaración de Términos y condiciones de uso a la página de registro, y le exige al visitante aceptar los T&Cs para poder registrarse."
+
+#: legal.module:17
+msgid "A %page displaying your T&C will be automatically created, access to this page can be set via the %access administration page."
+msgstr "Un/a %page mostrando sus T&Cs será automáticamente creada, el accesso a esa página se buede configurar en la página de administración de %access."
+
+#: legal.module:38;0
+msgid "legal"
+msgstr "legal"
+
+#: legal.module:43;50
+msgid "Terms and Conditions"
+msgstr "Términos y condiciones"
+
+#: legal.module:81
+msgid "Terms and Conditions of Use"
+msgstr "Términos y condiciones de uso"
+
+#: legal.module:97;162;257
+msgid "Terms & Conditions"
+msgstr "Términos & Condiciones"
+
+#: legal.module:123
+msgid "<strong>Accept</strong> Terms & Conditions of Use"
+msgstr "<strong>Aceptar</strong> Términos & Condiciones de uso"
+
+#: legal.module:164
+msgid "Your Terms & Conditions"
+msgstr "Sus Términos & Condiciones"
+
+#: legal.module:174
+msgid "Display Style"
+msgstr "Estilo de visualización"
+
+#: legal.module:176
+msgid "Scroll Box"
+msgstr "Scroll Box"
+
+#: legal.module:176
+msgid "Scroll Box (CSS)"
+msgstr "Scroll Box (CSS)"
+
+#: legal.module:176
+msgid "HTML Text"
+msgstr "Texto HTML"
+
+#: legal.module:177
+msgid "How terms & conditions should be displayed to users."
+msgstr "Cómo deven ser mostrados los Términos & Condiciones a los usuarios."
+
+#: legal.module:185
+msgid "Additional Checkboxes"
+msgstr "Checkboxes adicionales"
+
+#: legal.module:186
+msgid "Each field will be shown as a checkbox which the user must tick to register."
+msgstr "Cada campo será mostrado como un checkbox que el usuario debe escojer para completar su registro."
+
+#: legal.module:199
+msgid "Label"
+msgstr "Rótulo"
+
+#: legal.module:216
+msgid "Explain Changes"
+msgstr "Explicar cambios"
+
+#: legal.module:217
+msgid "Explain what changes were made to the T&C since the last version. This will only be shown to users who accepted a previous version. Each line will automatically be shown as a bullet point."
+msgstr "Explique qué modificaciones se le hicieron a los T&Cs desde la última versión. Esto solamente será mostrado a los usuarios que aceptaron una versión previa. Cada línea será mostrada automáticamente como um ítem individual."
+
+#: legal.module:224
+msgid "Changes"
+msgstr "Cambios"
+
+#: legal.module:231;290;329
+msgid "Preview"
+msgstr "Previsualización"
+
+#: legal.module:236;556
+msgid "Save"
+msgstr "Enviar"
+
+#: legal.module:285
+msgid "Terms & Conditions must be entered."
+msgstr "Los Términos & Condiciones deben ser rellenados."
+
+#: legal.module:294
+msgid "Display setting has been saved."
+msgstr "La opción de visualización fue guardada."
+
+#: legal.module:300;305
+msgid "Terms & Conditions have been saved."
+msgstr "Los Términos & Condições fueron guardados."
+
+#: legal.module:318
+msgid "Terms & Conditions will not be shown to users, as no T&C have been saved."
+msgstr "Los Términos & Condiciones no serán mostrados a los usuarios, porque aún no han sido guardados ningunos T&Cs."
+
+#: legal.module:320
+msgid "Current Version"
+msgstr "Versión Actual"
+
+#: legal.module:320
+msgid "Version ID:"
+msgstr "ID de la versión:"
+
+#: legal.module:320
+msgid "Last saved:"
+msgstr "́Ultima actualización:"
+
+#: legal.module:569
+msgid "User ID cannot be identified."
+msgstr "El ID del usuario no puede ser identificado."
+
+#: legal.module:583
+msgid "Session opened for %name."
+msgstr "Sesión abierta para %name."
+
+#: legal.module:601
+msgid "To continue to use this site please read the Terms & Conditions below, and complete the form to confirm your acceptance."
+msgstr "Para continuar usando la página, por favor lea nuestros Términos & Condiciones, e complete el formulario confirmando que concuerda con ellos."
+
+#: legal.module:684
+msgid "Changes List"
+msgstr "Lista de cambios"
+
+#: legal.module:685
+msgid "Changes to the Terms & Conditions since last accepted:"
+msgstr "Cambios a los Términos & Condiciones desde la ultima vez que los aceptó:"
+
+#: legal.module:583
+msgid "user"
+msgstr "usuario"
+
+#: legal.module:23
+msgid "administer Terms and Conditions"
+msgstr "administrar Términos y condiciones"
+
+#: legal.module:23
+msgid "view Terms and Conditions"
+msgstr "ver Términos y condiciones"
+

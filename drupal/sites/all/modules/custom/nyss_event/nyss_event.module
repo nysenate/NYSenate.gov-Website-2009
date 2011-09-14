@@ -1,0 +1,549 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Event
+ *
+ *  This module controls special handle of nodes with content type event.
+ *
+ */
+
+define('NYSS_EVENT_PUBLIC_HEARING', 1);
+define('NYSS_EVENT_SESSION', 2);
+define('NYSS_EVENT_COMMITTEE_MEETING', 3);
+define('NYSS_EVENT_PRESS_CONFERENCE', 4);
+define('NYSS_EVENT_CAUCUS_MEETING', 5);
+define('NYSS_EVENT_CONFERENCE_CALL', 6);
+define('NYSS_EVENT_FORUM', 7);
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_event_menu() {
+  $items = array();
+  $items['nyss_event_no_video_message'] = array(
+    'title' => 'No video message',
+    'page callback' => 'nyss_event_no_video_message',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['nyss_event_not_playing'] = array(
+    'title' => 'Starting soon',
+    'page callback' => 'nyss_event_not_playing',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['nyss_event_livestream_not_live'] = array(
+    'title' => 'Lightbox not live',
+    'page callback' => 'nyss_event_livestream_not_live',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ *  Return a "no video" message for display inside a lightbox.
+ *
+ *  @return
+ *    HTML
+ */
+function nyss_event_no_video_message() {
+  $output = '<h2>Archive Pending</h2>';
+  $output .= '<p>Video of this event is not yet available. Please check back later.</p>';
+  print $output;
+  exit();
+}
+
+/**
+ *  Return a "not started yet" message for display inside a lightbox.
+ *
+ *  @return
+ *    HTML
+ */
+function nyss_event_not_playing() {
+  $output = '<h2>Starting Soon</h2>';
+  $output .= '<p>This event has not yet started. Please visit at its scheduled time to see live video of the proceedings.</p>';
+  print $output;
+  exit();
+}
+
+/**
+ *  Return a "Livestream not playing" message for display inside a lightbox.
+ *
+ *  @return
+ *    HTML
+ */
+function nyss_event_livestream_not_live() {
+  $output = "<h2>Not Available</h2>";
+  $output .= '<p>' . 
+    t('Video stream currently unavailable: the start of this event may be delayed, ' . 
+      'the event may have already adjourned, or this live stream could be experiencing a technical problem. ' .
+      'Please continue to monitor this page for video coverage. A recording of the completed event will also be posted to the !archive once it is available.', 
+      array(
+        '!archive' => l(t("Senate video archive"), 'video_archives'),
+      )
+    ) . '</p>';
+  print $output;
+  exit();
+}
+
+/**
+ *  Implements hook_nodeapi().
+ *
+ * Displays a message on event pages, based on whether the event is
+ * supposed to be live streamed.
+ */
+function nyss_event_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  if ($node->type == 'event' && !$node->current_status['surpress_message']) {
+    switch ($op) {
+      case 'presave':
+        $node->field_creation[0] = array(
+          'value' => _nyss_event_timestamp($node),
+          'timezone' => 'America/New_York',
+          'timezone_db' => 'America/New_York',
+          'date_type' => 'datestamp',
+        );
+        break;
+      case 'load':
+        $node->current_status = nyss_event_current_status($node);
+        break;
+        
+      case 'view':
+        $teaser = $a3;
+        $page = $a4;
+        if ($page && !$teaser) { // only display something on full page views
+          $output = '';
+          if ($node->current_status['when'] == 'before' && $node->current_status['live_streamed']) {
+            drupal_set_message(variable_get('nyss_videosettings_message_before_live_streamed', 'Video of this event will be live streamed. Visit this page during the hours posted to watch.'));
+          }
+          else if ($node->current_status['when'] == 'during' && $node->current_status['live_streamed']) {
+            if (!nyss_videosettings_is_live($node->nid)) {
+              drupal_set_message(variable_get('nyss_videosettings_message_during_live_streamed', 
+                'Video stream currently unavailable: the start of this event may be delayed, ' . 
+                'the event may have already adjourned, or this live stream could be experiencing a technical problem. ' .
+                'Please continue to monitor this page for video coverage. A recording of the completed event will also be posted on this page once it is available.'
+              ));
+            }
+          }
+          else if ($node->current_status['when'] == 'after' && $node->current_status['live_streamed']) {
+            if (!$node->field_video[0]['embed'] || ( $node->current_status['video_provider'] == 'livestream' && !nyss_videosettings_is_live($node->nid) )) {
+              drupal_set_message(variable_get('nyss_videosettings_message_after_live_streamed', 'This event has finished and a recording will be posted on this page once it is available.'));
+            }
+          }
+          else if ($node->current_status['committee'] || $node->field_public_hearing[0]['value'] == NYSS_EVENT_SESSION) {
+            // If it's BEFORE the event and "live streaming" is NOT checked, the message is:
+            if ($node->current_status['when'] == 'before') {
+              drupal_set_message(variable_get('nyss_videosettings_message_committee_before_no_streaming', 'This event will not be live streamed. A recording of the event will be posted on this page once it is available.'));
+            }
+            elseif ($node->current_status['when'] == 'during' && !$node->current_status['live_streamed']) {
+              drupal_set_message(variable_get('nyss_videosettings_message_committee_during_no_streaming', 'This event is not being live streamed. Please visit this page later to see a video archive.'));
+            }
+            elseif ($node->current_status['when'] == 'after' && !$node->field_video[0]['embed']) {
+              drupal_set_message(variable_get('nyss_videosettings_message_after_live_streamed', 'This event has finished and a recording will be posted on this page once it is available.'));
+            }
+          }
+        }    
+        break;
+    }
+  }
+}
+
+
+/**
+ *  Return a timestamp corresponding to the event's scheduled start date
+ *
+ *  @return
+ *    a timestamp integer
+ */
+function _nyss_event_timestamp(&$node) {
+  list($year, $month, $day) = explode('-', substr($node->field_date[0]['value'], 0, 10));
+  list($hour, $minute, $second) = explode('-', substr($node->field_date[0]['value'], 11, 8));
+  $time = mktime((int)$hour, (int)$minute, (int)$second, (int)$month, (int)$day, (int)$year, 1);
+  return $time + (5 * 60 * 60) - ($time % (24 * 60 * 60)); // adjust for New York timezone and round to eliminate hour/minute/second
+}
+
+/**
+ *  nyss_event_current_status
+ *  Return a message indicating whether and when the video will be/has been shown.
+ *
+ *  @param $node
+ *    A node object of type 'event'
+ *  @return
+ *    An associative array with the following keys:
+ *      'when' => 'before', 'during' or 'after'
+ *      'live_streamed' => TRUE / FALSE
+ *      'video_archive' => TRUE / FALSE
+ *      'has_committee' => TRUE / FALSE
+ */
+
+/*
+ * Other potentially retrievable values:
+ * $committee = $node->field_committee[0]['nid']; // could be empty
+ * $event_type = $node->field_public_hearing[0]['value']; // empty or an integer
+ * $live_streaming = $node->field_live_streaming[0]['value']; // 1 or 0
+ * $has_video = $node->field_video[0]['embed']; // empty or a text string
+ * $senator = $node->field_senator[0]['nid']; // could be empty
+ * $nyspan = $node->field_nyspan[0]['value']; // 1 or 0
+ * Example values for $node->field_video
+ * $node->field_video[0]['embed']: http://www.youtube.com/watch?v=5YGc4zOqozo
+ * $node->field_video[0]['value']: 5YGc4zOqozo
+ * $node->field_video[0]['provider']: youtube
+ * $node->field_video[0]['data']['thumbnail']['url']: http://img.youtube.com/vi/5YGc4zOqozo/0.jpg
+ * $node->field_video[0]['data']['flash']['url']: http://youtube.com/v/5YGc4zOqozo
+ * $node->field_video[0]['data']['flash']['size']: 1028
+ * $node->field_video[0]['data']['flash']['mime']: application/x-shockwave-flash
+ *
+ * For livestream, the values are:
+ *  $node->field_video[0][embed] => http://www.livestream.com/spaceflightnow
+ *  $node->field_video[0][value] => spaceflightnow 
+ *  $node->field_video[0][provider] => livestream 
+ *  $node->field_video[0][data][emvideo_livestream_version] => 1
+ *  $node->field_video[0][data][thumbnail][url] => http://mogulus-channel-logos.s3.amazonaws.com/36e32d27-6ab8-998a-9644-301f39a15533-small.jpg
+ *  $node->field_video[0][data][flash][url] => http://www.livestream.com/spaceflightnow
+ *  $node->field_video[0][data][flash][size]
+ *  $node->field_video[0][data][flash][mime] => text/html; charset=utf-8
+ */
+function nyss_event_current_status(&$node) {
+  $status = array();
+  
+  if (nyss_event_is_dst()) {
+    $from_date = date_create($node->field_date[0]['value'] . ' - 5 hours', date_default_timezone());
+    $to_date = date_create($node->field_date[0]['value2'] . ' - 4 hours - 30 minutes', date_default_timezone());
+  }
+  else {
+    $from_date = date_create($node->field_date[0]['value'] . ' - 4 hours', date_default_timezone());
+    $to_date = date_create($node->field_date[0]['value2'] . ' - 3 hours - 30 minutes', date_default_timezone());
+  }
+
+  $now = date_create('now', date_default_timezone());
+  if ($from_date > $now) {
+    $status['when'] = 'before';
+  }
+  elseif ($to_date < $now){
+    $status['when'] = 'after';
+  }
+  else {
+    $status['when'] = 'during';
+  }
+  $status['ended'] = (date_format($now, "Y-m-d") > date_format($from_date, "Y-m-d")); // Boolean flag for whether the event has ended.
+  $status['live_streamed'] = $node->field_live_streaming[0]['value'];
+  $status['committee'] = $node->field_committee[0]['nid']; // could be empty
+  $status['has_video'] = $node->field_video[0]['embed'] ? TRUE : FALSE;
+  $status['video_provider'] = $node->field_video[0]['provider'];
+  $status['surpress_message'] = $node->field_surpress_video_message[0]['value'] ? TRUE: FALSE;
+  return $status;
+}
+
+/**
+ *  Return the array of available event types
+ *
+ * @return
+ *   An associative array.
+ */
+function nyss_event_types() {
+  return array(
+    5 => t('Caucus Meeting'),
+    3 => t('Committee Meeting'),
+    6 => t('Conference Call'),
+    7 => t('Forum/Town Hall'),
+    4 => t('Press Conference'),
+    1 => t('Public Hearing'),
+    2 => t('Session'),
+  );
+}
+
+/**
+ *  Return the event sub-type as text, e.g., 'Public Hearing' or 'Committee Meeting'
+ *
+ * @param $node
+ *   The event node, or a node ID
+ * @return
+ *   The text string for the meeting type.
+ */
+function nyss_event_type(&$node) {
+  if (is_numeric($node)) {
+    $node = node_load($node);
+  }
+  if ($node->type == 'event' && $node->field_public_hearing[0]['value']) {
+    $event_type = $node->field_public_hearing[0]['value'];
+    $event_types = nyss_event_types();
+    return $event_types[$event_type];
+  }
+}
+
+/**
+ *  Themeable function to return event sub-type as text.
+ *
+ * @param $node
+ *   The event node, or a node ID
+ * @return
+ *   The text string for the meeting type.
+ */
+function theme_nyss_event_type($node) {
+  return nyss_event_type($node);
+}
+
+/**
+ *  Themeable function to return event sub-type as text.
+ *
+ * @param $node
+ *   The event node, or a node ID
+ * @return
+ *   The text string for the meeting type.
+ */
+function theme_nyss_event_displayable_type($type_value) {
+  $types = nyss_event_types();
+  return $types[$type_value];
+}
+
+/**
+ *  Return the event title, prefixed by the event sub-type
+ *
+ * @param $node
+ *   The event node, or a node ID
+ * @return
+ *   The title string.
+ */
+function theme_nyss_event_prefixed_title($node) {
+  $event_type = nyss_event_type($node);
+  if ($event_type) {
+    return "$event_type: " . $node->title;
+  }
+  else {
+    return $node->title;
+  }
+}
+
+/**
+ *  Return a string indicating whether the event should play a live video source
+ *  derived from the committee node or the event node. This only returns a source
+ *  if the event is currently happening.
+ *
+ *  @param $node
+ *    An event node object.
+ *  @return
+ *    a string: either 'event', 'committee' or 'none'
+ */
+function nyss_event_live_video_source($event) {
+  if ($event->current_status['when'] == 'during') {
+    if (nyss_videosettings_is_live($event->nid)) {
+      return 'event';
+    }
+    else if (nyss_videosettings_is_live($event->current_status['committee'])) {
+      return 'committee';
+    }
+  }
+  return 'none';
+}
+
+/**
+ *  Return a string indicating whether the event should play a video source
+ *  derived from the committee node or the event node. This can return a non-live
+ *  for events that are not currently happening.
+ *
+ *  @param $nid
+ *    The node ID.
+ *  @return
+ *    a string: either 'event', 'committee' or 'none'
+ */
+function nyss_event_any_video_source($nid) {
+  $event = node_load($nid);
+  if ($event->current_status['when'] == 'during') {
+    if (nyss_videosettings_is_live($nid)) {
+      return 'event';
+    }
+    else if (nyss_videosettings_is_live($event->current_status['committee'])) {
+      return 'committee';
+    }
+  }
+  else if ($event->current_status['video_provider'] != 'livestream' && $event->current_status['has_video']) {
+    return 'event';
+  }
+  return 'none';
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+function nyss_event_theme() {
+  return array(
+    'nyss_event_show_color_scheme' => array(
+      'arguments' => array(),
+    ),
+    'nyss_event_type' => array(
+      'arguments' => array(
+        'node' => NULL,
+      ),
+    ),
+    'nyss_event_prefixed_title' => array(
+      'arguments' => array(
+        'node' => NULL,
+      ),
+    ),
+    'nyss_event_displayable_type' => array(
+      'arguments' => array(
+        'type_value' => NULL,
+      ),
+    ),
+    'nyss_event_original_event_title' => array(
+      'arguments' => array(
+        'node' => NULL,
+      ),
+    ),
+    'nyss_event_playable_video' => array(
+      'arguments' => array(
+        'nid' => NULL,
+      ),
+    ),
+  );
+}
+
+/**
+ *  Return a table showing the color code for events listings
+ *  on calendar pages.
+ *
+ *  @return
+ *    HTML
+ */
+function theme_nyss_event_show_color_scheme() {
+  $output = '<table class="calendar-color-legend">';
+  $output .= '<tr><th>' . t('Event type') . '</th><th>' .t('Color') . '</th></tr>';
+  $types = array(
+      'event-type-committee-meeting' => array(
+          'name' => t('Committee meeting'),
+          'color-name' => t('Green'),
+        ),
+      'event-type-press-conference' => array(
+          'name' => t('Press conference'),
+          'color-name' => t('Brown'),
+        ),
+      'event-type-public-hearing' => array(
+          'name' => t('Public hearing'),
+          'color-name' => t('Red'),
+        ),
+      'event-type-session' => array(
+          'name' => t('Session'),
+          'color-name' => t('Blue'),
+        ),
+      'event-type-other' => array(
+          'name' => t('Other'),
+          'color-name' => t('Dark gray'),
+        ),
+    );
+  foreach ($types as $class => $text) {
+    $output .= '<tr><td>' . $text['name'] . "</td><td><div class=\"$class\">" . $text['color-name'] . "</div></td></tr>";
+  }
+  $output .= '</table>';
+  return '<div class="event-color-scheme">' . $output . '</div>';
+}
+
+/**
+ * Implementation of hook_form_alter()
+ */
+function nyss_event_form_alter(&$form, $form_state, $form_id) {
+  if ( $form['#id'] == 'node-form' && $form['type']['#value'] == 'event' ) {
+    /* If it's an event editing form, change the function that returns the list of meeting types so we can
+     * restrict the list by editors' permissions.
+     */
+    $form['#field_info']['field_public_hearing']['allowed_values_php'] = "return nyss_senator_meeting_allowed_types();";
+    $form['flag']['#weight'] = 2;
+    $form['field_creation']['#type'] = 'hidden'; // Don't show this because it gets automatically calculated upon form submission.
+  }
+//  $form['#id'] == 'node-form'
+//  $form['type']['#value'] == 'event'
+//  $form['#node']['type'] == 'event'
+//  $form['#theme'][0] == 'event_node_form'
+//  $form['#parameters'][0] == 'event_node_form'
+//  $form['#parameters'][2]['type'] == 'event'
+//  $form['#token'] == 'event_node_form'
+//  $form['form_id']['#value'] == 'event_node_form'
+}
+
+/**
+ *  Return information about the original event for legislative cable channel broadcasts.
+ *
+ *  @param $node
+ *    The cable broadcast: a node of type cable_broadcast
+ *  @return
+ *    a string indicating the name of the original event and whether the broadcast is live or not
+ */
+function nyss_event_original_event_title($node) {
+  $original_event = node_load($node->field_original_event[0]['nid']);
+  if ($original_event->field_live[0]['value']) {
+    return t('Live broadcast: ') . check_plain($original_event->title);
+  }
+  else {
+    return t('Broadcast: ') . check_plain($original_event->title);
+  }
+}
+
+function theme_nyss_event_original_event_title($node) {
+  return nyss_event_original_event_title($node);
+}
+
+/**
+ *  Return playable video if it exists from an event's related committee.
+ *
+ *  This is a hacky workaround for events that don't have their own video.
+ *
+ *  @param $nid
+ *    The node id
+ *  @return
+ *    the video themed as a lightbox (thickbox) link
+ */
+function nyss_event_playable_video($nid) {
+  $event = node_load($nid);
+  if ($event->current_status['committee']) {
+    $node = node_load($event->current_status['committee']);
+    // Only return something if the event belongs to a committee that has a livestream video channel and the event is currently happening.
+    if ($node->field_video[0]['embed'] && $node->field_video[0]['provider'] == 'livestream' && $event->current_status['when'] == 'during') {
+      $field_type = 'field_video';
+      $system_types = _content_type_info();
+      $field = $system_types['fields'][$field_type];
+      return theme('emvideo_modal_generic', $field, $node->field_video[0], 'emvideo_thickbox', $node);           
+    }
+  }
+}
+
+function theme_nyss_event_playable_video($nid) {
+  return nyss_event_playable_video($nid);
+}
+
+/**
+ * Implementation of hook_codify().
+ */
+function nyss_event_codify() {
+  return array(
+    'nyss_event' => array('handlers', 'pages'),  
+  );
+}
+
+/**
+ *  Indicate whether the time is currently daylight savings time..
+ *  @return
+ *    Boolean TRUE or FALSE
+ */
+function nyss_event_is_dst() {
+  $in_dst=FALSE;
+
+  if( (date('m')>=4) && (date('m')<=10) ) { // IS CURRENT DATE INSIDE OF APRIL->OCT WINDOW?
+    if( (date('m')>4) && (date('m')<10) ) { //IS CURRENT DATE INSIDE MAY->SEPT WINDOW?
+      $in_dst=TRUE;
+    } else if(date('m')=="4") { //IS IT APRIL?
+      if( (date('j')<=7) && (date('D')=="Sun") ) { //IS IT THE FIRST SUN OF THE MONTH?
+        if(date('H')>"1") {//IS IT PAST 2:00AM?
+          $in_dst=TRUE;
+        }
+      }
+    } else if(date('m')=="10") {//IS IT OCT?
+      if( (date('j')<=25) && (date('D')=="Sun") ) { //IS IT THE LAST SUN OF THE MONTH?
+        if(date('H')>"1") {//IS IT PAST 2:00AM?
+          $in_dst=FALSE;
+        }
+      }
+    }
+  }
+  return $in_dst;
+}

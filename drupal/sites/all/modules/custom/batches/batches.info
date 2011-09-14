@@ -1,0 +1,4 @@
+; $Id$
+name = Batch jobs
+description = Supports easy creation of routines that use Drupal's batch API.
+core = 6.x

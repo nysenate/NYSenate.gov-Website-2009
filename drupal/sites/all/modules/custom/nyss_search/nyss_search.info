@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Search
+description = Modifies search functions to only search within a senator's domain.
+package = NYSS
+core = 6.x
+dependencies[] = search

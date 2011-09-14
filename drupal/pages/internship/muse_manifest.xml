@@ -1,0 +1,30 @@
+<manifest alg="1">
+  <folder name="image">
+    <file name="soft_wallpaper.png" crc="4192951674"/>
+    <file name="index_page_sprite.png" crc="4278862796"/>
+    <file name="index_n7.png" crc="12707069"/>
+    <file name="index_n9.png" crc="3961450773"/>
+    <file name="index_n11.png" crc="4261154772"/>
+    <file name="index_n13.png" crc="3899506398"/>
+    <file name="index_n15.png" crc="3860846274"/>
+    <file name="index_U143_fr.png" crc="3919568133"/>
+    <file name="index_n30_sprite.png" crc="3918248175"/>
+    <file name="index_n82.png" crc="3894810880"/>
+    <file name="index_n98.png" crc="395313874"/>
+    <file name="untitled-2_n2.png" crc="405422565"/>
+  </folder>
+  <folder name="scripts">
+    <folder name="0.9">
+      <file name="jquery-1.4.4.min.js" crc="247588841"/>
+      <file name="SpryDOMUtils.js" crc="119034094"/>
+      <file name="MuseUtils.js" crc="4013571428"/>
+    </folder>
+  </folder>
+  <folder name="css">
+    <file name="index.css" crc="3831890535"/>
+    <file name="untitled-2.css" crc="3919367498"/>
+    <file name="site_global.css" crc="4024257229"/>
+  </folder>
+  <file name="index.html" crc="469732287"/>
+  <file name="untitled-2.html" crc="354452189"/>
+</manifest>

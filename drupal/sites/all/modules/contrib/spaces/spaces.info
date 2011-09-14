@@ -1,0 +1,16 @@
+; $Id: spaces.info,v 1.1.4.2.2.1 2009/04/06 18:59:21 yhahn Exp $
+name = "Spaces"
+description = "Provides a customizable spaces layer on top of Drupal."
+package = "Spaces"
+core = "6.x"
+dependencies[] = views
+dependencies[] = purl
+dependencies[] = context
+dependencies[] = context_contrib
+dependencies[] = features
+; Information added by drupal.org packaging script on 2010-02-15
+version = "6.x-2.0-beta7"
+core = "6.x"
+project = "spaces"
+datestamp = "1266249907"
+

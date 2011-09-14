@@ -1,0 +1,11 @@
+<?php
+// $Id: spaces_og.install,v 1.1.2.1 2008/10/24 00:47:16 yhahn Exp $
+
+/**
+ * Implementaton of hook_enable().
+ */
+function spaces_og_enable() {
+  // Weight spaces_og to be after OG
+  $weight = db_result(db_query("SELECT weight FROM {system} WHERE type = 'module' AND name = 'og'"));
+  db_query("UPDATE {system} SET weight = %d WHERE name = 'spaces_og'", ($weight + 1));  
+}

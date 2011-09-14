@@ -1,0 +1,127 @@
+<?php
+
+/**
+* Hook sets nyss_node 'weight' to 100 to make it run after CCK.
+*
+*/
+function nyss_node_install() {  
+  drupal_install_schema('nyss_node');
+
+  $ret = array();
+  $ret[] = db_query("UPDATE {system} SET weight = 100 WHERE name = 'nyss_node'");
+  return $ret;
+}
+
+function nyss_node_uninstall() {
+  drupal_uninstall_schema('nyss_node');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function nyss_node_schema() {
+  $schema['nyss_node'] = array(
+    'description' => 'The extra data used by the NYSS site.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'The primary identifier for a node.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'creation' => array(
+        'description' => 'The Unix timestamp for when this content was originally created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0),
+      'senator' => array(
+        'description' => 'The name of the Senator title affiliated with this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''),
+      'sennid' => array(
+        'description' => 'The NID of the Senator that owns this node.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0),
+      'senlastname' => array(
+        'description' => 'The last name of the Senator that owns this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''),
+      'committee' => array(
+        'description' => 'The name of the Committee affiliated with this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''),
+      'commnid' => array(
+        'description' => 'The NID of the committee affiliated with this node.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0),
+      'category' => array(
+        'description' => 'The primary category affiliated with this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''),
+      'cattid' => array(
+        'description' => 'The TID of the primary category affiliated with this node.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0),
+      'tags' => array(
+        'description' => 'Serialized data pairs of tags and the TID attached to them.',
+        'type' => 'blob',
+        'not null' => FALSE,
+        'default' => NULL),
+      'csv' => array(
+        'description' => 'Whether this node has any csv files associated.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL),
+      'txt' => array(
+        'description' => 'Whether this node has any txt files associated.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL),
+      'pdf' => array(
+        'description' => 'Whether this node has any pdf files associated.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL),
+      'xls' => array(
+        'description' => 'Whether this node has any xls files associated.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL),
+      'doc' => array(
+        'description' => 'Whether this node has any doc files associated.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL),
+      ),
+    'indexes' => array(
+      'cattid'              => array('cattid'),
+      'creation'              => array('creation'),
+      'sennid'              => array('sennid'),
+      'commnid'             => array('commnid'),
+    ),
+    'primary key' => array('nid'),
+    );
+
+  return $schema;
+}
+
+function nyss_node_update_1() {
+  $ret = array();
+  db_add_field($ret, 'nyss_node', 'senlastname', array(
+        'description' => 'The last name of the Senator that owns this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''));
+  return $ret;
+}

@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Video Settings
+description = Special handling settings for video feeds
+package = NYSS
+core = 6.x

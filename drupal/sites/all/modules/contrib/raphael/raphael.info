@@ -1,0 +1,13 @@
+; $Id: raphael.info,v 1.1 2010/04/23 08:33:02 mikl Exp $
+
+name = Raphaël
+description = API module for the Raphaël vector graphics JavaScript library.
+core = 6.x
+
+
+; Information added by drupal.org packaging script on 2010-12-21
+version = "6.x-1.0"
+core = "6.x"
+project = "raphael"
+datestamp = "1292953283"
+

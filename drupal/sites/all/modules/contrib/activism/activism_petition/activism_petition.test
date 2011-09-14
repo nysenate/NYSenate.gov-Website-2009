@@ -1,0 +1,71 @@
+<?php
+// $Id: activism_petition.test,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * SimpleTests for activism_petition.module.
+ */
+
+class ActivismPetitionTestCase extends DrupalWebTestCase {
+  function getInfo() {
+    return array(
+      'name' => t('Petition'),
+      'description' => t('Functionality and unit tests for activism_petition.module.'),
+      'group' => t('Activism'),
+    );
+  }
+
+  function setUp() {
+    parent::setUp('activism', 'activism_petition');
+    $this->admin_user   = $this->drupalCreateUser(array('administer activism', 'create campaign content', 'edit own campaign content', 'delete own campaign content'));
+    $this->allowed_user = $this->drupalCreateUser(array('create campaign content', 'edit own campaign content', 'delete own campaign content'));
+    $this->normal_user  = $this->drupalCreateUser(array('access content'));
+  }
+
+  /**
+   * Commence teh testing of everything, bub.
+   */
+  function testActivismPetitionEverything() {
+    $edit = array(
+      'type'                              => 'campaign',
+      'uid'                               => $this->allowed_user->uid,
+      'body'                              => $this->randomName(32),
+      'title'                             => $this->randomName(8),
+      'activism_cta_module'               => 'activism_petition',
+      'activism_petition'                 => array(
+        'first_name_field_enabled'        => 1,
+        'first_name_field_display'        => 'First name',
+        'first_name_field_required'       => 1,
+        'last_name_field_enabled'         => 1,
+        'last_name_field_display'         => 'Family name',
+        'last_name_field_required'        => 0,
+        'postal_code_field_enabled'       => 0,
+        'postal_code_field_display'       => 'Postal code',
+        'postal_code_field_required'      => 1,
+      ),
+    );
+
+    $node = $this->drupalCreateNode($edit);
+    $node = node_load($node->nid, NULL, TRUE);
+    foreach ($edit['activism_petition'] as $signup_field_config => $value) {
+      $this->assertEqual($node->activism_petition[$signup_field_config], $edit['activism_petition'][$signup_field_config],
+        t("@key was properly set on node creation and loaded successfully.", array('@key' => $signup_field_config)));
+    } // @todo we're not testing every single field here, but I'm not entirely sure we have to.
+
+    // ensure we're on campaign config tab.
+    $this->drupalLogin($this->allowed_user);
+    $this->drupalGet('node/' . $node->nid . '/activism_cta');
+    $this->assertRaw(t('Petition configuration'), t("Petition configuration exists on campaign's Call to action tab."));
+
+    // and that the call to action form properly shows on the node.
+    $this->drupalGet('node/' . $node->nid); // NP: 'Under Satan (Dub)' from KMFDM's album 'Money'.
+    $this->assertRaw('<fieldset><legend>' . t('Petition') . '</legend>', t("Petition call to action form exists on node view."));
+    $this->assertPattern('/<input.*name="activism_signup_first_name".*required/', t("First name is displayed on call to action form and is required."));
+    $this->assertPattern('/<input.*name="activism_signup_last_name".*class="form-text"/', t("Last name is displayed on call to action form and is not required."));
+    $this->assertPattern('/<label for="edit-activism-signup-last-name">Family name: <\/label>/', t("Last name used the campaign-specific display title, not the default."));
+    $this->assertNoRaw('Postal code', t("Postal code is not displayed on call to action form."));
+
+    // we don't need to test anything more, because the rest is all handled
+    // via Activism's signup code, which should be tested in activism.test.
+  }
+}

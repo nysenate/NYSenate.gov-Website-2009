@@ -1,0 +1,5 @@
+; $Id:$
+name = Simple Front Page
+description = "Creates a dummy blank front page really helpful to keep the queries down if you are using a modules front page."
+version = 6.x-1.0
+core = 6.x

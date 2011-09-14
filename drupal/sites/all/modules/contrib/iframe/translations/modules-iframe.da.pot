@@ -1,0 +1,380 @@
+# Danish translation of Drupal (boost.module)
+# Copyright 2007 Morten Wulff <wulff@ratatosk.net>
+msgid ""
+msgstr ""
+"Project-Id-Version: Danish translation of Drupal (iframe.module) $Id: da.po,"
+"v 1.1 2008/03/30 05:52:10 quicksketch Exp $\n"
+"POT-Creation-Date: 2010-11-10 01:22+0100\n"
+"PO-Revision-Date: 2007-12-09 13:54+0100\n"
+"Last-Translator: Morten Wulff <wulff@ratatosk.net>\n"
+"Language-Team: Danish <l10n@drupaldanmark.dk>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Poedit-Language: Danish\n"
+"X-Poedit-Country: DENMARK\n"
+
+#: iframe.module:34 iframe.info:0
+#, fuzzy
+msgid "IFrame"
+msgstr "IFrame-titel"
+
+#: iframe.module:35
+msgid ""
+"Store a title, src, and attributes in the database to assemble an iframe."
+msgstr ""
+
+#: iframe.module:54
+#, fuzzy
+msgid "Optional url"
+msgstr "Valgfri titel"
+
+#: iframe.module:57
+msgid ""
+"If checked, the url field is optional. If the url is ommitted, nothing will "
+"be displayed."
+msgstr ""
+
+#: iframe.module:61
+msgid "Optional Title"
+msgstr "Valgfri titel"
+
+#: iframe.module:62
+msgid "Required Title"
+msgstr "Påkrævet titel"
+
+#: iframe.module:63
+msgid "Static Title: "
+msgstr "Statisk titel:"
+
+#: iframe.module:64
+msgid "No Title"
+msgstr "Ingen titel"
+
+#: iframe.module:69
+msgid "IFrame Title"
+msgstr "IFrame-titel"
+
+#: iframe.module:72
+#, fuzzy
+msgid ""
+"If the iframe title is optional or required, a field will be displayed to "
+"the end user. If the iframe title is static, the iframe will always use the "
+"same title. If <a href=\"http://drupal.org/project/token\">token module</a> "
+"is installed, the static title value may use any other node field as its "
+"value. Static and token-based titles may include most inline XHTML tags such "
+"as <em>strong</em>, <em>em</em>, <em>img</em>, <em>span</em>, etc."
+msgstr ""
+"Hvis link-titlen er valgfri eller påkrævet vises et tekstfelt til brugeren. "
+"Hvis link-titlen er statisk vil linket altid have den samme titel. Hvis <a "
+"href=\"http://drupal.org/project/token\">token-modulet</a> er installeret "
+"kan den statiske titel bruge ethvert indholdselementfelt som dets værdi."
+
+#: iframe.module:87
+msgid "Placeholder tokens"
+msgstr "Pladsholder-symboler"
+
+#: iframe.module:88
+msgid ""
+"The following placeholder tokens can be used in both paths and titles. When "
+"used in a path or title, they will be replaced with the appropriate values."
+msgstr ""
+"Følgende pladsholder symboler kan bruges i både stier og titler. Når de "
+"bruges i stier og titler erstattes de med de relevante værdier."
+
+#: iframe.module:96
+#, fuzzy
+msgid "Allow user-entered tokens"
+msgstr "Tillad symboler"
+
+#: iframe.module:98
+msgid ""
+"Checking will allow users to enter tokens in URLs and Titles on the node "
+"edit form. This does not affect the field settings on this page."
+msgstr ""
+"Tillad brugerne at bruge symboler i URLer og titler på indholdsformularen. "
+"Valget påvirker ikke feltindstillingerne på denne side."
+
+#: iframe.module:111
+msgid "Additional CSS Class"
+msgstr "Ekstra CSS klasse"
+
+#: iframe.module:112
+#, fuzzy
+msgid ""
+"When output, this iframe will have this class attribute. Multiple classes "
+"should be separated by spaces."
+msgstr ""
+"Når linket vises vil det have denne CSS klasse. Flere klasser adskilles med "
+"mellemrum."
+
+#: iframe.module:117
+msgid "width of the iframe"
+msgstr ""
+
+#: iframe.module:118;126
+msgid "iframes need fix width and height, only numbers are allowed."
+msgstr ""
+
+#: iframe.module:125
+msgid "height of the iframe"
+msgstr ""
+
+#: iframe.module:133;565
+msgid "Frameborder"
+msgstr ""
+
+#: iframe.module:134;566
+msgid "no frameborder"
+msgstr ""
+
+#: iframe.module:134;566
+msgid "show frameborder"
+msgstr ""
+
+#: iframe.module:136
+msgid ""
+"Frameborder is the border arround the iframe. Mostly people want it silent, "
+"so the default value for frameborder is 0 = no."
+msgstr ""
+
+#: iframe.module:140;573
+msgid "Scrolling"
+msgstr ""
+
+#: iframe.module:141;574
+msgid "Scrolling automatic"
+msgstr ""
+
+#: iframe.module:141;574
+msgid "Scrolling disabled"
+msgstr ""
+
+#: iframe.module:141;574
+msgid "Scrolling enabled"
+msgstr ""
+
+#: iframe.module:143;575
+msgid ""
+"Scrollbars help the user to reach all iframe content despite the real height "
+"of the iframe content. Please disable it only if You know what You are doing."
+msgstr ""
+
+#: iframe.module:147;581
+msgid "Transparency"
+msgstr ""
+
+#: iframe.module:148;582
+msgid "no transparency"
+msgstr ""
+
+#: iframe.module:148;582
+msgid "allow transparency"
+msgstr ""
+
+#: iframe.module:150;583
+msgid ""
+"Allow transparency per CSS in the outer iframe tag. You have to set "
+"background-color:transparent in Your IFrame too for the body tag!"
+msgstr ""
+
+#: iframe.module:156
+msgid "A default title must be provided if the title is a static value"
+msgstr "Angiv en standard-titel hvis titlen er en statisk værdi."
+
+#: iframe.module:159;162
+msgid "A default width and height must be provided."
+msgstr ""
+
+#: iframe.module:223
+msgid "At least one title or URL must be entered."
+msgstr ""
+
+#: iframe.module:307
+#, fuzzy
+msgid "Not a valid iframe-url."
+msgstr "Ikke en gyldig URL."
+
+#: iframe.module:311
+#, fuzzy
+msgid "Titles are required for all iframes."
+msgstr "Titler er påkrævet for alle links."
+
+#: iframe.module:316
+#, fuzzy
+msgid "You cannot enter a title without a iframe url."
+msgstr "Du kan ikke indtaste en titel uden et link."
+
+#: iframe.module:487
+msgid "Width and Height of the IFrame"
+msgstr ""
+
+#: iframe.module:533
+msgid "URL"
+msgstr "URL"
+
+#: iframe.module:542
+msgid "Title"
+msgstr "Titel"
+
+#: iframe.module:551
+msgid "Width"
+msgstr ""
+
+#: iframe.module:559
+msgid "Height"
+msgstr ""
+
+#: iframe.module:567
+msgid ""
+"Frameborder is the border arround the iframe. Mostly people want it silent, "
+"so the default value for frameborder is 0."
+msgstr ""
+
+#: iframe.module:597
+msgid "Title, over iframe (default)"
+msgstr ""
+
+#: iframe.module:602
+#, fuzzy
+msgid "IFrame without title"
+msgstr "IFrame-titel"
+
+#: iframe.module:607
+#, fuzzy
+msgid "A link with the given title"
+msgstr "Etiket, som link med etiket som titel"
+
+#: iframe.module:612
+msgid "A link with the iframe uri"
+msgstr ""
+
+#: iframe.module:678
+msgid "iframe URL"
+msgstr ""
+
+#: iframe.module:679
+#, fuzzy
+msgid "iframe title"
+msgstr "IFrame-titel"
+
+#: iframe.module:680
+msgid "Formatted html iframe"
+msgstr ""
+
+#: iframe.module:854
+msgid ""
+"Your browser does not support iframes. But You can use the following link."
+msgstr ""
+
+#: iframe.module:0
+msgid "iframe"
+msgstr ""
+
+#: iframe.install:30;50
+msgid "Required module \"content\" (cck) not found!"
+msgstr ""
+
+#: (duplicate) iframe.install:17
+msgid "CCK needed"
+msgstr ""
+
+#: (duplicate) iframe.install:18
+msgid "CCK module \"content\" required."
+msgstr ""
+
+#: iframe.info:0
+#, fuzzy
+msgid "Defines simple iframe field types as CCK submodule."
+msgstr "Definerer simple link-felttyper."
+
+#: iframe.info:0
+msgid "CCK"
+msgstr "CCK"
+
+#, fuzzy
+#~ msgid "@label protocol"
+#~ msgstr "Protokol"
+
+#~ msgid "Protocol"
+#~ msgstr "Protokol"
+
+#~ msgid "Default (no target attribute)"
+#~ msgstr "Standard (ingen mål-egenskab)"
+
+#, fuzzy
+#~ msgid "Open search in window root"
+#~ msgstr "Åben link i rod-vindue"
+
+#, fuzzy
+#~ msgid "Open search in new window"
+#~ msgstr "Åben link i nyt vindue"
+
+#~ msgid "Allow the user to choose"
+#~ msgstr "Lad brugeren vælge"
+
+#, fuzzy
+#~ msgid "IFrame Target"
+#~ msgstr "IFrame-titel"
+
+#~ msgid "Open URL in a New Window"
+#~ msgstr "Åben URL i et nyt vindue"
+
+#~ msgid "URL Display Cutoff"
+#~ msgstr "Beskæring af URL"
+
+#~ msgid ""
+#~ "If the user does not include a title for this link, the URL will be used "
+#~ "as the title. When should the link title be trimmed and finished with an "
+#~ "elipsis (&hellip;)? Leave blank for no limit."
+#~ msgstr ""
+#~ "Hvis brugeren ikke angiver en link-titel bruges URLen som titel. Hvornår "
+#~ "skal titlen beskæres og afsluttes med en elipse ((&hellip;)? Undlad at "
+#~ "udfylde dette felt hvis titlen ikke skal beskæres."
+
+#~ msgid "Link Target"
+#~ msgstr "Link-mål"
+
+#~ msgid "Rel Attribute"
+#~ msgstr "Rel-attribut"
+
+#~ msgid ""
+#~ "When output, this link will have this rel attribute. The most common "
+#~ "usage is <a href=\"http://en.wikipedia.org/wiki/Nofollow\">rel=&quot;"
+#~ "nofollow&quot;</a> which prevents some search engines from spidering "
+#~ "entered links."
+#~ msgstr ""
+#~ "Når linket vises vil det have denne rel-attribut. Den meest alinidelig "
+#~ "brug er <a href=\"http://en.wikipedia.org/wiki/Nofollow\">rel=&quot;"
+#~ "nofollow&quot;</a>, som forhindrer visse søgemaskiner i at indeksere "
+#~ "indtastede links."
+
+#~ msgid "Link URL"
+#~ msgstr "Link URL"
+
+#~ msgid ""
+#~ "The following placeholder tokens can be used in both titles and URLs. "
+#~ "When used in a URL or title, they will be replaced with the appropriate "
+#~ "values."
+#~ msgstr ""
+#~ "Følgende pladsholder symboler kan bruges i både titler og URLer. Når de "
+#~ "bruges i stier og titler erstattes de med de relevante værdier."
+
+#~ msgid "More Links"
+#~ msgstr "Flere links"
+
+#~ msgid "Default, as link with title"
+#~ msgstr "Standard, som link med titel"
+
+#~ msgid "Plain, as the text URL"
+#~ msgstr "Enkel, som tekst URL"
+
+#~ msgid "Short, as link with title \"Link\""
+#~ msgstr "Kort, som link med titlen \"Link\""
+
+#~ msgid "Link"
+#~ msgstr "Link"
+
+#~ msgid "link"
+#~ msgstr "link"

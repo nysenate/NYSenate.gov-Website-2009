@@ -1,0 +1,91 @@
+# German translation of spamspan module
+# $Id: de.po,v 1.1.2.1 2008/09/15 21:15:55 lakka Exp $
+# LANGUAGE translation of Drupal (general)
+# Copyright 2008 Andreas Emer drupal(at)emdec(dot)de
+# Generated from file: spamspan.module,v 1.7 2007/01/17 21:33:58 lakka
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: el\n"
+"POT-Creation-Date: 2007-05-24 23:41+0300\n"
+"PO-Revision-Date: 2008-09-15 22:05+0100\n"
+"Last-Translator: Andreas Emer <drupal(at)emdec(dot)de>\n"
+"Language-Team: <drupal(at)emdec(dot)de>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: KBabel 1.11.4\n"
+
+#: spamspan.module:26
+msgid "Disguises email addresses in an attempt to reduce spam."
+msgstr "Tarnt E-Mail Adressen, um zu versuchen Spam zu reduzieren."
+
+#: spamspan.module:28
+msgid " <a href=\"%url\">more help</a>"
+msgstr " <a href=\"%url\">mehr Hilfe</a>"
+
+#: spamspan.module:32
+msgid "<p>The SpamSpan module obfuscates email addresses to help prevent spambots from collecting them. It will produce clickable links if JavaScript is enabled, and will show the email address as <code>example [at] example [dot] com</code> if the browser does not support JavaScript.</p><p>To configure the module, select \"configure\" next to the <a href=\"%url\">input format</a> you'd like to use. Enable \"Hide Email Addresses\" and submit the form. Then select the \"configure\" tab to choose relevant options.</p>"
+msgstr "<p>Das SpamSpan Modul verschleiert E-Mail Adressen um Spambots daran zu hindern diese zu sammeln. Es produziert klickbare Links, wenn JavaScript aktiviert ist und zeigt die Email-Adresse als <code>example [at] example [dot] com</code>, wenn der Browser JavaScript nicht unterstützt.</p><p>Um das Modul einzustellen, \"Konfigurieren\" bei dem <a href=\"%url\">Eingabeformat</a> welches genutzt werden soll wählen. \"Email Adressen verstecken\"  und die Konfiguration speichern. Dann den Tab \"Konfigurieren\" wählen und relevante Optionen wählen."
+
+#: spamspan.module:44
+msgid "Each email address will be obfuscated in a human readble fashion or (if JavaScript is enabled) replaced with a spamproof clickable link."
+msgstr "Jede E-Mail Adresse wird in einer von Menschen lesbare Weise verschleiert, oder (wenn JavaScript aktiviert ist) durch einen von Spam geschützten, klickbaren Link ersetzt. "
+
+#: spamspan.module:56
+msgid "Hide email addresses"
+msgstr "Email Adressen verstecken"
+
+#: spamspan.module:65
+msgid "Attempt to hide email addresses from spam-bots."
+msgstr "Versucht E-Mail Adressen vor Spam-Bots zu verstecken."
+
+#: spamspan.module:76
+msgid "SpamSpan email address encoding filter"
+msgstr "SpamSpan E-Mail Adressen Verschlüsslungs Filter"
+
+#: spamspan.module:77
+msgid "You probably do not need to change any of these settings"
+msgstr "Wahrscheinlich muss an diesen Einstellungen nichts geändert werden"
+
+#: spamspan.module:83
+msgid "Local part class"
+msgstr "Local part class"
+
+#: spamspan.module:86
+msgid "The class name of the &lt;span&gt; element enclosing the part of the address before the @"
+msgstr "Der Klassenname des &lt;span&gt; Elements umschließt den Teil der Adresse vor dem @"
+
+#: spamspan.module:91
+msgid "Domain part class"
+msgstr "Domain part class"
+
+#: spamspan.module:94
+msgid "The class name of the &lt;span&gt; element enclosing the part of the address after the @"
+msgstr "Der Klassenname des &lt;span&gt; Elements umschließt den Teil der Adresse nach dem @"
+
+#: spamspan.module:99
+msgid "@ text"
+msgstr "@ text"
+
+#: spamspan.module:102
+msgid "Replace @ with this text when javascript is disabled"
+msgstr "Ersetzt @ mit diesem Text, wenn Javascript unterdrückt ist"
+
+#: spamspan.module:0
+msgid "spamspan"
+msgstr "spamspan"
+
+#: spamspan.info:0
+msgid "SpamSpan"
+msgstr "SpamSpan"
+
+#: spamspan.info:0
+msgid "The SpamSpan module obfuscates email addresses to help prevent spambots from collecting them.  It implements the technique at http://www.spamspan.com."
+msgstr "Das SpamSpan Modul verschleiert E-Mail Adressen um Spambots daran zu hindern diese zu sammeln. Dabei nutzt es die Technik von http://www.spamspan.com."
+
+#: spamspan.info:0
+msgid "Input filters"
+msgstr "Eingabefilter"
+

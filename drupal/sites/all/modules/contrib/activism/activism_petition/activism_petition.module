@@ -1,0 +1,160 @@
+<?php
+// $Id: activism_petition.module,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * Enables petitions to allow signups and showing of support.
+ */
+
+/**
+ * Implementation of hook_activism_cta_info().
+ */
+function activism_petition_activism_cta_info() {
+  return array(
+    'activism_petition' => array(
+      'name'          => t('Sign up'),
+      'description'   => t('Let users sign a petition and show their support for a campaign.'),
+      'module'        => 'activism_petition',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function activism_petition_theme($existing, $type, $theme, $path) {
+  return array(
+    'activism_petition_configure' => array(
+      'arguments' => array('form' => array()),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_form_FORM_ID_alter().
+ */
+function activism_petition_form_activism_campaign_cta_form_alter(&$form, $form_state) {
+  if ($form['#node']->activism_cta_module == 'activism_petition') {
+    $node = $form['#node']; // shorthand plz kthz.
+    $form['activism_petition'] = array(
+      '#collapsible'  => TRUE,
+      '#theme'        => 'activism_petition_configure',
+      '#title'        => t('Petition configuration'),
+      '#tree'         => TRUE,
+      '#type'         => 'fieldset',
+    );
+
+    $signup_fields = activism_signup_form_defaults();
+    unset($signup_fields['mail_list']); // don't touch this.
+    foreach ($signup_fields as $signup_field_name => $signup_field) {
+      $form['activism_petition'][$signup_field_name . '_field_enabled'] = array(
+        '#default_value'  =>
+          isset($node->activism_petition[$signup_field_name . '_field_enabled'])
+            ? $node->activism_petition[$signup_field_name . '_field_enabled'] : FALSE,
+        '#title'          => $signup_field['#title'],
+        '#type'           => 'checkbox',
+      );
+      $form['activism_petition'][$signup_field_name . '_field_display'] = array(
+        '#default_value'  =>
+          isset($node->activism_petition[$signup_field_name . '_field_display']) // us or them?
+            ? $node->activism_petition[$signup_field_name . '_field_display'] : $signup_field['#title'],
+        '#title'          => '', // can't be missing.
+        '#type'           => 'textfield',
+      );
+      $form['activism_petition'][$signup_field_name . '_field_required'] = array(
+        '#default_value'  =>
+          isset($node->activism_petition[$signup_field_name . '_field_required'])
+            ? $node->activism_petition[$signup_field_name . '_field_required'] : 0,
+        '#title'          => '', // can't be missing.
+        '#type'           => 'checkbox',
+      );
+    }
+  }
+}
+
+
+/**
+ * Theme function for activism_petition_form_activism_campaign_cta_form_alter().
+ */
+function theme_activism_petition_configure($form) {
+  $headers = array(t('Field name'), t('Display as'), t('Required'));
+  $signup_fields = activism_signup_form_defaults();
+  unset($signup_fields['mail_list']); // don't touch this.
+  foreach ($signup_fields as $signup_field_name => $signup_field) {
+    $rows[] = array( // move the display into something tabular.
+      drupal_render($form[$signup_field_name . '_field_enabled']),
+      drupal_render($form[$signup_field_name . '_field_display']),
+      drupal_render($form[$signup_field_name . '_field_required']),
+    );
+  }
+
+  return theme('table', $headers, $rows) . drupal_render($form);
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function activism_petition_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type == 'campaign') {
+    switch ($op) {
+      case 'insert':
+      case 'update':
+        if ($node->activism_cta_module == 'activism_petition' && is_array($node->activism_petition)) {
+          db_query('DELETE FROM {activism_petition} WHERE nid = %d', $node->nid);
+
+          $record = new stdClass;
+          $record->nid = $node->nid;
+
+          $signup_fields = activism_signup_form_defaults();
+          unset($signup_fields['mail_list']); // don't touch this.
+          foreach ($signup_fields as $signup_field_name => $signup_field) {
+            $record->field_name     = $signup_field_name;
+            $record->field_enabled  = $node->activism_petition[$signup_field_name . '_field_enabled'];
+            $record->field_display  = $node->activism_petition[$signup_field_name . '_field_display'];
+            $record->field_required = $node->activism_petition[$signup_field_name . '_field_required'];
+            drupal_write_record('activism_petition', $record);
+          }
+        }
+        break;
+
+      case 'delete':
+        db_query('DELETE FROM {activism_petition} WHERE nid = %d', $node->nid);
+        break;
+
+      case 'load':
+        $results = db_query('SELECT * FROM {activism_petition} WHERE nid = %d', $node->nid);
+        while ($result = db_fetch_object($results)) { // load all of 'em into one big giant howdyado.
+          $additions['activism_petition'][$result->field_name . '_field_enabled']   = $result->field_enabled;
+          $additions['activism_petition'][$result->field_name . '_field_display']   = $result->field_display;
+          $additions['activism_petition'][$result->field_name . '_field_required']  = $result->field_required;
+        }
+        return $additions;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_activism_cta_form().
+ */
+function activism_petition_activism_cta_form(&$form_state, $node) {
+  $signup_fields = activism_signup_form_defaults();
+  unset($signup_fields['mail_list']); // don't touch this.
+  foreach ($signup_fields as $signup_field_name => $signup_field) {
+    if ($node->activism_petition[$signup_field_name . '_field_enabled']) {
+      activism_signup_form_element($form, $signup_field_name); // yawwn. more excitement, please.
+      $form['activism_signup_' . $signup_field_name]['#title'] = $node->activism_petition[$signup_field_name . '_field_display'];
+      $form['activism_signup_' . $signup_field_name]['#required'] = $node->activism_petition[$signup_field_name . '_field_required'];
+    }
+  }
+
+  // we use weight 10 here so that the "Sign up for our mailing list" checkbox,
+  // configurable in the primary campaign call to action form, will show up
+  // before the submit box (it weighs in at 5). friendlier-looking form.
+  $form['submit'] = array(
+    '#type'       => 'submit',
+    '#value'      => t('Sign the petition'),
+    '#weight'     => 10,
+  );
+
+  return $form;
+}

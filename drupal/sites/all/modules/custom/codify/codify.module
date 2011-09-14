@@ -1,0 +1,116 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  Codify
+ *
+ *  This module simplifies storing Panels and Views in code.
+ */
+
+/**
+ *  Implements hook_views_default_views().
+ */
+function codify_views_default_views() {
+  $code_locations = array();
+  drupal_alter('codify', $code_locations, 'views');
+  $views = array();
+  foreach ($code_locations as $module => $subdir) {
+    $files = drupal_system_listing('.inc$', drupal_get_path('module', $module) . '/' . $subdir, 'name', 0);
+    foreach($files as $file) {
+      include_once $file->filename;
+      if (isset($view)) {
+        $views[$view->name] = $view;
+      }
+    }
+  }
+  return $views;
+}
+
+/**
+* Implements hook_views_default_views_alter().
+*/
+function codify_views_default_views_alter(&$views) {
+  $code_locations = array();
+  drupal_alter('codify', $code_locations, 'views_alter');
+  foreach ($code_locations as $module => $subdir) {
+    $files = drupal_system_listing('.inc$', drupal_get_path('module', $module) . '/' . $subdir, 'name', 0);
+    foreach($files as $file) {
+      include_once $file->filename;
+      if (isset($view)) {
+        $views[$view->name] = $view;
+      }
+    }
+  }
+}
+
+/**
+* Implements hook_ctools_plugin_api().
+*/
+function codify_ctools_plugin_api($module, $api) {
+  if ($module == 'page_manager' && $api == 'pages_default') {
+    return array('version' => 1); 
+  }
+}
+
+/**
+ * Implements hook_default_page_manager_pages().
+ */
+function codify_default_page_manager_pages() {
+  $code_locations = array();
+  drupal_alter('codify', $code_locations, 'pages');
+  $pages = array();
+  foreach ($code_locations as $module => $subdir) {
+    $files = file_scan_directory(drupal_get_path('module', $module). '/' . $subdir, '.inc');
+    foreach ($files as $absolute => $file) {
+      require $absolute;
+      if (isset($page)) {
+        $pages[$file->name] = $page;
+      }
+    }
+  }
+  return $pages;
+}
+
+/**
+ * Implements hook_default_page_manager_handlers().
+ */
+function codify_default_page_manager_handlers() {
+  $code_locations = array();
+  drupal_alter('codify', $code_locations, 'handlers');
+  $handlers = array();
+  foreach ($code_locations as $module => $subdir) {
+    $files = file_scan_directory(drupal_get_path('module', $module). '/' . $subdir, '.inc');
+    foreach ($files as $absolute => $file) {
+      require $absolute;
+      if (isset($handler)) {
+        $handlers[$file->name] = $handler;
+      }
+    }
+  }
+  return $handlers;
+}
+
+/**
+ * Implements hook_codify_alter().
+ */
+function codify_codify_alter(&$code_locations, $object_type) {
+  $codified_modules = module_invoke_all('codify');
+  foreach ($codified_modules as $module => $subdir) {
+    if (isset($subdir[$object_type])) {
+      $code_locations[$module] = $subdir[$object_type];
+    }
+    else if (!(array_search($object_type, $subdir) === FALSE)) {
+      $code_locations[$module] = $object_type;
+    }
+  }
+}
+
+/**
+ * Implements hook_codify().
+ */
+function codify_codify() {
+  return array(
+    'codify' => array('views', 'views_alter', 'pages', 'handlers'),  
+  );
+}

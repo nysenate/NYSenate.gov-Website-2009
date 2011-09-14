@@ -1,0 +1,167 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  Overlay Alert
+ *
+ *  Enables the display of alert messages as overlay popups.
+ */
+
+/**
+ *  Implement hook_menu().
+ */
+function overlay_alert_menu() {
+  $items = array();
+  $items['admin/settings/overlay_alert'] = array(
+    'title' => 'Overlay alerts',
+    'description' => 'Specify which types of alert messages should appear as overlay popups.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('overlay_alert'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Form builder. Configure settings for overlay popup alert messages.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function overlay_alert() {
+  $description = t("Enter one type per line for each alert message type that you want to appear as popup alerts. Standard message types are: status, warning, and error.");
+  $form['overlay_alert_message_types'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Pages'),
+    '#default_value' => variable_get('overlay_alert_message_types', ''),
+    '#description' => $description,
+  );
+  return system_settings_form($form);
+}
+
+/**
+ *  Implements hook_theme_registry_alter().
+ *
+ *  Overrides Drupal's standard function for theming status messages.
+ */
+function overlay_alert_theme_registry_alter(&$theme_registry) {
+  $theme_registry['status_messages']['function'] = 'overlay_alert_status_messages';
+}
+
+/**
+ *  Function to use in place of theme_status_messages()
+ *
+ * @see overlay_alert_theme_registry_alter().
+ */
+function overlay_alert_status_messages($display = NULL) {
+  // Pull out all messages that are supposed to appear as popups and stuff them into the session variable.
+  global $overlay_alert_popup_messages;
+  $types = explode("\n", variable_get('overlay_alert_message_types', ''));
+  $popup_messages = array();
+  foreach ($types as $type) {
+    $type = trim($type);
+    $popup_messages = array_merge($popup_messages, drupal_get_messages($type));
+  }
+  $overlay_alert_popup_messages = $popup_messages;
+  // Then theme the remain status messages as per usual.
+  return theme_status_messages($display);
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function overlay_alert_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items["overlay_alert_status_messages"] = array(
+    'arguments' => array(),
+  );
+  return $items;
+}
+
+/**
+ *  Implements hook_preprocess_page().
+ */
+function overlay_alert_preprocess_page(&$vars, $hook) {
+  global $overlay_alert_popup_messages;
+  if (isset($overlay_alert_popup_messages)) {
+    $vars['popup_messages'] = theme('overlay_alert_status_messages');
+  }
+}
+
+/**
+ *  Themeable function to produce overlay status messages.
+ */
+function theme_overlay_alert_status_messages() {
+  global $overlay_alert_popup_messages;
+  $popup_messages = isset($overlay_alert_popup_messages) ? $overlay_alert_popup_messages : NULL;
+  if (!$popup_messages || !count($popup_messages)) return '';
+
+  $output = '<div id="overlay-alerts" style="z-index: 9999; top: 260px; left: 50%; position: fixed; ">';
+  foreach ($popup_messages as $type => $messages) {
+    $output .= "<div class=\"popup\">\n";
+    if (count($messages) > 1) {
+      $output .= " <ul>\n";
+      foreach ($messages as $message) {
+        $output .= '  <li>' . $message . "</li>\n";
+      }
+      $output .= " </ul>\n";
+    }
+    else {
+      $output .= $messages[0];
+    }
+    $output .= "</div>\n";
+  }
+  $output .= '<p><button class="close"> OK </button></p>';
+  $output .= '</div>';
+
+  $output .= <<<SCRIPT
+    <script>
+    // What is $(document).ready ? See: http://flowplayer.org/tools/documentation/basics.html#document_ready
+    xjq(document).ready(function() {
+
+    // select the overlay element - and "make it an overlay"
+    xjq("#overlay-alerts").overlay({
+
+      // custom top position
+      top: 260,
+
+      // some mask tweaks suitable for facebox-looking dialogs
+      mask: {
+
+        // you might also consider a "transparent" color for the mask
+        color: '#000',
+
+        // load mask a little faster
+        loadSpeed: 200,
+
+        // very transparent
+        opacity: 0.625
+      },
+
+      // disable this for modal dialog-type of overlays
+      closeOnClick: false,
+
+      // load it immediately after the construction
+      load: true
+
+    });
+    });
+    </script>
+  
+SCRIPT;
+  return $output;
+}
+
+/**
+ *  Implements hook_init().
+ *
+ *  This doesn't work in Drupal 6 but should work in Drupal 7.
+ */
+/*
+function overlay_alert_init() {
+//  drupal_add_js(drupal_get_path('module','overlay_alert').'/jquery.tools.min.js');
+}
+*/
+

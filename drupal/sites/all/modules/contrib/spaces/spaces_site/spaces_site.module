@@ -1,0 +1,192 @@
+<?php
+
+define('SPACES_SITE_ENABLED', 1);
+
+/**
+ * Site.
+ */
+if (function_exists('spaces_menu')) {
+  class space_site implements space {
+    var $account = NULL;
+    var $title = NULL;
+
+    /**
+     * Constructor
+     */
+    function __construct($type, $sid = NULL, $is_active = FALSE) {
+      if ($sid) {
+        $this->title = variable_get('site_name', '');
+        $this->prefix = '';
+      }
+    }
+
+    /**
+     * Implementation of space->save().
+     */
+    function save() {
+      return;
+    }
+
+    /**
+     * Implementation of space->delete().
+     */
+    function delete() {
+      return;
+    }
+
+    /**
+     * Implementation of space->feature_access().
+     */
+    function feature_access($feature = NULL) {
+      if (!empty($this->features[$feature]) && $this->features[$feature] == SPACES_SITE_ENABLED) {
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * Implementation of space->admin_access().
+     */
+    function admin_access() {
+      if (user_access('administer site configuration')) {
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * Implementation of space->feature_options().
+     */
+    function feature_options() {
+      return array(
+        SPACES_FEATURE_DISABLED => t('Disabled'),
+        SPACES_SITE_ENABLED => t('Enabled'),
+      );
+    }
+
+    /**
+     * Implementation of space->user_links().
+     */
+    function user_links() {
+      return array();
+    }
+
+    /**
+     * Implementation of space->admin_links().
+     */
+    function admin_links() {
+      $links = array();
+      $links['settings'] = array(
+        'title' => t('Site settings'),
+        'href' => 'spaces/features',
+        'attributes' => array('class' => 'settings'),
+      );
+      return $links;
+    }
+
+    /**
+     * Implementation of space->form().
+     */
+    function form() {
+      return;
+    }
+
+    /**
+     * Implementation of space->preset_validate().
+     */
+    function validate($values) {
+      return;
+    }
+
+    /**
+     * Implementation of space->preset_submit().
+     */
+    function submit($values) {
+      return array();
+    }
+
+    /**
+     * Implementation of space->preset_enforce().
+     */
+    function preset_enforce($preset) {
+    }
+
+    /**
+     * Implementation of space->redirect().
+     */
+    function redirect($op = 'home') {
+      switch ($op) {
+        case 'home':
+          // use the menu path of the selected feature as homepage
+          if ($home = $this->settings['home']) {
+            if (menu_get_item($home)) {
+              purl_goto($home, array('purl' => array('disabled' => TRUE)));
+            }
+          }
+          // send the user to the site homepage
+          purl_goto('<front>', array('purl' => array('disabled' => TRUE)));
+          break;
+        case 'features':
+          purl_goto('spaces/features', array('purl' => array('disabled' => TRUE)));
+          break;
+      }
+    }
+
+    /**
+     * Implementation of space->menu_access().
+     */
+    function menu_access($op, $object = NULL, $is_active = TRUE) {
+      return TRUE;
+    }
+
+    /**
+     * Implementation of space->router().
+     */
+    function router($op, $object = NULL, $is_active = TRUE) {
+      return true;
+    }
+
+    // Implementation of views_filter().
+    function views_filter(&$query, $base_table = '', $relationship = '') {
+    }
+  }
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function spaces_site_init() {
+  // Check that no space has already been initialized before
+  // claiming the current space.
+  $space = spaces_get_space();
+  if (!$space) {
+    context_set('spaces', 'sid', 1);
+    $space = spaces_load('site', 1, TRUE);
+    if (!$space) {
+      $space = spaces_load('site', NULL, TRUE);
+    }
+    $space->sid = '1';
+    spaces_set_space($space);
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function spaces_site_menu() {
+  $items = spaces_active_space_menu('site', FALSE);
+  return $items;
+}
+
+/**
+ * Implementation of hook_spaces_types().
+ */
+function spaces_site_spaces_types() {
+  return array(
+    'site' => array(
+      'class' => 'space_site',
+      'title' => t('Site space'),
+      'custom prefixes' => FALSE,
+    ),
+  );
+}

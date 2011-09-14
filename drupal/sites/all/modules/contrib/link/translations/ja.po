@@ -1,0 +1,189 @@
+# $Id: ja.po,v 1.1.2.1 2008/05/02 06:08:27 imagine Exp $
+#
+# Japanese translation of Drupal (link)
+# Copyright 2008 0829 <hixarg+0829@gmail.com>
+# Generated from files:
+#  link.info,v 1.2 2008/03/31 06:50:42 quicksketch Exp
+#  link.module,v 1.24.2.10 2008/04/20 19:38:36 quicksketch Exp
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Drupal 6.x\n"
+"POT-Creation-Date: 2008-05-01 16:40+0900\n"
+"PO-Revision-Date: 2008-05-01 16:49+0900\n"
+"Last-Translator: 0829 <hixarg+0829@gmail.com>\n"
+"Language-Team: DRUPAL*DRUPAL <hixarg+0829@gmail.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+#: modules/link/link.info:0
+#: modules/link/link.module:21;570
+msgid "Link"
+msgstr "リンク"
+
+#: modules/link/link.info:0
+msgid "Defines simple link field types."
+msgstr "シンプルなリンク用のフィールドタイプを定義します。"
+
+#: modules/link/link.info:0
+msgid "CCK"
+msgstr "CCK"
+
+#: modules/link/link.module:22
+msgid "Store a title, href, and attributes in the database to assemble a link."
+msgstr "リンクを作成するために title, href およびその他の属性をデータベースに保存します。"
+
+#: modules/link/link.module:39
+msgid "Optional URL"
+msgstr "URL オプション"
+
+#: modules/link/link.module:42
+msgid "If checked, the URL field is optional and submitting a title alone will be acceptable. If the URL is ommitted, the title will be displayed as plain text."
+msgstr "有効にした場合、URL フィールドはオプションとなり、タイトルのみを設定することが可能になります。 URL が省略された場合タイトルはプレーンテキストとして表示されます。"
+
+#: modules/link/link.module:46
+msgid "Optional Title"
+msgstr "タイトルオプション"
+
+#: modules/link/link.module:47
+msgid "Required Title"
+msgstr "タイトル必須"
+
+#: modules/link/link.module:48
+msgid "Static Title: "
+msgstr "タイトル固定"
+
+#: modules/link/link.module:49
+msgid "No Title"
+msgstr "タイトルなし"
+
+#: modules/link/link.module:54;171
+msgid "Link Title"
+msgstr "リンクタイトル"
+
+#: modules/link/link.module:57
+msgid "If the link title is optional or required, a field will be displayed to the end user. If the link title is static, the link will always use the same title. If <a href=\"http://drupal.org/project/token\">token module</a> is installed, the static title value may use any other node field as its value."
+msgstr "リンクタイトルにオプションまたは必須を選択した場合、コンテンツ編集時にリンクタイトルの入力フィールドが表示されます。 固定を選択した場合、常に同じタイトルが使用されます。 <a href=\"http://drupal.org/project/token\">Token モジュール</a>がインストールされていれば固定タイトルに他のフィールドの内容を利用することができます。"
+
+#: modules/link/link.module:72
+msgid "Placeholder tokens"
+msgstr "プレースホルダートークン"
+
+#: modules/link/link.module:73
+msgid "The following placeholder tokens can be used in both paths and titles. When used in a path or title, they will be replaced with the appropriate values."
+msgstr "タイトルと URL の両方で、以下のトークン構文が使用できます。 使用されたトークン構文は適切な値に置換されます。"
+
+#: modules/link/link.module:81
+msgid "Allow tokens"
+msgstr "トークンの許可"
+
+#: modules/link/link.module:83
+msgid "Checking will allow users to enter tokens in URLs and Titles on the node edit form. This does not affect the field settings on this page."
+msgstr "有効にした場合、コンテンツの編集時にトークンを利用したタイトルや URL を設定できるようになります。 このページのフィールド設定には影響を及ぼしません。"
+
+#: modules/link/link.module:92
+msgid "URL Display Cutoff"
+msgstr "URL 表示の省略"
+
+#: modules/link/link.module:94
+msgid "If the user does not include a title for this link, the URL will be used as the title. When should the link title be trimmed and finished with an elipsis (&hellip;)? Leave blank for no limit."
+msgstr "リンクタイトルが設定されていない場合、URL がタイトルとして使用されます。 タイトルに使用された URL の末尾を省略し（&hellip;）に置き換える場合はその位置を設定します。 制限しない場合は空欄にしてください。"
+
+#: modules/link/link.module:100
+msgid "Default (no target attribute)"
+msgstr "デフォルト（target 属性を使用しない）"
+
+#: modules/link/link.module:101
+msgid "Open link in window root"
+msgstr "ルートウィンドウに表示（_top）"
+
+#: modules/link/link.module:102
+msgid "Open link in new window"
+msgstr "新しいウィンドウに表示（_blank）"
+
+#: modules/link/link.module:103
+msgid "Allow the user to choose"
+msgstr "ユーザによる選択を許可"
+
+#: modules/link/link.module:110;175
+msgid "Link Target"
+msgstr "リンクターゲット"
+
+#: modules/link/link.module:116
+msgid "Rel Attribute"
+msgstr "Rel 属性"
+
+#: modules/link/link.module:117
+msgid "When output, this link will have this rel attribute. The most common usage is <a href=\"http://en.wikipedia.org/wiki/Nofollow\">rel=&quot;nofollow&quot;</a> which prevents some search engines from spidering entered links."
+msgstr "出力時に rel 属性を持たせることができます。 最も一般的な使用例として、いくつかのサーチエンジンに対してリンクを集計の対象に含めないようにするための <a href=\"http://en.wikipedia.org/wiki/Nofollow\">rel=&quot;nofollow&quot;</a> があります。"
+
+#: modules/link/link.module:122
+msgid "Additional CSS Class"
+msgstr "CSS クラスの追加"
+
+#: modules/link/link.module:123
+msgid "When output, this link will have have this class attribute. Multiple classes should be seperated by spaces."
+msgstr "出力時にリンクに class 属性を持たせることができます。 複数のクラスを追加したい場合はスペースで区切って入力してください。"
+
+#: modules/link/link.module:130
+msgid "A default title must be provided if the title is a static value"
+msgstr "固定タイトルを使用する場合、デフォルトタイトルの設定が必要です。"
+
+#: modules/link/link.module:147;492
+msgid "URL"
+msgstr "URL"
+
+#: modules/link/link.module:152;501
+msgid "Title"
+msgstr "タイトル"
+
+#: modules/link/link.module:157
+msgid "Protocol"
+msgstr "プロトコル"
+
+#: modules/link/link.module:167
+msgid "Link URL"
+msgstr "リンク URL"
+
+#: modules/link/link.module:226
+msgid "At least one title or URL must be entered."
+msgstr "少なくとも1つのタイトルまたは URL を入力する必要があります。"
+
+#: modules/link/link.module:300
+msgid "Not a valid URL."
+msgstr "有効な URL ではありません。"
+
+#: modules/link/link.module:304
+msgid "Titles are required for all links."
+msgstr "すべてのリンクにタイトルを設定する必要があります。"
+
+#: modules/link/link.module:309
+msgid "You cannot enter a title without a link url."
+msgstr "リンク URL が設定されていないため、タイトルを入力することはできません。"
+
+#: modules/link/link.module:510
+msgid "Open URL in a New Window"
+msgstr "新しいウィンドウで開く"
+
+#: modules/link/link.module:523
+msgid "Default, as link with title"
+msgstr "デフォルト（タイトルにリンクを設定）"
+
+#: modules/link/link.module:528
+msgid "Plain, as the text URL"
+msgstr "プレーン（URL をテキスト表示）"
+
+#: modules/link/link.module:533
+msgid "Short, as link with title \"Link\""
+msgstr "ショート（\"リンク\" にリンクを設定）"
+
+#: modules/link/link.module:538
+msgid "Label, as link with label as title"
+msgstr "ラベル（ラベルにリンクを設定）"
+
+#: modules/link/link.module:0
+msgid "link"
+msgstr "リンク"
+

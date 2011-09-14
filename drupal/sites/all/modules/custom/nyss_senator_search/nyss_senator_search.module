@@ -1,0 +1,128 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Senator Search
+ *
+ *  Search for the senator representing an address using districting shapefiles.
+ */
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_senator_search_menu() {
+  $items = array();
+  $items['nyss_senator_search'] = array(
+    'title' => 'Senator search by address',
+    'page callback' => 'nyss_senator_search_search',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/nyss_senator_search.search.inc',
+  );
+  return $items;
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_senator_search_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items["nyss_senator_search"] = array(
+    'arguments' => array(),
+    'file' => "themes/nyss_senator_search.theme.inc",
+  );
+  $items['nyss_senator_search_result'] = array(
+    'arguments' => array(
+      'senator' => NULL,
+      'zip' => NULL,
+      'cd_upper' => NULL,
+      'cd_lower' => NULL,
+      'cd' => NULL,
+      'items' => NULL
+    ),
+    'template' => 'nyss_senator_search_result',
+  );
+  $items['nyss_senator_search_unavailable'] = array(
+    'arguments' => array(
+      'nysboe' => NULL,
+    ),
+    'file' => "themes/nyss_senator_search.theme.inc",
+  );
+  return $items;
+}
+
+/**
+ *  Defines the FormAPI array for senator search.
+ *
+ *  @return
+ *    FormAPI form array.
+ */
+function nyss_senator_search_form() {
+  $before_focus = t('Your Street Address');
+  $form['address'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $before_focus,
+    '#size' => 15,
+    '#attributes' => array(
+      'onblur' => "if (this.value == '') {this.value = '" . $before_focus . "';}", 
+      'onfocus' => "if (this.value == '" . $before_focus . "') {this.value = '';}",
+    ),
+  );
+  $before_focus = t('Zip');
+  $form['zip'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $before_focus,
+    '#size' => 15,
+    '#attributes' => array(
+      'onblur' => "if (this.value == '') {this.value = '" . $before_focus . "';}", 
+      'onfocus' => "if (this.value == '" . $before_focus . "') {this.value = '';}",
+    ),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+    '#attributes' => array('id' => "edit-submit-search"),
+  );
+  return $form;
+}
+function nyss_senator_search_form_validate($form, &$form_state) {
+  if($form_state['values']['address'] == '' || $form_state['values']['address'] == t('Your Street Address')) {
+    form_set_error('address', t('You must include an address as well as a zip code.'));
+  }
+  else {
+    if($form_state['values']['zip'] == '' || $form_state['values']['zip'] == t('Zip')) {
+      form_set_error('zip', t('You must include a zip code as well as an address.'));
+    }
+  }
+}
+
+/**
+ * Implementation of hook_submit().
+ */
+function nyss_senator_search_form_submit(&$form, &$form_state) {
+  $form_state['redirect'] = 'nyss_senator_search/'. ($form_state['values']['address'] != t('Your Street Address') ? $form_state['values']['address'] : '') .','. ($form_state['values']['zip'] != t('Zip') ? $form_state['values']['zip'] : '');
+}
+
+function nyss_senator_search_cd_lookup($address) {
+  $url ="http://geo.nysenate.gov/api/xml/districts/addr/".urlencode($address)."?";
+  $data = array('key'=> 'JsP46xRBHVQDVhL4XNrvM8VQDNDkA3');
+  $urlstring = '';
+  foreach ($data as $key => $value) {
+    $urlstring .= urlencode($key).'='.urlencode($value).'&';
+  } 
+  $ch=curl_init();
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 180);
+  curl_setopt($ch, CURLOPT_HEADER, 0);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($ch, CURLOPT_POST, 1);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $urlstring);
+  $html = curl_exec($ch);
+  curl_close($ch);
+  if (strpos($html, 'nysenate') !== FALSE) {
+    return simplexml_load_string(mb_convert_encoding($html, "UTF-8"));
+  }
+  return FALSE;
+}

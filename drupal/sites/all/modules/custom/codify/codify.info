@@ -1,0 +1,6 @@
+; $Id:$
+name = Codify
+description = Helps other modules store Views and Panels in code using the Views and Chaos Tools APIs.
+core = 6.x
+dependencies[] = views
+dependencies[] = panels

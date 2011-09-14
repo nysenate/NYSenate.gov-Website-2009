@@ -1,0 +1,359 @@
+<?php
+// $Id: activism_tellafriend.module,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * Enables telling single or multiple friends about a campaign.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function activism_tellafriend_menu() {
+  $items['activism_tellafriend/js'] = array(
+    'access arguments'  => array('access content'),
+    'page callback'     => 'activism_tellafriend_activism_cta_js_recipient_form',
+    'type'              => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_activism_cta_info().
+ */
+function activism_tellafriend_activism_cta_info() {
+  return array(
+    'activism_tellafriend' => array(
+      'name'          => t('Tell a Friend'),
+      'description'   => t('Sends e-mail to single or multiple friends regarding a campaign.'),
+      'module'        => 'activism_tellafriend',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_form_FORM_ID_alter().
+ */
+function activism_tellafriend_form_activism_campaign_cta_form_alter(&$form, $form_state) {
+  if ($form['#node']->activism_cta_module == 'activism_tellafriend') {
+    $node = $form['#node']; // shorthand plz kthz.
+    $form['activism_tellafriend_mail'] = array(
+      '#collapsible'  => TRUE,
+      '#title'        => t('Tell a Friend e-mail configuration'),
+      '#type'         => 'fieldset',
+      '#weight'       => -100,
+    );
+    $form['activism_tellafriend_mail']['activism_tellafriend_mail_subject'] = array(
+      '#default_value'  => isset($node->activism_tellafriend_mail_subject) ? $node->activism_tellafriend_mail_subject : '',
+      '#maxlength'      => 255,
+      '#required'       => TRUE,
+      '#title'          => t('E-mail subject'),
+      '#type'           => 'textfield',
+    );
+
+    $form['activism_tellafriend_mail']['activism_tellafriend_mail_header_filter']['activism_tellafriend_mail_header'] = array(
+      '#default_value'  => isset($node->activism_tellafriend_mail_header) ? $node->activism_tellafriend_mail_header : '',
+      '#description'    => t("The header prepended to the user's e-mail message."),
+      '#title'          => t('E-mail header'),
+      '#type'           => 'textarea',
+    );
+    $format_default = isset($node->activism_tellafriend_mail_header_format) ? $node->activism_tellafriend_mail_header_format : FILTER_FORMAT_DEFAULT;
+    $form['activism_tellafriend_mail']['activism_tellafriend_header_filter']['activism_tellafriend_mail_header_format']
+      = filter_form($format_default, NULL, array('activism_tellafriend_mail_header_format'));
+
+    $form['activism_tellafriend_mail']['activism_tellafriend_mail_footer_filter']['activism_tellafriend_mail_footer'] = array(
+      '#default_value'  => isset($node->activism_tellafriend_mail_footer) ? $node->activism_tellafriend_mail_footer : '',
+      '#description'    => t("The footer appended to the user's e-mail message."),
+      '#title'          => t('E-mail footer'),
+      '#type'           => 'textarea',
+    );
+    $format_default = isset($node->activism_tellafriend_mail_footer_format) ? $node->activism_tellafriend_mail_footer_format : FILTER_FORMAT_DEFAULT;
+    $form['activism_tellafriend_mail']['activism_tellafriend_footer_filter']['activism_tellafriend_mail_footer_format']
+      = filter_form($format_default, NULL, array('activism_tellafriend_mail_footer_format'));
+
+    $form['activism_tellafriend_mail']['token'] = array(
+      '#collapsed'      => TRUE,
+      '#collapsible'    => TRUE,
+      '#title'          => t('Replacement values'),
+      '#type'           => 'fieldset',
+    );
+    $form['activism_tellafriend_mail']['token']['token_help'] = array(
+      '#value' => theme('token_help', 'activism_tellafriend'),
+    );
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function activism_tellafriend_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type == 'campaign') {
+    switch ($op) {
+      case 'insert':
+      case 'update':
+        if ($node->activism_cta_module == 'activism_tellafriend') {
+          $record = new stdClass;
+          $record->nid = $node->nid;
+
+          // save all activism_ fields.
+          foreach ($node as $key => $value) {
+            if (strpos($key, 'activism_tellafriend_mail') !== FALSE) {
+              $key = str_replace('activism_tellafriend_mail_', '', $key);
+              $record->$key = $value; // magick! (not really)
+            }
+          }
+
+          // cheat by always doing an insertion of the tellafriend configuration.
+          db_query("DELETE FROM {activism_tellafriend_mail} WHERE nid = %d", $node->nid);
+          drupal_write_record('activism_tellafriend_mail', $record);
+        }
+        break;
+
+      case 'delete':
+        db_query('DELETE FROM {activism_tellafriend_mail} WHERE nid = %d', $node->nid);
+        break;
+
+      // we can't tell if tellafriend has been enabled for this campaign node
+      // so we'll just have to blindly issue SQL to add our fields to the node.
+      case 'load':
+        $additions = db_fetch_array(db_query('SELECT * FROM {activism_tellafriend_mail} WHERE nid = %d', $node->nid));
+        if (is_array($additions)) { // only if we got results bub.
+          foreach ($additions as $key => $value) { // prefix whee.
+            $additions["activism_tellafriend_mail_$key"] = $value;
+            unset($additions[$key]); // get rid of the non-prefixed.
+          } // fallout from the above. something better someday.
+          unset($additions['activism_tellafriend_mail_nid']);
+          return $additions;
+        }
+
+      case 'view':
+        // since this form is attached to a node, it gets cached and the CSS
+        // doesn't appear to be called during form_alter. known bug in drupal 6
+        // and drupal 7; to fix, we'll throw the CSS attachment on a node view.
+        if ($node->activism_cta_module == 'activism_tellafriend' && $page) {
+          drupal_add_css(drupal_get_path('module', 'activism_tellafriend') . '/activism_tellafriend.css');
+        }
+        break;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_activism_cta_form().
+ */
+function activism_tellafriend_activism_cta_form(&$form_state, $node) {
+  activism_signup_form_element($form, 'first_name');
+  activism_signup_form_element($form, 'last_name');
+  activism_signup_form_element($form, 'mail');
+
+  // change some of the titles, and two-column 'em with CSS, to ease clarity.
+  $form['activism_signup_first_name']['#title'] = t('Your first name');
+  $form['activism_signup_last_name']['#title'] = t('Your last name');
+  $form['activism_signup_mail']['#title'] = t('Your e-mail address');
+
+  $form['activism_tellafriend_recipient_wrapper'] = array(
+    '#prefix'   => '<div id="activism-tellafriend-recipients-wrapper" class="clear-block">',
+    '#suffix'   => '</div>'
+  ); // we show one form to start, but the user can click a button to add up to ten.
+  $form['activism_tellafriend_recipient_wrapper']['activism_tellafriend_recipient'][0] = activism_tellafriend_activism_cta_recipient_form(0, TRUE);
+  $form['activism_tellafriend_recipient_wrapper']['activism_tellafriend_recipient'][0]['activism_tellafriend_recipient_name']['#required'] = TRUE;
+  $form['activism_tellafriend_recipient_wrapper']['activism_tellafriend_recipient'][0]['activism_tellafriend_recipient_mail']['#required'] = TRUE;
+  $form['activism_tellafriend_recipient_add'] = array(
+    '#ahah'     => array(
+      'path'      => 'activism_tellafriend/js',
+      'wrapper'   => 'activism-tellafriend-recipients-wrapper',
+    ),
+    '#prefix'   => '<div class="clear-block">',
+    '#suffix'   => '</div>',
+    '#type'     => 'submit',
+    '#value'    => t('Add recipient'),
+  );
+
+  $form['activism_tellafriend_mail'] = array(
+    '#title'    => t('Your message'),
+    '#type'     => 'fieldset',
+  );
+  $form['activism_tellafriend_mail']['activism_tellafriend_mail_subject'] = array(
+    '#title'    => t('Subject'),
+    '#type'     => 'item', // we remove the "activism_tellafriend-" prefix to improve end-user readability.
+    '#value'    => check_plain(preg_replace('/\[activism_tellafriend-/', '[', $node->activism_tellafriend_mail_subject)),
+  );
+  $form['activism_tellafriend_mail']['activism_tellafriend_mail_body'] = array(
+    '#required' => TRUE,
+    '#title'    => t('Message'),
+    '#type'     => 'textarea',
+  );
+
+  // we use weight 10 here so that the "Sign up for our mailing list" checkbox,
+  // configurable in the primary campaign call to action form, will show up
+  // before the submit box (it weighs in at 5). friendlier-looking form.
+  $form['submit'] = array(
+    '#type'       => 'submit',
+    '#value'      => t('Send this message'),
+    '#weight'     => 10,
+  );
+
+  return $form;
+}
+
+/**
+ * Create recipient for activism_tellafriend_activism_cta_form().
+ */
+function activism_tellafriend_activism_cta_recipient_form($delta, $titles = FALSE) {
+  $form = array(
+    '#prefix'       => '<div id="activism-tellafriend-recipients-wrapper" class="clear-block">',
+    '#suffix'       => '</div>',
+    '#tree'         => TRUE,
+  );
+  $form['activism_tellafriend_recipient_name'] = array(
+    '#parents'      => array('activism_tellafriend_recipient', $delta, 'activism_tellafriend_recipient_name'),
+    '#title'        => $titles ? t('Recipient name') : '',
+    '#type'         => 'textfield',
+  );
+  $form['activism_tellafriend_recipient_mail'] = array(
+    '#parents'      => array('activism_tellafriend_recipient', $delta, 'activism_tellafriend_recipient_mail'),
+    '#title'        => $titles ? t('Recipient e-mail address') : '',
+    '#type'         => 'textfield',
+  );
+
+  return $form;
+}
+
+/**
+ * AHAH adds more recipients to activism_tellafriend_activism_cta_form().
+ */
+function activism_tellafriend_activism_cta_js_recipient_form() {
+  drupal_set_header('Content-Type: text/json');
+  $form_state = array('submitted' => FALSE);
+  $form_build_id = $_POST['form_build_id'];
+
+  // Add the new element to the stored form. Without adding the element to the
+  // form, Drupal is not aware of this new elements existence and will not
+  // process it. We retreive the cached form, add the element, and resave.
+  $form = form_get_cache($form_build_id, $form_state);
+
+  if (count(element_children($form['activism_tellafriend_recipient_wrapper']['activism_tellafriend_recipient'])) < 10) {
+    $count = max(element_children($form['activism_tellafriend_recipient_wrapper']['activism_tellafriend_recipient']));
+    $form['activism_tellafriend_recipient_wrapper']['activism_tellafriend_recipient'][$count + 1] = activism_tellafriend_activism_cta_recipient_form($count + 1);
+  }
+  else {
+    drupal_set_message(t('Only 10 recipients are allowed per submission.'), 'error');
+  }
+
+  form_set_cache($form_build_id, $form, $form_state);
+  $form['#redirect']    = FALSE;
+  $form['#post']        = $_POST;
+  $form['#programmed']  = FALSE;
+  $form_state['post']   = $_POST;
+  $form = form_builder($_POST['form_id'], $form, $form_state);
+  $output = drupal_render($form['activism_tellafriend_recipient_wrapper']['activism_tellafriend_recipient']);
+
+  // Get the JS settings so we can merge them.
+  $javascript = drupal_add_js(NULL, NULL, 'header');
+  $settings = call_user_func_array('array_merge_recursive', $javascript['setting']);
+  $output .= theme('status_messages');
+
+  print drupal_to_js(array('data' => $output, 'status' => TRUE, 'settings' => array('ahah' => $settings['ahah'])));
+  exit(); // I have no clue what any of this does so hopefully there's nothing embarrassing here.
+}
+
+/**
+ * #validate for activism_tellafriend_activism_cta_form().
+ */
+function activism_tellafriend_activism_cta_form_validate($form, &$form_state) {
+  if (!valid_email_address($form_state['values']['activism_signup_mail'])) {
+    form_set_error('activism_signup_mail', t('The e-mail address %mail is not valid.', array('%mail' => $form_state['values']['activism_signup_mail'])));
+  }
+
+  foreach ($form_state['values']['activism_tellafriend_recipient'] as $key => $recipient) {
+    // if an e-mail address has been given, but it's invalid, weep pitifully.
+    if (!empty($recipient['activism_tellafriend_recipient_mail']) && !valid_email_address($recipient['activism_tellafriend_recipient_mail'])) { // validate happiness. HAPPINESS I TELL YOU.
+      form_set_error('activism_tellafriend_recipient][' . $key . '][activism_tellafriend_recipient_mail', t('The e-mail address %mail is not valid.', array('%mail' => $recipient['activism_tellafriend_recipient_mail'])));
+    }
+
+    // if we've got a valid e-mail address, but no recipient name, bring on teh tears.
+    if (empty($recipient['activism_tellafriend_recipient_name']) && valid_email_address($recipient['activism_tellafriend_recipient_mail'])) { // WHO ARE YOU? WHY DO YOU KEEP CALLING ME?
+      form_set_error('activism_tellafriend_recipient][' . $key . '][activism_tellafriend_recipient_name', t('Recipient name field is required.'));
+    }
+
+    // if we've got a recipient name, but no valid e-mail address, pine for the fjords.
+    if (!empty($recipient['activism_tellafriend_recipient_name']) && !valid_email_address($recipient['activism_tellafriend_recipient_mail'])) { // WHO ARE YOU? WHY DO YOU KEEP CALLING ME?
+      form_set_error('activism_tellafriend_recipient][' . $key . '][activism_tellafriend_recipient_mail', t('The e-mail address %mail is not valid.', array('%mail' => $recipient['activism_tellafriend_recipient_mail'])));
+    }
+  }
+}
+
+/**
+ * #submit for activism_tellafriend_activism_cta_form().
+ */
+function activism_tellafriend_activism_cta_form_submit($form, &$form_state) {
+  $params['node'] = $form['#node']; // allows drupal_mail() to get the campaign configuration values.
+  foreach (array('activism_signup_first_name', 'activism_signup_last_name', 'activism_signup_mail', 'activism_tellafriend_mail_body') as $param) {
+    $params[$param] = $form_state['values'][$param]; // build up the parameters that we're going to send to drupal_mail().
+  }
+
+  foreach ($form_state['values']['activism_tellafriend_recipient'] as $key => $recipient) {
+    if (!flood_is_allowed('activism_toldafriend', 10)) { // only continue if we're less than 10/hr.
+      drupal_set_message(t('You cannot tell more than 10 friends per hour. Please try again later.'));
+      break; // if they're at the threshold, we'll send 'em back to the normal success page.
+    }
+
+    if (empty($recipient['activism_tellafriend_recipient_mail'])) {
+      continue; // empty fields were sent in; ignore 'em bub.
+    }
+
+    $params['activism_tellafriend_recipient_name'] = $recipient['activism_tellafriend_recipient_name'];
+    $params['activism_tellafriend_recipient_mail'] = $recipient['activism_tellafriend_recipient_mail'];
+    $result = drupal_mail('activism_tellafriend', 'activism_toldafriend', $params['activism_tellafriend_recipient_mail'], language_default(), $params, $params['activism_signup_mail']);
+    if ($result['result']) { // we don't do any end-user error checking here, just success checking. admins should be watching their watchdogs, y'know? WHO DO THEY THINK I AM, MAN ALIVE.
+      drupal_set_message(t('E-mail sent to %name <%mail> successfully.', array('%name' => $params['activism_tellafriend_recipient_name'], '%mail' => $params['activism_tellafriend_recipient_mail'])));
+      flood_register_event('activism_toldafriend'); // only ten per hour, thanks.
+    }
+  }
+}
+
+/**
+ * Implementation of hook_token_list().
+ */
+function activism_tellafriend_token_list($type = 'all') {
+  if ($type == 'activism_tellafriend' || $type == 'all') {
+    $tokens['activism_tellafriend']['activism_tellafriend-sender-first-name'] = t('The first name of the sender.');
+    $tokens['activism_tellafriend']['activism_tellafriend-sender-last-name'] = t('The last name of the sender.');
+    $tokens['activism_tellafriend']['activism_tellafriend-sender-mail'] = t('The e-mail address of the sender.');
+    $tokens['activism_tellafriend']['activism_tellafriend-recipient-name'] = t('The full name of the recipient.');
+    $tokens['activism_tellafriend']['activism_tellafriend-recipient-mail'] = t('The e-mail address of the recipient.');
+  }
+
+  return $tokens;
+}
+
+/**
+ * Implementation of hook_token_values().
+ */
+function activism_tellafriend_token_values($type, $object = NULL) {
+  if ($type == 'activism_tellafriend') {
+    $object = (object) $object; // should really already be an object. but eh.
+    $values['activism_tellafriend-sender-first-name']   = check_plain($object->activism_signup_first_name);
+    $values['activism_tellafriend-sender-last-name']    = check_plain($object->activism_signup_last_name);
+    $values['activism_tellafriend-sender-mail']         = check_plain($object->activism_signup_mail);
+    $values['activism_tellafriend-recipient-name']      = check_plain($object->activism_tellafriend_recipient_name);
+    $values['activism_tellafriend-recipient-mail']      = check_plain($object->activism_tellafriend_recipient_mail);
+    return $values;
+  }
+}
+
+/**
+ * Implementation of hook_mail().
+ */
+function activism_tellafriend_mail($key, &$message, $params) {
+  if ($key == 'activism_toldafriend') {
+    $node = $params['node']; // grab the node which has all our campaign config.
+    $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+    $message['subject'] = check_plain(token_replace($node->activism_tellafriend_mail_subject, 'activism_tellafriend', $params));
+    $message['body']['activism_tellafriend_mail_header']  = check_markup(token_replace($node->activism_tellafriend_mail_header, 'activism_tellafriend', $params), $node->activism_tellafriend_mail_header_format);
+    $message['body']['activism_tellafriend_mail_body']    = check_markup($params['activism_tellafriend_mail_body'], FILTER_FORMAT_DEFAULT, FALSE); // we always use filtered HTML for the default mail format.
+    $message['body']['activism_tellafriend_mail_footer']  = check_markup(token_replace($node->activism_tellafriend_mail_footer, 'activism_tellafriend', $params), $node->activism_tellafriend_mail_footer_format);
+  }
+}
+

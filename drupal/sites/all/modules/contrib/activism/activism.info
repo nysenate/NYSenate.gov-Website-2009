@@ -1,0 +1,12 @@
+; $Id: activism.info,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+name = Activism
+description = Provides campaigns and a framework for calls to action.
+package = Activism
+core = 6.x
+
+; Information added by drupal.org packaging script on 2009-05-11
+version = "6.x-2.0"
+core = "6.x"
+project = "activism"
+datestamp = "1242063033"
+

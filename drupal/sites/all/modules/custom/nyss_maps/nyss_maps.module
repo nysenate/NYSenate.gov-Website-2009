@@ -1,0 +1,62 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Maps
+ *
+ *  This module creates the district map pages.
+ */
+
+/**
+ *  Implements hook_menu().
+ */
+function nyss_maps_menu() {
+  $items = array();
+
+  $items['districts/map'] = array(
+    'title' => 'New York State Interactive Map',
+    'page callback' => 'nyss_maps_display',
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  $items['districts/map/long_island'] = array(
+    'title' => 'New York State Interactive Map',
+    'page callback' => 'nyss_maps_display',
+    'page arguments' => array('long_island'),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  $items['districts/map/new_york'] = array(
+    'title' => 'New York State Interactive Map',
+    'page callback' => 'nyss_maps_display',
+    'page arguments' => array('new_york'),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  return $items;
+}
+
+function nyss_maps_display($submap = NULL) {
+  if ($submap) {
+    return theme('nyss_maps_' . $submap);
+  }
+  return theme('nyss_maps_main');
+}
+
+function nyss_maps_theme($existing, $type, $theme, $path) {
+  return array(
+    'nyss_maps_main' => array(
+      'arguments' => array(),
+      'file' => "themes/nyss_maps.theme.main.inc",
+    ),
+    'nyss_maps_long_island' => array(
+      'arguments' => array(),
+      'file' => "themes/nyss_maps.theme.long_island.inc",
+    ),
+    'nyss_maps_new_york' => array(
+      'arguments' => array(),
+      'file' => "themes/nyss_maps.theme.new_york.inc",
+    ),
+  );
+}

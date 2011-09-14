@@ -1,0 +1,460 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Committee
+ *
+ *  This module handles information related to committees.
+ */
+
+define('NYSS_OPENLEG_URL', 'http://open.nysenate.gov/legislation/');
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_committee_menu() {
+  $items = array();
+  $items['admin/nyss/nyss/committees'] = array(
+    'title' => 'Committee alert message',
+    'description' => 'Specify a message to appear at the top of committee-related content.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_committee_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_committee_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items['nyss_committee_events'] = array(
+    'arguments' => array(
+      'committee_name' => NULL,
+    ),
+  );
+  return $items;
+}
+
+/**
+ * Form builder. Configure settings for a committe-related message.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function nyss_committee_settings() {
+  $form['nyss_committee_alert_message'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Message'),
+    '#default_value' => variable_get('nyss_committee_alert_message', ''),
+    '#description' => t('Enter the message that you want shown at the top of committee-related content.'),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ *  Implements hook_init().
+ */
+
+function nyss_committee_init() {
+  $committee = nyss_committee();
+  // dsm($committee);
+  if ($committee) {
+    // dsm(context_get('nyss', 'content_type'));
+    context_set('nyss', 'content_type', 'committee');
+    context_set('nyss', 'committee', $committee);
+  }
+  // dsm(context_get('nyss', 'content_type'));
+  // drupal_set_message($committee);
+  // drupal_set_message('Hello World');
+}
+
+/*
+
+function nyss_committee_init() {
+  if (arg(0) == 'committees') {
+    $show_message = TRUE;
+  }
+  else {
+    $committee = nyss_committee();
+    $show_message = ($committee && isset($committee->taxonomy[65]));
+  }
+  if ($show_message) {
+    $output = trim(variable_get('nyss_committee_alert_message', ''));
+    if ($output) {
+      drupal_set_message($output);
+    }
+  }
+}
+*/
+
+/**
+ *  What committee does this page belong to?
+ *
+ *  If a page view or content belongs to a specific committee, this will return
+ *  the node for that committee, or FALSE if it doesn't belong to any committee.
+ *
+ *  @return
+ *    The Committees' node, or FALSE.
+ */
+function nyss_committee() {
+  static $committee;
+  // Create the static cache for future reference.
+  if (is_null($committee)) {
+    // Our default state.
+    $committee = FALSE;
+
+    if ((arg(0) == 'node' || arg(0) == 'committee') && ($nid = arg(1)) && is_numeric($nid)) {
+      $node = node_load($nid);
+      $committee = nyss_committee_node($node);
+    }
+    elseif (arg(0) == 'committee' && arg(1)) {
+      $node = nyss_committee_node_from_title(arg(1));
+      $committee = nyss_committee_node($node);
+    }
+  }
+  return $committee;
+}
+
+/**
+ *  Is the current page a committee's home page?
+ *
+ *  @return
+ *    Boolean
+ */
+function nyss_committee_home() {
+  if (arg(0) == 'node' && ($nid = arg(1)) && is_numeric($nid) && arg(2) == '') {
+    $node = node_load($nid);
+  }
+  elseif (arg(0) == 'committee' && arg(1) && arg(2) == '') {
+    $node = nyss_committee_node_from_title(arg(1));
+  } else {
+    return FALSE;
+  }
+  return ($node->type == 'committee');  
+}
+
+/**
+ *  Retrieves the committee node from a given title from a URL.
+ *  @param $title
+ *    The title from the URL.
+ *  @return
+ *    The corresponding committee node object.
+ */
+function nyss_committee_node_from_title($title) {
+  static $titles;
+  if (!isset($titles[$title])) {
+    $results = cache_get('nyss_committee_title:' . $title, 'cache_nyss_misc');
+    if (!empty($results->data) && time() < $results->expire) {
+      $titles[$title] = $results->data;
+      return $results->data;
+    }
+    $titles[$title] = '';
+    // First look for a match from the URL alias
+    if (($source = drupal_lookup_path('source', "committee/$title")) && substr($source, 0, 5) == "node/") {
+      $titles[$title] = node_load(substr($source, 5));
+    }
+    // If we don't have a match from the URL alias, then match for $node->title.
+    else {
+      $nid = db_result(db_query_range(db_rewrite_sql("SELECT n.nid FROM {node} n WHERE REPLACE(REPLACE(LOWER(n.title),'/',''),',','') = '%s' AND n.status = 1"), 
+        str_replace(array('_', '-', ',', '/'), array(' ', ' ', '', ''), $title), 0, 1));
+      if ($nid) {
+        $titles[$title] = node_load($nid);
+      }
+    }
+    cache_set('nyss_committee_title:' . $title, $titles[$title], 'cache_nyss_misc', time() + 3600);
+  }
+  return $titles[$title];
+}
+
+/**
+ *  Turns a committee name into a string suitable for use in a URL path
+ *  @param $title
+ *    The committee name, e.g., 'Environmental Protection'
+ *  @return
+ *    The equivalent URL string, e.g., 'environmental-protection'
+ */
+function nyss_committee_path_name($name) {
+  return strtolower(str_replace(array(' ', ',', ''), array('-', '', ''), $name));
+}
+ 
+/**
+ *  This will return the committee associated with the node.
+ *
+ *  @param $node
+ *    The node referencing the committee, or a committee's node.
+ *  @param $reset
+ *    (optional) If TRUE, then reset the static variable.
+ *  @return
+ *    The committee node referenced by the node.
+ */
+function nyss_committee_node($node, $reset = FALSE) {
+  static $committees;
+
+  if (is_numeric($node)) {
+    $node = node_load($node);
+  }
+  if (!$node) {
+    return FALSE;
+  }
+  // Reset our static array.
+  if (is_null($committees) || $reset) {
+    $committees = array();
+  }
+
+  // We cache the committee nodes.
+  if (!isset($committees[$node->nid])) {
+    $committees[$node->nid] = FALSE;
+
+    if ($node->type == 'committee') {
+      // If we're given a committee's node, then return it.
+      $committees[$node->nid] = $node;
+    }
+    else if (isset($node->field_committee) && $node->field_committee[0]['nid']) {
+      // Check if the node references a committee.
+      $committee = node_load($node->field_committee[0]['nid']);
+      if ($committee->type == 'committee') {
+        // If the referenced node is a valid committee, then bingo.
+        $committees[$node->nid] = $committee;
+      }
+    }
+  }
+  return $committees[$node->nid];
+}
+
+/**
+ *  Return the link to display to OpenLeg calendar info on committee pages.
+ */
+function nyss_committee_openleg_meetings_link() {
+  $committee = context_get('nyss', 'committee');
+  $path = NYSS_OPENLEG_URL . 'meetings/?' . urlencode($committee->title);
+  $display_text = t('View the official list of legislative meetings for this committee');
+  return '<div class="openleg-meetings-link">' . l($display_text, $path) . '</div>';
+}
+
+/**
+ *  Return the next event associated with a committe.
+ *
+ *  @param $committee
+ *    The committee node
+ *  @return
+ *    The next event 
+ */
+function nyss_committee_next_event($nid) {
+  $date = date_create('now', date_default_timezone());
+  $date_string = substr(date_format($date, DATE_ISO8601), 0, 16);
+  $sql = "SELECT DISTINCT(node.nid) AS nid,
+      node.created AS node_created
+    FROM {node} node 
+    LEFT JOIN {content_field_committee} node_data_field_committee ON node.vid = node_data_field_committee.vid
+    LEFT JOIN {node} node_node_data_field_committee ON node_data_field_committee.field_committee_nid = node_node_data_field_committee.nid
+    LEFT JOIN {content_type_event} node_data_field_date ON node.vid = node_data_field_date.vid
+    WHERE ((node.type in ('event')) AND (node.status <> 0) AND (node_node_data_field_committee.nid = %d))
+    AND ((DATE_FORMAT(ADDTIME(STR_TO_DATE(node_data_field_date.field_date_value, '%Y-%m-%%dT%T'), SEC_TO_TIME(-18000)), '%Y-%m-%%d') >= '%s') 
+     OR (DATE_FORMAT(ADDTIME(STR_TO_DATE(node_data_field_date.field_date_value2, '%Y-%m-%%dT%T'), SEC_TO_TIME(-18000)), '%Y-%m-%%d') >= '%s'))
+    ORDER BY node_created DESC LIMIT 1";
+  $result = db_result(db_query($sql, $nid, $date_string, $date_string));
+  return $result;
+}
+
+/**
+ *  Return the current live video source for a committee.
+ *
+ *  @param $nid
+ *    The committee node ID
+ *  @return
+ *    A text string indicating the nature of the current video source.
+ */
+function nyss_committee_live_video_source($nid) {
+  $next_event_nid = nyss_committee_next_event($nid);
+  $next_event = node_load($next_event_nid);
+  if ($next_event->current_status['when'] == 'during') {
+    if (nyss_videosettings_is_live($next_event_nid)) {
+      return 'event';
+    }
+    else if (nyss_videosettings_is_live($nid)) {
+      return 'committee';
+    }
+  }
+  return 'none';
+}
+
+/**
+ * Implementation of hook_form_alter()
+ */
+function nyss_committee_form_alter(&$form, $form_state, $form_id) {
+  if ( $form['#id'] == 'node-form' && $form['type']['#value'] == 'committee' ) {
+    $form['#after_build'][] = 'nyss_committee_after_build';
+  }
+}
+
+/**
+ * A helper function used to customize the committee add/edit form after the form build.
+ *
+ * @param $form
+ *   An associative array containing the structure of the form.
+ * @param $form_state
+ *   A keyed array containing the current state of the form. If the user
+ *   submitted the form by clicking a button with custom handler functions
+ *   defined, those handlers will be stored here.
+ */
+function nyss_committee_after_build($form, &$form_state) {
+  $form['group_related_information']['field_committee_status']['value']['#options'][''] = t('Active');
+  return $form;
+}
+
+/**
+ * A status message to be associated with a committee who is not currently active 
+ * (typically, either an incoming or former committee).
+ *
+ * @param $committee
+ *   A node object of content type committee.
+ */
+function nyss_committee_inactive_message($committee) {
+  if ($committee->field_committee_status[0]['value']) {
+    if ($committee->field_committee_status_explanation[0]['value'] != '') {
+      return check_markup($committee->field_committee_status_explanation[0]['value'], $committee->field_committee_status_explanation[0]['format'], FALSE);
+    }
+    else if ($committee->field_committee_status[0]['value'] == 'archived') {
+      return t('This committee has been disbanded and no longer meets. Records of committee activities are maintained as an archive on this website.');
+    }
+    else {
+      return t('This committee has been disbanded and no longer meets. Records of committee activities are maintained as an archive on this website.');
+    }
+  }
+}
+
+/**
+ * Implementation of hook_codify().
+ */
+function nyss_committee_codify() {
+  return array(
+    'nyss_committee' => array('handlers', 'pages'),  
+  );
+}
+
+/**
+ *  Return a list of all committees-related events.
+ *
+ *  @param $committee_name
+ *    The committee node title
+ *  @return
+ *    An HTML string representing links to each year that has an event_list for the committee.
+ */
+function theme_nyss_committee_events($committee_name) {
+  $path =  nyss_committee_path_name($committee_name);
+  $earliest = 2009;
+  $latest = date('Y');
+  while ($latest >= $earliest) {
+    $sql = "SELECT COUNT(node.nid) AS nid
+     FROM node node 
+     LEFT JOIN content_field_date node_data_field_date ON node.vid = node_data_field_date.vid
+     LEFT JOIN content_field_committee node_data_field_committee ON node.vid = node_data_field_committee.vid
+     LEFT JOIN node node_node_data_field_committee ON node_data_field_committee.field_committee_nid = node_node_data_field_committee.nid
+     WHERE ((node.status <> 0) AND (node.type in ('event')) AND (node_node_data_field_committee.title = '%s'))
+        AND ((DATE_FORMAT(ADDTIME(STR_TO_DATE(node_data_field_date.field_date_value, '%%Y-%%m-%%dT%%T'), SEC_TO_TIME(-18000)), '%%Y') <= '%s' 
+        AND DATE_FORMAT(ADDTIME(STR_TO_DATE(node_data_field_date.field_date_value2, '%%Y-%%m-%%dT%%T'), SEC_TO_TIME(-18000)), '%%Y') >= '%s'))";
+    $result = db_result(db_query($sql, $committee_name, $latest, $latest));
+    if ($result) {
+      $array[] = l($latest, "committee/$path/event_list/$latest");
+    }
+    $latest--;
+  }
+  if ($array) {
+    return "$committee_name: " . implode(' | ', $array);
+  }
+}
+
+/**
+ * Returns a default issue for a given committee
+ *
+ * @param $committee
+ *   The name of a committee
+ */
+
+function nyss_committee_issue($committee) {
+  switch ($committee) {
+    case "Aging" : $issue = 'Aging';
+        break;
+    case "Agriculture" : $issue = 'Agriculture';
+        break;
+    case "Alcoholism and Drug Abuse" : $channel = 'Alcohol';
+        break;
+    case "Banks" : $issue = 'Banks';
+          break;
+    case "Children and Families" : $issue = 'Families';
+        break;
+	case "Cities" : $issue = 'Cities';
+		break;
+    case "Civil Service and Pensions" : $issue = 'Civil Service and Pensions';
+		break;
+    case "Codes" : $issue = 'Codes';
+        break;
+    case "Commerce, Economic Development and Small Business" : $issue = 'Economic Development';
+        break;
+    case "Consumer Protection" : $issue = 'Consumer Protection';
+        break;
+    case "Corporations, Authorities and Commissions" : $issue = 'Authorities and Commissions';
+        break;
+    case "Crime Victims, Crime and Correction" : $issue = 'Crime';
+        break;
+    case "Cultural Affairs, Tourism, Parks and Recreation" : $issue = 'Arts and Culture';
+        break;
+    case "Education" : $issue = 'Education';
+        break;
+    case "Elections" : $issue = 'Elections';
+        break;
+    case "Energy and Telecommunications" : $issue = 'Energy';
+        break;
+    case "Environmental Conservation" : $issue = 'Environment';
+        break;
+    case "Ethics" : $issue = 'Ethics';
+        break;
+    case "Finance" : $issue = 'Finance';
+        break;
+    case "Health" : $issue = 'Health';
+        break;
+    case "Higher Education" : $issue = 'Education';
+        break;
+    case "Housing, Construction, and Community Development" : $issue = 'Housing';
+        break;
+	case "Insurance" : $issue = 'Insurance';
+		break;
+    case "Investigations and Government Operations" : $issue = 'Investigations';
+        break;
+    case "Judiciary" : $issue = 'Judiciary';
+		break;
+    case "Labor" : $issue = 'Labor';
+		break;
+    case "Local Government" : $issue = 'Government Operations';
+        break;
+    case "Mental Health and Developmental Disabilities" : $issue = 'Mental Health, Developmental Disabilities';
+        break;
+    case "Racing, Gaming and Wagering" : $issue = 'Racing';
+		break;
+    case "Rules" : $issue = 'Rules';
+		break;
+    case "Social Services" : $issue = 'Social Services';
+		break;
+    case "Transportation" : $issue = 'Transportation';
+		break;
+    case "Veterans, Homeland Security and Military Affairs" : $issue = 'Veterans';
+		break;
+    case "MTA Capital Program Review Board (CPRB)" : 
+    case "New York State Conference of Black Senators" : 
+    case "Puerto Rican/Latino Caucus" : 
+    case "Upstate Caucus" : 
+    case "Budget and Tax Reform" :     
+    case "Temporary Committee on Rules and Administration Reform" : 
+    case "Minority News Conferences" : 
+    case "Joint Budget Hearings" : 
+	default :
+        $issue = 'Miscellaneous';
+        break;
+  }
+  
+  return $issue;
+}

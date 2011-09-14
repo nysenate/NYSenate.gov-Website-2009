@@ -1,0 +1,23 @@
+name = "Spaces blog"
+description = "An example blog feature for spaces."
+core = "6.x"
+package = "Features"
+dependencies[] = "blog"
+dependencies[] = "comment"
+dependencies[] = "node"
+dependencies[] = "spaces"
+dependencies[] = "user"
+features[context][] = "spaces-feature-blog"
+features[menu][] = "blog"
+features[views][] = "spaces_blog"
+features[views][] = "spaces_blog_comments"
+feature_uri = "http://default"
+feature_timestamp = "1237178861"
+spaces[types] = "all"
+
+; Information added by drupal.org packaging script on 2010-02-15
+version = "6.x-2.0-beta7"
+core = "6.x"
+project = "spaces"
+datestamp = "1266249907"
+

@@ -1,0 +1,52 @@
+<?php
+
+/**
+ * @file
+ * Installation and uninstallation hooks for RPX.
+ */
+
+function rpx_requirements($phase) {
+  $requirements = array();
+  // Ensure translations don't break at install time
+  $t = get_t();
+  $requirements['openssl'] = array(
+    'title' => $t('PHP OpenSSL'),
+  );
+  if (!function_exists('openssl_open')) {
+    $requirements['openssl']['description'] = $t('OpenSSL for PHP required for RPX');
+    $requirements['openssl']['severity'] = REQUIREMENT_ERROR;
+  }
+  else {
+    $requirements['openssl']['value'] = OPENSSL_VERSION_TEXT;
+    $requirements['openssl']['severity'] = REQUIREMENT_OK;
+  }
+  if ($phase == 'install') {
+  }
+
+  return $requirements;
+}
+
+/**
+ * The first Drupal 6 update
+ */
+function rpx_update_6000() {
+  $ret = array();
+  // An empty update to make sure updates are run so the menu cache is cleared
+  return $ret;
+}
+
+/**
+ * Update to clear menu cache on dev release
+ */
+function rpx_update_6005() {
+  $ret = array();
+  // An empty update to make sure updates are run so the menu cache is cleared
+  return $ret;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function rpx_uninstall() {
+  db_query('DELETE FROM {variable} WHERE name LIKE "rpx_%"');
+}

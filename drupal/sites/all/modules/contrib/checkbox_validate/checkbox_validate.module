@@ -1,0 +1,47 @@
+<?php
+// $Id: checkbox_validate.module,v 1.3 2010/03/06 17:47:56 MegaGrunt Exp $
+
+/**
+ * @file
+ * Fixes behaviour and display of required checkboxes in forms.
+ */
+
+/**
+ * Implements hook_elements().
+ */
+function checkbox_validate_elements() {
+  return array(
+    'checkbox' => array(
+      '#process' => array('checkbox_validate_process_element'),
+    ),
+  );
+}
+
+/**
+ * Form element #process callback for checkbox form elements.
+ */
+function checkbox_validate_process_element($element) {
+  if (!empty($element['#required'])) {
+    $element['#element_validate'][] = 'checkbox_validate_element_validate';
+    $element['#pre_render'][] = 'checkbox_validate_pre_render_checkbox';
+  }
+  return $element;
+}
+
+/**
+ * Form element validation handler for a required checkbox.
+ */
+function checkbox_validate_element_validate($element, &$form_state) {
+  if (empty($element['#value'])) {
+    form_error($element, t('!title field is required.', array('!title' => filter_xss_admin($element['#title']))));
+  }
+}
+
+/**
+ * Adds required symbol during rendering, so that it is not shown in error messages.
+ */
+function checkbox_validate_pre_render_checkbox($element) {
+  $element['#title'] .= ' <span class="form-required" title="' . t('This field is required.') . '">*</span>';
+  return $element;
+}
+

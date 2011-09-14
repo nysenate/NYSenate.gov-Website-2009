@@ -1,0 +1,59 @@
+<?php
+// $Id$
+/**
+ * @file
+ * Install, update and uninstall functions for the Conditional Fields module.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function conditional_fields_install() {
+  drupal_install_schema('conditional_fields');
+
+  // Increase module weight to 10, over fieldgroup.module which has 9.
+  db_query("UPDATE {system} SET weight = 10 WHERE name = 'conditional_fields'");
+
+  drupal_set_message(get_t('Conditional Fields installed. You should now <a href="!url">give the permission</a> to administer conditional fields to the desired roles.', array('!url' => url('admin/user/permissions', array('fragment' => 'module-conditional_fields')))));
+}
+
+function conditional_fields_schema() {
+  $schema['conditional_fields'] = array(
+    'fields' => array(
+      'control_field_name' => array(
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+        'default' => ''),
+      'field_name' => array(
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+        'default' => ''),
+      'type' => array(
+        'type' => 'varchar',
+        'length' => '127',
+        'not null' => TRUE,
+        'default' => ''),
+      'trigger_values' => array(
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => TRUE)
+        ),
+    );
+
+  return $schema;
+}
+
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function conditional_fields_uninstall() {
+  drupal_uninstall_schema('conditional_fields');
+
+  // Delete all the conditional fields variables and then clear the variable cache
+  db_query("DELETE FROM {variable} WHERE name LIKE 'c_fields_%'");
+  cache_clear_all('variables', 'cache');
+
+}

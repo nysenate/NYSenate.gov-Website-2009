@@ -1,0 +1,52 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Installation routines.a
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function location_otherphone_schema() {
+  $schema['location_otherphone'] = array(
+    'description' => 'location_otherphone.module {location} supplementary table.',
+    'fields' => array(
+      'lid' => array(
+        'description' => '{location}.lid',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'otherphone' => array(
+        'description' => 'Other phone number',
+        'type' => 'varchar',
+        'length' => 31,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('lid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function location_otherphone_install() {
+  drupal_install_schema('location_otherphone');
+
+  // Change weight.
+  db_query("UPDATE {system} SET weight = 1 WHERE name = '%s' AND type = '%s'", 'location_otherphone', 'module');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function location_otherphone_uninstall() {
+  drupal_uninstall_schema('location_otherphone');
+}

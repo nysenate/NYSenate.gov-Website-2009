@@ -1,0 +1,91 @@
+<?php
+
+/**
+* Hook sets nyss_senator 'weight' to -1.
+* This ensures that it's hook_form_alter runs before cck.
+*
+*/
+function nyss_senator_install() {  
+  drupal_install_schema('nyss_senator');
+
+  $ret = array();
+  $ret[] = db_query("UPDATE {system} SET weight = -1 WHERE name = 'nyss_senator'");
+  return $ret;
+}
+
+function nyss_senator_uninstall() {
+  drupal_uninstall_schema('nyss_senator');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function nyss_senator_schema() {
+  $schema['nyss_senator'] = array(
+    'description' => 'The extra data used by the NYSS site.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'The primary identifier for a node.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE),
+      'posted' => array(
+        'description' => 'The Unix timestamp for when the node was posted.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0),
+      'senator' => array(
+        'description' => 'The name of the Senator title affiliated with this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''),
+      'sennid' => array(
+        'description' => 'The NID of the Senator that owns this node.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0),
+      'committee' => array(
+        'description' => 'The name of the Committee affiliated with this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''),
+      'commnid' => array(
+        'description' => 'The NID of the committee affiliated with this node.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0),
+      'category' => array(
+        'description' => 'The primary category affiliated with this node.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => ''),
+      'cattid' => array(
+        'description' => 'The TID of the primary category affiliated with this node.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0),
+      'tags' => array(
+        'description' => 'Serialized data pairs of tags and the TID attached to them.',
+        'type' => 'blob',
+        'not null' => FALSE,
+        'default' => NULL),
+      'files' => array(
+        'description' => 'Serialized data pairs of filetypes, filenames, and the FID attached to them.',
+        'type' => 'blob',
+        'not null' => FALSE,
+        'default' => NULL),
+      ),
+    'indexes' => array(
+      'cattid'              => array('cattid'),
+      'posted'              => array('posted'),
+      'sennid'              => array('sennid'),
+      'commnid'             => array('commnid'),
+    ),
+    'primary key' => array('nid'),
+    );
+
+  return $schema;
+}

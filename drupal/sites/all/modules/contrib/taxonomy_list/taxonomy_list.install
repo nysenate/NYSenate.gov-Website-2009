@@ -1,0 +1,42 @@
+<?php
+// $Id: taxonomy_list.install,v 1.1.2.1.2.4 2008/06/20 17:02:51 nancyw Exp $
+
+/**
+ * @file
+ * List the category, specify in the URL
+ */
+
+/**
+ * Implementation of hook_update_N().
+ */
+function taxonomy_list_update_6100() {
+  $ret = array();
+  $current = variable_get('taxonomy_list_add_links', false);
+  variable_set('taxonomy_list_edit_link', $current);
+  if (module_exists('search')) {
+    variable_set('taxonomy_list_search_link', $current);
+  }
+  variable_del('taxonomy_list_add_links');
+
+  return $ret;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function taxonomy_list_uninstall() {
+  variable_del('taxonomy_list_cell_per_row');
+  variable_del('taxonomy_list_list_mode');
+  variable_del('taxonomy_list_show_image');
+  variable_del('taxonomy_list_title_separator');
+  variable_del('taxonomy_list_image_link');
+  variable_del('taxonomy_list_count');
+  variable_del('taxonomy_list_noshow');
+  variable_del('taxonomy_list_edit_link');
+  variable_del('taxonomy_list_search_link');
+  variable_del('taxonomy_list_rss_link');
+  variable_del('taxonomy_list_list_mode');
+  variable_del('taxonomy_list_related');
+  variable_del('taxonomy_list_synonyms');
+  variable_del('taxonomy_list_show_parents');
+}

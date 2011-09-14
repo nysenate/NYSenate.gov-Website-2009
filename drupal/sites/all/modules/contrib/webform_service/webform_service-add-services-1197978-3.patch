@@ -1,0 +1,462 @@
+diff --git a/webform_service.inc b/webform_service.inc
+index c2597c6..51e0fad 100644
+--- a/webform_service.inc
++++ b/webform_service.inc
+@@ -55,15 +55,10 @@ function webform_service_get($nid, $fromdate = 0) {
+  *
+  * @param $nid
+  *   Number. The node ID.
+- * @param $fields
+- *   Array (optional). The node fields needed. If its empty,
+- *   all fields will be returned
+- * @param $teaser
+- *   Boolean (optional). Format as teaser.
+- * @param $page
+-  *   Boolean (optional). Format as page.
++ * @param $sid
++ *   Number. The submission ID.
+  * @return
+- *   Object. The node object with all wanted fields.
++ *   Object. The submission object with all wanted fields.
+  */
+ function webform_service_view($nid,$sid) {
+   
+@@ -80,6 +75,71 @@ function webform_service_view($nid,$sid) {
+ }
+ 
+ /**
++ * Returns an array of responses submitted to a specific webform.
++ *
++ * @param $nid
++ *   Number. The webform's node ID.
++ * @param $limit
++ *   Number. The maximum number of responses to return (default 100). 
++ *   If a limit of "0" is specified, all responses will be returned.
++ * @param $start_date
++ *   Number. An optional start date of the date range for which results are desired.
++ * @param $end_date
++ *   Number. An optional end date of the date range for which results are desired.
++ * @param $start_sid
++ *   Number. An optional start submission ID number for the range from which results are desired.
++ * @param $end_sid
++ *   Number. An optional end submission ID number for the range from which results are desired.
++ * @param $fields
++ *   Array. A list of the fields for which results are desired. If no array is supplied, it returns all fields.
++ * @return
++ *   An array of the form:
++ *  [row #] => Array
++ *         (
++ *             [form_key] => first_name
++ *             [type] => textfield
++ *             [name] => First Name
++ *         )
++ */
++function webform_service_responses(
++      $nid, 
++      $start_date=NULL, 
++      $end_date=NULL, 
++      $start_sid=NULL, 
++      $end_sid=NULL, 
++      $uid = NULL, 
++      $limit=100, 
++      $fields=NULL
++) {
++  $filters = array('nid' => $nid);
++  if ($start_date) {
++    $filters['start_date'] = $start_date;
++  }
++  if ($end_date) {
++    $filters['end_date'] = $end_date;
++  }
++  if ($start_sid) {
++    $filters['start_sid'] = $start_sid;
++  }
++  if ($end_sid) {
++    $filters['end_sid'] = $end_sid;
++  }
++  if ($uid) {
++    $filters['uid'] = $uid;
++  }
++  if ($limit) {
++    $filters['limit'] = $limit;
++  }
++
++  $field_structure = webform_service_fields($nid);
++  $submissions = webform_service_get_submissions($filters);
++  foreach ($submissions as $submission) {
++    $submissions_simplified[$submission->sid] = webform_service_submission_values($submission, $field_structure, 'text');
++  }
++  return $submissions_simplified;
++}
++
++/**
+  * Save a node. It creates a new one, in case the 'nid' field
+  * is missing.
+  *
+@@ -142,7 +202,7 @@ function webform_service_get_access($nid, $fromdate) {
+ 
+ /**
+  * Check if the user has the permission to get the
+- * node's formated data thru services.
++ * node's formatted data thru services.
+  *
+  * @param $sid
+  *   Number. The submission ID.
+@@ -157,6 +217,36 @@ function webform_service_view_access($sid) {
+ }
+ 
+ /**
++ * Check if the user has the permission to get the
++ * node's formatted data thru services.
++ *
++ * @param $nid
++ *   Number. The node ID.
++ * @return
++ *   Boolean. TRUE if the user has the permission to get the
++ *   submission's data thru services.
++ */
++function webform_service_fields_access($nid=NULL) {
++  global $user;
++  return user_access('access all webform results');
++}
++
++/**
++ * Check if the user has the permission to get the
++ * node's formatted data thru services.
++ *
++ * @param $nid
++ *   Number. The node ID.
++ * @return
++ *   Boolean. TRUE if the user has the permission to get the
++ *   submission's data thru services.
++ */
++function webform_service_responses_access($nid=NULL) {
++  global $user;
++  return user_access('access all webform results');
++}
++
++/**
+  * Check if the user has the permission to save a node.
+  *
+  * @param $node
+@@ -200,9 +290,9 @@ function _webform_service_populate_field_names(&$submission, $nid){
+   $result = db_query("SELECT `cid`,`form_key`,`type`,`name` FROM {webform_component} WHERE `nid` = '%d'",$nid);
+   while ($row = db_fetch_array($result)) {
+     $fields[$row['cid']] = array(
+-      'key'=>$row['form_key'],
+-      'type'=>$row['type'],
+-      'name'=>$row['name'],
++      'key'=>$row['form_key'], // the field's machine name, e.g., 'last_name'
++      'type'=>$row['type'],    // the field type, e.g., textfield, grid, email, etc.
++      'name'=>$row['name'],    // the field's display label, e.g., 'Last name'
+     );
+   }
+   
+diff --git a/webform_service.module b/webform_service.module
+index 426b00b..28f3dc6 100644
+--- a/webform_service.module
++++ b/webform_service.module
+@@ -67,7 +67,73 @@ function webform_service_service() {
+       ),
+       '#return'           => 'struct',
+       '#help'             => t('Returns submission data.')),
+-    
++
++    // webform.fields
++    array(
++      '#method'           => 'webform.fields',
++      '#callback'         => 'webform_service_fields',
++      '#access callback'  => 'webform_service_fields_access',
++      '#file'             => array('file' => 'inc', 'module' => 'webform_service'),
++      '#args'             => array(
++        array(
++          '#name'         => 'nid',
++          '#type'         => 'int',
++          '#description'  => t('The nid of the webform.')),
++      ),
++      '#return'           => 'struct',
++      '#help'             => t('Returns a list of all the fields defined for this webform.')),
++
++    // webform.responses
++    array(
++      '#method'           => 'webform.responses',
++      '#callback'         => 'webform_service_responses',
++      '#access callback'  => 'webform_service_responses_access',
++      '#file'             => array('file' => 'inc', 'module' => 'webform_service'),
++      '#args'             => array(
++        array(
++          '#name'         => 'nid',
++          '#type'         => 'int',
++          '#description'  => t('The nid of the webform.')),
++        array(
++          '#name'         => 'start_date',
++          '#type'         => 'int',
++          '#optional'       => TRUE,
++          '#description'  => t('An optional start date in timestamp format indicating the earliest date from which responses are requested.')),
++        array(
++          '#name'         => 'end_date',
++          '#type'         => 'int',
++          '#optional'       => TRUE,
++          '#description'  => t('An optional end date in timestamp format indicating the latest date for which responses are requested.')),
++          array(
++            '#name'         => 'start_sid',
++            '#type'         => 'int',
++            '#optional'       => TRUE,
++            '#description'  => t('An optional start submission ID number for the range from which results are desired.')),
++          array(
++            '#name'         => 'end_sid',
++            '#type'         => 'int',
++            '#optional'       => TRUE,
++            '#description'  => t('An optional last submission ID number for the range from which results are desired.')),
++          array(
++            '#name'         => 'uid',
++            '#type'         => 'int',
++            '#optional'       => TRUE,
++            '#description'  => t('Limit results to submissions from this user ID.')),
++          array(
++            '#name'         => 'limit',
++            '#type'         => 'int',
++            '#optional'       => TRUE,
++            '#description'  => t('The maximum number of responses to return (default 100). If a limit of "0" is specified, all responses will be returned.')),
++          array(
++            '#name'           => 'fields',
++            '#type'           => 'array',
++            '#optional'       => TRUE,
++            '#description'    => t('An optional array of fields to be returned. If left empty, all fields are returned.')
++            ),
++      ),
++      '#return'           => 'struct',
++      '#help'             => t('Returns an array of webform responses.')),
++
+     // webform.save
+     /*
+     array(
+@@ -98,4 +164,226 @@ function webform_service_service() {
+       '#help'             => t('Delete a submission.')),
+       */
+   );
+-}
+\ No newline at end of file
++}
++
++/**
++ * Return all the submissions for a particular node
++ *
++ * This is a modified version of webform_get_submissions() 
++ * from the webform module's includes/webform.submissions.inc file.
++ * It adds a 'limit' filter to limit the number of results returned,
++ * as well as start_date, end_date, start_sid and end_sid filters.
++ *
++ * @param $filters
++ *   An array of filters to apply to this query. Usually in the format
++ *   array('nid' => $nid, 'uid' => $uid). A single integer may also be passed
++ *   in, which will be equivalent to specifying a $nid filter.
++ * @param $header
++ *   If the results of this fetch will be used in a sortable
++ *   table, pass the array header of the table.
++ * @param $pager_count
++ *   Optional. The number of submissions to include in the results.
++ *
++ * @see webform_get_submissions()
++ */
++function webform_service_get_submissions($filters = array(), $header = NULL, $pager_count = 0) {
++  $submissions = array();
++
++  if (!is_array($filters)) {
++    $filters = array('nid' => $filters);
++  }
++
++  // UID filters need to be against a specific table.
++  if (isset($filters['uid'])) {
++    $filters['u.uid'] = $filters['uid'];
++    unset($filters['uid']);
++  }
++
++  $limit = '';
++  if (isset($filters['limit'])) {
++    $limit = " LIMIT " . $filters['limit'];
++    unset($filters['limit']);
++  }
++
++  // No need to find SIDs if it was given to us.
++  if (isset($filters['sid'])) {
++    $sids = array($filters['sid']);
++  }
++  // Build the list of SIDs that need to be retrieved.
++  else {
++    $arguments = array_values($filters);
++    $where = array();
++    foreach ($filters as $column => $value) {
++      switch ($column) {
++        case 'start_date':
++          $where[] = "submitted >= '%d'";
++          break;
++        case 'end_date':
++          $where[] = "submitted <= '%d'";
++          break;
++        case 'start_sid':
++          $where[] = "sid >= '%d'";
++          break;
++        case 'end_sid':
++          $where[] = "sid <= '%d'";
++          break;
++        default:
++          $where[] = $column . ' = ' . (is_numeric($value) ? '%d' : "'%s'");
++          break;
++      }
++    }
++
++    if (isset($filters['u.uid']) && $filters['u.uid'] === 0) {
++      if (!empty($_SESSION['webform_submission'])) {
++        $anonymous_sids = array_keys($_SESSION['webform_submission']);
++        $where[] = 'sid IN (' . db_placeholders($anonymous_sids) . ')';
++        $arguments = array_merge($arguments, $anonymous_sids);
++      }
++      else {
++        $where[] = 'sid = 0';
++      }
++    }
++
++    $where_clause = implode(' AND ', $where);
++    $pager_query = 'SELECT sid FROM {webform_submissions} s LEFT JOIN {users} u ON u.uid = s.uid WHERE ' . $where_clause;
++
++    if (is_array($header)) {
++      $pager_query .= tablesort_sql($header);
++    }
++    else {
++      $pager_query .= ' ORDER BY sid ASC';
++    }
++
++    if ($pager_count) {
++      $result = pager_query($pager_query, $pager_count, 0, NULL, $arguments);
++    }
++    else {
++      $result = db_query($pager_query . $limit, $arguments);
++    }
++
++    $sids = array();
++    while ($row = db_fetch_object($result)) {
++      $sids[] = $row->sid;
++      $submissions[$row->sid] = FALSE;
++    }
++  }
++
++  // If there are no submissions being retrieved, return an empty array.
++  if (empty($sids)) {
++    return $submissions;
++  }
++
++  // Query the required submission data.
++  $query = 'SELECT s.*, sd.cid, sd.no, sd.data, u.name, u.mail, u.status ' .
++           'FROM {webform_submissions} s ' .
++           'LEFT JOIN {webform_submitted_data} sd ON sd.sid = s.sid ' .
++           'LEFT JOIN {users} u ON u.uid = s.uid ' .
++           'WHERE s.sid IN (' . db_placeholders($sids) . ') ' .
++           'ORDER BY sd.sid ASC, sd.cid ASC, sd.no ASC';
++
++  $result = db_query($query, $sids);
++
++  // Convert the queried rows into submissions.
++  $previous = array();
++  while ($row = db_fetch_object($result)) {
++    if ($row->sid != $previous) {
++      $submissions[$row->sid] = new stdClass();
++      $submissions[$row->sid]->sid = $row->sid;
++      $submissions[$row->sid]->nid = $row->nid;
++      $submissions[$row->sid]->submitted = $row->submitted;
++      $submissions[$row->sid]->remote_addr = $row->remote_addr;
++      $submissions[$row->sid]->uid = $row->uid;
++      $submissions[$row->sid]->name = $row->name;
++      $submissions[$row->sid]->is_draft = $row->is_draft;
++    }
++    $submissions[$row->sid]->data[$row->cid]['value'][$row->no] = $row->data;
++    $previous = $row->sid;
++  }
++
++  foreach (module_implements('webform_submission_load') as $module) {
++    $function = $module . '_webform_submission_load';
++    $function($submissions);
++  }
++
++  return $submissions;
++}
++
++
++
++/* The functions below could hopefully be added directly to webform.module
++ * at some point if the webform module developer accepts that patch.
++ * See discussion at http://drupal.org/node/1197978
++ */
++
++
++/**
++ * Returns an array of all the field definitions for a specific webform.
++ *
++ * @param $nid
++ *   Number. The webform's node ID.
++ * @return
++ *   A structured array.
++ */
++function webform_service_fields($nid) {
++  module_load_include('inc', 'webform', 'includes/webform.components');
++  $fields = array();
++  $result = db_query("SELECT * FROM {webform_component} WHERE `nid` = '%d'", $nid);
++  while ($row = db_fetch_array($result)) {
++    $fields[$row['cid']] = $row;
++    $component =& $fields[$row['cid']];
++    $component['nid'] = $nid;
++    $component['form_key'] = $row['form_key'] ? $row['form_key'] : $row['cid'];
++    $component['extra'] = unserialize($row['extra']);
++    webform_component_defaults($component);
++  }
++  return $fields;
++}
++
++/**
++ * Returns a simplified array representing a single webform submission.
++ *
++ * @param $submission
++ *   A submission object.
++ * @param $field_structure
++ *   An array of all the fields in a webform.
++ * @param $format
++ *   The format for returning display versions of submission responses. May be one of the following:
++ *   - html: Show as HTML results.
++ *   - text: Show as plain text.
++ * @return
++ *   A structured array.
++ */
++function webform_service_submission_values($submission, $field_structure, $format='html') {
++  $result = array(
++    'nid' => $submission->nid,
++    'submitted' => $submission->submitted,
++    'uid' => $submission->uid,
++    'name' => $submission->name,
++    'is_draft' => $submission->is_draft,
++    'values' => array(),
++  );
++  foreach ($submission->data AS $cid => $data) {
++    $result['values'][$field_structure[$cid]['form_key']]['data'] = $data['value'];
++    $result['values'][$field_structure[$cid]['form_key']]['view'] = webform_service_render_component_value($field_structure[$cid], $data['value'], $format);
++  }
++  return $result;
++}
++
++/**
++ * Renders webform component's value or values as text.
++ *
++ * @param $component
++ *   A webform component.
++ * @param $value
++ *   The value or values that were submitted.
++ * @param $format
++ *   The format the component should be displayed as. May be one of the following:
++ *   - html: Show as HTML results.
++ *   - text: Show as plain text.
++ * @return
++ *   Text.
++ */
++function webform_service_render_component_value($component, $value, $format='html') {
++  $element = webform_component_invoke($component['type'], 'display', $component, $value, $format);
++  return theme($element['#theme'], $element);
++}

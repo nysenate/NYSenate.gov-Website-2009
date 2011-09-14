@@ -1,0 +1,122 @@
+<?php
+// $Id: legal.install,v 1.5 2008/08/02 14:03:13 MegaGrunt Exp $
+
+/**
+ * Implementation of hook_install()
+ */
+function legal_install() {
+  $created = drupal_install_schema('legal');
+
+  if ($created) {
+    drupal_set_message(t('Legal module installed successfully.'));
+  }
+  else {
+    drupal_set_message(t('Table installation for the Legal module was unsuccessful. The tables may need to be installed by hand. See legal.install file for a list of the installation queries.'), 'error');
+  }
+  
+  return;
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function legal_schema() {
+  $schema['legal_accepted'] = array(
+    'fields' => array(
+    	'legal_id'  => array('type' => 'serial', 'unsigned' => FALSE, 'not null' => TRUE, 'disp-width' => 10),
+    	'uid'       => array('type' => 'int', 'unsigned' => FALSE, 'not null' => TRUE, 'default' => 0, 'disp-width' => 10),
+    	'tc_id'     => array('type' => 'int', 'unsigned' => FALSE, 'not null' => TRUE, 'default' => 0, 'disp-width' => 10),
+    	'accepted'  => array('type' => 'int', 'unsigned' => FALSE, 'not null' => TRUE, 'default' => 0, 'disp-width' => 11),
+    ),
+    'indexes' => array('uid' => array('uid')),
+    'primary key' => array('legal_id'),
+  );
+
+  $schema['legal_conditions'] = array(
+    'fields' => array(
+    	'tc_id'       => array('type' => 'serial', 'unsigned' => FALSE, 'not null' => TRUE, 'disp-width' => 10),
+    	'conditions'  => array('type' => 'text', 'size' => 'big', 'not null' => TRUE),
+    	'date'        => array('type' => 'int', 'unsigned' => FALSE, 'not null' => TRUE, 'default' => 0, 'disp-width' => 11),
+    	'extras'      => array('type' => 'text'),
+    	'changes'     => array('type' => 'text'),
+    ),
+    'primary key' => array('tc_id'),
+  );
+
+  return $schema;
+}
+
+function legal_update_1() {
+
+	_system_update_utf8(array('legal_accepted', 'legal_conditions'));
+	
+  $ret = array();
+
+  db_add_field($ret, 'legal_conditions', 'extras', array('type' => 'text'));
+  db_add_field($ret, 'legal_conditions', 'changes', array('type' => 'text'));
+
+  return $ret;
+}
+
+/**
+ * Remove conditions and extras from users.data field.
+*/ 
+function legal_update_2() {
+  // How many users to process each time.
+  $limit = 50;
+
+  // Set-up multipart update.
+  if (!isset($_SESSION['legal_update_2'])) {
+    $conditions = db_fetch_array(db_query_range("SELECT * FROM {legal_conditions} ORDER BY tc_id DESC", 0, 1));
+    if (empty($conditions['conditions'])) return;
+
+		$extras = empty($conditions['extras']) ? NULL : array_keys(unserialize($conditions['extras']));
+
+    $_SESSION['legal_update_2'] = array(
+      'uid' => 0,
+      'max' => db_result(db_query('SELECT MAX(uid) FROM {users}')),
+      'extras' => $extras,
+    );
+  }
+
+  // Fetch up to N users and fix their data field.
+  $result = db_query_range("SELECT uid, data FROM {users} WHERE uid > %d AND data LIKE '%%s:10:\"conditions\"%%'", $_SESSION['legal_update_2']['uid'], 0, $limit);
+  $user_count = 0;
+  while ($user = db_fetch_object($result)) {
+    $data = unserialize($user->data);
+
+    unset($data['conditions']); 
+
+		if (!empty($_SESSION['legal_update_2']['extras'])) {
+	    foreach ($_SESSION['legal_update_2']['extras'] as $extra) {
+	      unset($data[$extra]);
+	    }
+		}
+
+    db_query("UPDATE {users} SET data = '%s' WHERE uid = %d", serialize($data), $user->uid);
+
+    $_SESSION['legal_update_2']['uid'] = $user->uid;
+    
+    $user_count++;
+  }
+
+  if ($user_count == $limit) {
+    // Return progress (never return 100% here to ensure clean-up is still run last).
+    return array('#finished' => $_SESSION['legal_update_2']['uid'] / ($_SESSION['legal_update_2']['max'] + 1));
+  }
+  else {
+    // Clean-up.
+    unset($_SESSION['legal_update_2']);
+    return array();
+  }
+}
+
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function legal_uninstall() {
+  drupal_uninstall_schema('legal');
+  variable_del('legal_display');
+}
+

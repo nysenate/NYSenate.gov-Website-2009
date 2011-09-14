@@ -1,0 +1,142 @@
+<?php
+// $Id$
+
+function nyss_signup_schema() {
+  $schema['nyss_signup'] = array(
+    'description' => t('Signups to the NY State Senate email lists.'),
+    'fields' => array(
+      'sid' => array(
+        'description' => t('A unique signup ID number'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The {node}.nid for the senator or committee whose list the user has chosen for signup.',
+      ),
+      'firstname' => array(
+        'description' => t('First name'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'lastname' => array(
+        'description' => t('Last name'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'address1' => array(
+        'description' => t('Address'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'address2' => array(
+        'description' => t('Address (second line)'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'city' => array(
+        'description' => t('City'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'state' => array(
+        'description' => t('State'),
+        'type' => 'varchar',
+        'length' => '16',
+        'not null' => TRUE,
+      ),
+      'mobile' => array(
+        'description' => t('Mobile phone number'),
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+      ),
+      'zip' => array(
+        'description' => t('Zip code'),
+        'type' => 'varchar',
+        'length' => '16',
+        'not null' => TRUE,
+      ),
+      'issues' => array(
+        'description' => t('Issues'),
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'list' => array(
+        'description' => t('List name'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'siteID' => array(
+        'description' => t('Bronto site ID'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'email' => array(
+        'description' => t('Email address'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'datetime' => array(
+        'description' => t('Timestamp when the signup occurred'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function nyss_signup_install() {
+  drupal_install_schema('nyss_signup');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function nyss_signup_uninstall() {
+  drupal_uninstall_schema('nyss_signup');
+}
+
+function nyss_signup_update_6001() {
+  $ret = array();
+  $schema = nyss_signup_schema();
+  db_create_table($ret, 'nyss_signup', $schema['nyss_signup']);
+  return $ret;
+}
+
+function nyss_signup_update_6002() {
+  $ret = array();
+  if (!db_column_exists('nyss_signup', 'nid')) {
+    db_add_field($ret, 'nyss_signup', 'nid', array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      )
+    );
+    $results = db_query("SELECT DISTINCT(list) FROM {nyss_signup}");
+    $sql = 'UPDATE {nyss_signup} SET nid = %d WHERE list="%s"';
+    while ($mailing_list = db_fetch_object($results)) {
+      $nid = nyss_signup_get_nid_from_mailing_list($mailing_list->list);
+      db_query($sql, $nid, $mailing_list->list);
+    }
+  }
+  return $ret;
+}

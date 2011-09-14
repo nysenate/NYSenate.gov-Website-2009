@@ -1,0 +1,4 @@
+; $Id:$
+name = Whitelist
+description = Create a whitelist of approved external domains for which HTML forms can be created.
+core = 6.x

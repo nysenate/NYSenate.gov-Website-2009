@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Session
+description = API for determining whether the senate is in session
+package = NYSS
+core = 6.x

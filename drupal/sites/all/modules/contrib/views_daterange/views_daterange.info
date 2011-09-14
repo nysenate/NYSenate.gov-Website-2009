@@ -1,0 +1,5 @@
+name = Views date range
+description = Allow views to be filtered by a customized date range.
+core = 6.x
+php = 5.2
+package = Views

@@ -1,0 +1,139 @@
+# Hungarian translation of spamspan (6.x-1.4)
+# Copyright (c) 2009 by the Hungarian translation team
+# Generated from files:
+#  spamspan/spamspan.info: n/a
+#  spamspan.module,v 1.7.2.4.2.10 2009/07/19 20:09:23 lakka
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: spamspan (6.x-1.4)\n"
+"POT-Creation-Date: 2009-09-17 15:33+0200\n"
+"PO-Revision-Date: 2008-11-10 15:14+0100\n"
+"Language-Team: Hungarian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+#: spamspan.info:0
+msgid "Input filters"
+msgstr "Beviteli szűrők"
+
+#: spamspan.module:70
+msgid "Attempt to hide email addresses from spam-bots."
+msgstr ""
+"Megkísérli elrejteni az email címeket a szemétküldő robotok "
+"elől."
+
+#: spamspan.module:82
+msgid "SpamSpan email address encoding filter"
+msgstr "SpamSpan email cím kódoló szűrő"
+
+#: spamspan.module:83
+msgid ""
+"Warning: these are global settings and not per input format. Changing "
+"them here will change them for other input formats too.  You should "
+"not normally need to change any of these settings."
+msgstr ""
+"Figyelem: Ezek általános beállítások, nem függenek a beviteli "
+"formától. A változások minden beviteli formában jelentkezni "
+"fognak. Normál esetben ezeket a beállításokat nem kell "
+"megváltoztatni."
+
+#: spamspan.module:89
+msgid "User name class"
+msgstr "Felhasználónév osztálya"
+
+#: spamspan.module:92
+msgid ""
+"The class name of the &lt;span&gt; element enclosing the part of the "
+"address before the \"@\"."
+msgstr ""
+"A &lt;span&gt; elem (CSS) osztályneve, mely körülzárja a cím "
+"„@” előtti részét."
+
+#: spamspan.module:97
+msgid "Domain part class"
+msgstr "Domain név osztálya"
+
+#: spamspan.module:100
+msgid ""
+"The class name of the &lt;span&gt; element enclosing the part of the "
+"address after the \"@\"."
+msgstr ""
+"A &lt;span&gt; elem (CSS) osztályneve, mely körülzárja a cím "
+"„@” utáni részét."
+
+#: spamspan.module:105
+msgid "Replacement for \"@\""
+msgstr "„@” helyettesítése"
+
+#: spamspan.module:108
+msgid "Replace \"@\" with this text when javascript is disabled."
+msgstr ""
+"Helyettesítse a „@” jelet evvel a szöveggel, ha a javascript "
+"tiltott."
+
+#: spamspan.module:112
+msgid "Use a graphical replacement for \"@\""
+msgstr "A „@” grafikus helyettesítésének használata"
+
+#: spamspan.module:115
+msgid ""
+"Replace \"@\" with a graphical representation when javascript is "
+"disabled (and ignore the setting \"Replacement for @\" above)."
+msgstr ""
+"A „@” jelet a grafikus megfelelőjével helyettesíti, ha a "
+"javascript tiltott (és figyelmen kívül hagyja a fenti „@ "
+"helyettesítése” beállítást)."
+
+#: spamspan.info:0
+msgid "SpamSpan"
+msgstr "SpamSpan"
+
+#: spamspan.info:0
+msgid ""
+"The SpamSpan module obfuscates email addresses to help prevent "
+"spambots from collecting them.  It implements the technique at "
+"http://www.spamspan.com."
+msgstr ""
+"A <em>SpamSpan</em> modul átalakítja az email címeket, evvel "
+"megelőzi, hogy a robotok összegyűjtsék azokat. A "
+"http://www.spamspan.com módszerét alkalmazza."
+
+#: spamspan.module:53
+msgid ""
+"Each email address will be obfuscated in a human readable fashion or "
+"(if JavaScript is enabled) replaced with a spamproof clickable link."
+msgstr ""
+"Minden email cím át lesz alakítva ember által olvasható módon, "
+"vagy (ha a JavaScript engedélyezett) ki lesz cserélve kattintható, "
+"de biztonságos hivatkozásra."
+
+#: spamspan.module:42
+msgid ""
+"<p>The SpamSpan module obfuscates email addresses to help prevent "
+"spambots from collecting them. It will produce clickable links if "
+"JavaScript is enabled, and will show the email address as "
+"<code>example [at] example [dot] com</code> if the browser does not "
+"support JavaScript.</p><p>To configure the module, select "
+"\"configure\" next to the <a href=\"admin/filters\">input format</a> "
+"you'd like to use. Enable \"Hide Email Addresses using the SpamSpan "
+"technique\" and submit the form. Then select the \"configure\" tab to "
+"choose relevant options.</p>"
+msgstr ""
+"<p>A <em>SpamSpan</em> modul átalakítja az email címeket, evvel "
+"megelőzi, hogy a robotok összegyűjtsék azokat. Ha a JavaScript "
+"engedélyezett, akkor kattintható hivatkozások keletkeznek. "
+"Ellenkező esetben az email cím <code>példa [at] példa [dot] "
+"hu</code> formában jelenik meg.</p><p>A modul beállításához a "
+"„Beállítás” fület kell kiválasztani a használni kívánt <a "
+"href=\"admin/filters\">beviteli forma</a> oldalán. Engedélyezni kell "
+"az „Email címek elrejtése a <em>SpamSpan</em> módszer "
+"használatával” kapcsolót, majd a „Beállítás” fülön lehet "
+"választani a lehetőségek közül.</p>"
+
+#: spamspan.module:63
+msgid "Hide email addresses using the SpamSpan technique"
+msgstr "Email címek elrejtése a <em>SpamSpan</em> módszer használatával."
+

@@ -1,0 +1,1172 @@
+<?php
+
+define('SPACES_OG_PRIVATE', 1);
+define('SPACES_OG_PUBLIC', 2);
+
+/**
+ * Spaces OG must be included after the Spaces module. We check this
+ * condition here -- if the check fails, at least we don't break Drupal.
+ */
+if (function_exists('spaces_menu')) {
+  class space_og implements space {
+    var $group = NULL;
+    var $title = NULL;
+
+    /**
+     * Constructor
+     */
+    function __construct($type, $sid = NULL, $is_active = FALSE) {
+      if ($sid) {
+        $this->group = node_load($sid);
+        $this->title = $this->group->title;
+        if ($is_active) {
+          // Set the group context on behalf of OG
+          og_set_group_context($this->group);
+
+          // Handle theme switching for OG
+          if ($this->group->og_theme) {
+            global $custom_theme;
+            $custom_theme = $group->og_theme;
+          }
+        }
+      }
+      else {
+        $this->group = new StdClass();
+      }
+    }
+
+    /**
+     * Implementation of space->save().
+     */
+    function save() {
+      og_update_group($this->group);
+      if (!isset($space->no_access_rebuid)) {
+        // If access settings have changed we'll want to update og_ancestry.
+        $node_types = spaces_features_map('node');
+        foreach ($this->features as $feature => $access) {
+          if ($type = array_search($feature, $node_types)) {
+            if ($access == SPACES_OG_PRIVATE) {
+              $is_public = 0;
+            }
+            elseif ($access == SPACES_OG_PUBLIC) {
+              $is_public = 1;
+            }
+            else {
+              continue;
+            }
+
+            // Check the schema to see if we're using OG 1.x or 2.x
+            $schema = drupal_get_schema('og_ancestry');
+            if (isset($schema['fields']['is_public'])) {
+              // OG 1.x
+              db_query("UPDATE {og_ancestry}
+                        SET is_public = %d
+                        WHERE group_nid = %d
+                        AND nid IN (
+                          SELECT nid
+                          FROM {node}
+                          WHERE type = '%s'
+                        )", $is_public, $this->group->nid, $type);
+            }
+            else {
+              // OG 2.x
+              db_query("UPDATE {og_access_post}
+                        SET og_public = %d
+                        WHERE nid IN (
+                          SELECT og_a.nid
+                          FROM {og_ancestry} og_a
+                          JOIN {node} n ON og_a.nid = n.nid
+                          WHERE og_a.group_nid = %d
+                          AND n.type = '%s'
+                        )", $is_public, $this->group->nid, $type);
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    /**
+     * Implementation of space->delete().
+     */
+    function delete() {
+      // We do not delete the group node here:
+      // 1. to allow the group to remain and perhaps later be re-registered as a space
+      // 2. to avoid recursion
+      return;
+    }
+
+    /**
+     * Implementation of space->feature_access().
+     */
+    function feature_access($feature = NULL) {
+      if (isset($this->features[$feature])) {
+        if ($this->features[$feature] == SPACES_FEATURE_DISABLED) {
+          return FALSE;
+        }
+        else if (og_is_group_member($this->sid)) {
+          return TRUE;
+        }
+        else if ($this->features[$feature] == SPACES_OG_PUBLIC) {
+          return TRUE;
+        }
+      }
+      return FALSE;
+    }
+
+    /**
+     * Implementation of space->admin_access().
+     */
+    function admin_access() {
+      global $user;
+      if ($this->group && og_is_group_admin($this->group)) {
+        return true;
+      }
+      else if (user_access('administer spaces') || user_access('administer organic groups')) {
+        return true;
+      }
+      else if ($this->group->uid == $user->uid) {
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * Implementation of space->feature_options().
+     */
+    function feature_options() {
+      return array(
+        SPACES_FEATURE_DISABLED => t('Disabled'),
+        SPACES_OG_PRIVATE => t('Private'),
+        SPACES_OG_PUBLIC => t('Public'),
+      );
+    }
+
+    /**
+     * Implementation of space->user_links().
+     */
+    function user_links() {
+      $links = array();
+      if ($subscribe = spaces_og_subscription_link()) {
+        $links['subscribe'] = $subscribe;
+      }
+      return $links;
+    }
+
+    /**
+     * Implementation of space->admin_links().
+     */
+    function admin_links() {
+      $item = menu_get_item("og/users/{$this->sid}/faces");
+      if ($item && $item['access']) {
+        $links['members'] = array(
+          'title' => t('Members'),
+          'href' => "og/users/{$this->sid}/faces",
+        );
+      }
+
+      $item = menu_get_item("node/{$this->sid}/edit");
+      if ($item && $item['access']) {
+        // Add settings link for administering spaces
+        $links['settings'] = array(
+          'title' => t('@type settings', array('@type' => node_get_types('name', $this->group->type))),
+          'href' => "node/{$this->sid}/edit",
+        );
+      }
+
+      $item = menu_get_item("node/{$this->sid}/spaces/features");
+      if ($item && $item['access']) {
+        $links['features'] = array(
+          'title' => t('Customize features'),
+          'href' => "node/{$this->sid}/spaces/features",
+        );
+      }
+      return $links;
+    }
+
+    /**
+     * Implementation of space->form().
+     */
+    function form() {
+      // Only show group form options on preset form
+      if (empty($this->sid)) {
+        $old_gid = NULL;
+        if (isset($this->group->nid)) {
+          // Stupid OG will only set values when the node object has a nid set
+          $old_gid = $this->group->nid;
+          $this->group->nid = -1;
+        }
+
+        // Generate OG settings form
+        $form = og_group_form($this->group, array()); // @TODO figure out if it makes sense to pass $form_state to $space->form().
+        if (module_exists('og_access')) {
+          drupal_add_js(drupal_get_path('module', 'og_access'). '/og_access.js');
+          og_access_alter_group_form($form, $this->group);
+        }
+        $this->group->nid = $old_gid;
+
+        // Omit description & theme selection
+        unset($form['og_description']);
+        unset($form['themes']);
+
+        // Pack the form into a fieldset
+        $form['#title'] = t('Group settings');
+        $form['#type'] = 'fieldset';
+        return $form;
+      }
+    }
+
+    /**
+     * Implementation of space->preset_validate().
+     */
+    function validate($values) {
+      // No need to validate
+      return;
+    }
+
+    /**
+     * Implementation of space->preset_submit().
+     */
+    function submit($values) {
+      // Only process group form options on preset form
+      if (!$this->sid) {
+        $preset = array();
+        $preset['og_selective'] = $values['og_selective'];
+        $preset['og_register'] = $values['og_register'];
+        $preset['og_directory'] = $values['og_directory'];
+        $preset['og_private'] = $values['og_private'];
+        return $preset;
+      }
+      return array();
+    }
+
+    /**
+     * Implementation of space->preset_enforce().
+     */
+    function preset_enforce($preset) {
+      $this->group->og_selective = isset($preset['og']['og_selective']) ? $preset['og']['og_selective'] : 0;
+      $this->group->og_register = isset($preset['og']['og_register']) ? $preset['og']['og_register'] : 0;
+      $this->group->og_directory = isset($preset['og']['og_directory']) ? $preset['og']['og_directory'] : 0;
+      $this->group->og_private = isset($preset['og']['og_private']) ? $preset['og']['og_private'] : 0;
+    }
+
+    /**
+     * Implementation of space->redirect().
+     */
+    function redirect($op = 'home') {
+      switch ($op) {
+        case 'home':
+          if (!empty($this->purl)) {
+            // Use the menu path of the selected feature as homepage
+            if ($home = $this->settings['home']) {
+              if (menu_get_item($home)) {
+                purl_goto($home, array('purl' => array('provider' => 'spaces_og', 'id' => $this->sid)));
+              }
+            }
+            // The previous checks fail, there is no valid homepage set
+            if ($this->admin_access() && user_access('configure spaces features')) {
+              drupal_set_message(t("Please setup your group by choosing a homepage setting."));
+              purl_goto("node/{$this->sid}/spaces/features", array('purl' => array('provider' => 'spaces_og', 'id' => $this->sid)));
+            }
+          }
+          else {
+            drupal_goto('node/'. $this->sid .'/edit');
+          }
+          menu_set_active_item('spaces-access-denied');
+          break;
+        case 'features':
+          purl_goto("node/{$this->sid}/spaces/features", array('purl' => array('provider' => 'spaces_og', 'id' => $this->sid)));
+          break;
+      }
+    }
+
+    /**
+     * Implementation of space->menu_access().
+     */
+    function menu_access($op, $object = NULL, $is_active = TRUE) {
+      switch ($op) {
+        case 'menu':
+          // Group space is active
+          if ($is_active) {
+            global $user;
+            // Group is public, allow access
+            if ($this->group->og_private != 1) {
+              return TRUE;
+            }
+            // User is group member, allow access
+            else if (og_is_group_member($this->sid)) {
+              return TRUE;
+            }
+            // User hasn't logged in -- provide entry point
+            else if (!$user->uid) {
+              return TRUE;
+            }
+            // Deny all other access
+            return FALSE;
+          }
+          return TRUE;
+        case 'node':
+          $node = $object;
+          $form = !isset($node->nid) || isset($node->date) ? TRUE : FALSE;
+
+          if (!og_is_omitted_type($node->type) && !og_is_group_type($node->type)) {
+            // If the group space is not active
+            // Node forms: we care -- deny access since we don't want people submitting nodes from outside groups.
+            // Node views: we don't care -- let routing and standard node access kick in.
+            if (!$is_active) {
+              return $form ? FALSE : TRUE;
+            }
+            // The space is active
+            else {
+              // Case 1: the node does not belong here
+              if (!empty($node->nid) && !in_array($this->sid, $node->og_groups)) {
+                return FALSE;
+              }
+              // Case 2: User is not a member
+              else if (!og_is_group_member($this->sid, FALSE)) {
+                $node_types = spaces_features_map('node');
+                // If the feature is public, show the node but don't allow form access
+                if (!empty($node_types[$node->type])) {
+                  $feature = $node_types[$node->type];
+                  if (isset($this->features[$feature]) && $this->features[$feature] == SPACES_OG_PUBLIC) {
+                    return !$form ? TRUE : FALSE;
+                  }
+                }
+                return FALSE;
+              }
+            }
+          }
+          return TRUE;
+        case 'user':
+          global $user;
+          $account = $object;
+          if ($is_active) {
+            $test_user = og_is_group_member($this->sid);
+            $test_account = og_is_group_member($this->sid, FALSE, $account->uid);
+
+            // Both user and account belong to current space
+            if (($test_user && $test_account) || user_access('view users outside groups')) {
+              return TRUE;
+            }
+            else {
+              return FALSE;
+            }
+          }
+          // @TODO: determine status of viewing users outside of groups
+          return TRUE;
+      }
+    }
+
+    /**
+     * Implementation of space->router().
+     */
+    function router($op, $object = NULL, $is_active = TRUE) {
+      global $user;
+      switch ($op) {
+        case 'menu':
+          if ($is_active && drupal_is_front_page()) {
+            $this->redirect('home');
+          }
+          break;
+        case 'node':
+          $node = $object;
+          $form = !isset($node->nid) || isset($node->date) ? TRUE : FALSE;
+
+          // Group node -- send to spaces homepage
+          if (og_is_group_type($node->type)) {
+            if ($form) {
+              $space = spaces_get_space();
+              // If editing, make sure we're in the correct space
+              if (isset($node->nid) && (!$is_active || ($is_active && $this->sid != $node->nid))) {
+                purl_goto($_GET['q'], array('purl' => array('provider' => 'spaces_og', 'id' => $node->nid)));
+              }
+              // Don't make new groups from other groups spaces
+              else if (!isset($node->nid) && ($is_active)) {
+                purl_goto($_GET['q'], array('purl' => array('disabled' => TRUE)));
+              }
+            }
+            else {
+              $space = spaces_load('og', $node->nid);
+              $space->redirect('home');
+            }
+          }
+          // Group enabled node, route to correct group context
+          else if (!og_is_omitted_type($node->type) && !og_is_group_type($node->type)) {
+            // If the node has no groups let admins through so they can fix the situation
+            if (!$form && empty($node->og_groups) && user_access('administer nodes')) {
+              drupal_set_message(t('This content is not assigned to a group and is not visible to non-administrative users.'));
+            }
+            // If the node has groups
+            else if (!empty($node->og_groups)) {
+              $space = spaces_get_space();
+              // If the node belongs to the current active group space, or we're in an allowable other space type, pass thru
+              if (($is_active && in_array($this->sid, $node->og_groups)) || (!$form && $space && in_array($space->type, array('user', 'taxonomy')))) {
+                return;
+              }
+              // Otherwise route
+              reset($node->og_groups);
+              purl_goto($_GET['q'], array('purl' => array('provider' => 'spaces_og', 'id' => current($node->og_groups))));
+            }
+            // We're on the node add form from outside an active space.
+            if (!isset($node->nid) && !$is_active) {
+              drupal_set_message(t('This form should only be submitted within a properly configured group. Continue at your own risk.'), 'warning');
+            }
+          }
+          break;
+      }
+    }
+
+    // Spaces OG views filter
+    function views_filter(&$query, $base_table = '', $relationship = '') {
+      switch ($base_table) {
+        case 'node':
+          $table = $query->ensure_table('og_ancestry', $relationship);
+          $query->add_where(0, "$table.group_nid  = ***CURRENT_GID***");
+          break;
+        case 'users':
+          $table = $query->ensure_table('og_uid', $relationship);
+          $query->add_where(0, "$table.nid = ***CURRENT_GID***");
+          break;
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_init();
+ * We're gonna bulldoze your OG settings. Get over it.
+ */
+function spaces_og_init() {
+  global $conf;
+  $conf['og_visibility_directory'] = 2; // Default to 'visible'.
+  $conf['og_visibility_registration'] = 3; // Default to 'visible' on form.
+  $conf['og_private_groups'] = 3; // Default group to 'public'.
+  $conf['og_notification'] = 0; // Disable OG's Notifications.
+  $conf['og_audience_checkboxes'] = 0; // Disable audience checkboxes.
+  $conf['og_visibility'] = 2; // Default visibility to 'public'.
+  $conf['og_audience_required'] = 1; // Require audience.
+  $conf['og_member_pics'] = 0; // Disable pictures.
+
+  // Force feature content types to be OG enabled.
+  // Don't like this behavior? Turn off feature modules.
+  $map = spaces_features_map('node');
+  $features = spaces_features('og');
+  foreach ($map as $type => $feature) {
+    // If the feature apples to OG spaces, force the OG content type usage.
+    if (!empty($features[$feature])) {
+      $conf['og_content_type_usage_'. $type] = 'group_post_standard';
+    }
+  }
+}
+
+/**
+ * Implementation of hook_spaces_types().
+ */
+function spaces_og_spaces_types() {
+  return array(
+    'og' => array(
+      'class' => 'space_og',
+      'title' => t('Group space'),
+      'custom purl' => TRUE,
+      'base path' => 'node/%sid',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_spaces_presets().
+ */
+function spaces_og_spaces_presets() {
+  $items = array();
+  $items['private'] = array(
+    'type' => 'og',
+    'name' => t('Private group'),
+    'description' => t('Only members will be able to access this group. Membership is strictly managed by admins.'),
+    'preset' => array(
+      'og' => array(
+        'og_selective' => OG_CLOSED,
+        'og_directory' => OG_DIRECTORY_NEVER,
+        'og_register' => OG_REGISTRATION_ALWAYS,
+        'og_private' => defined(OG_PRIVATE_GROUPS_ALWAYS) ? OG_PRIVATE_GROUPS_ALWAYS : 1,
+      ),
+    ),
+  );
+  $items['controlled'] = array(
+    'type' => 'og',
+    'name' => t('Controlled group'),
+    'description' => t('All users may view public content from this group. Users must request to join this group.'),
+    'preset' => array(
+      'og' => array(
+        'og_selective' => OG_MODERATED,
+        'og_directory' => OG_DIRECTORY_ALWAYS,
+        'og_register' => OG_REGISTRATION_ALWAYS,
+        'og_private' => defined(OG_PRIVATE_GROUPS_NEVER) ? OG_PRIVATE_GROUPS_NEVER : 0,
+      ),
+    ),
+  );
+  $items['public'] = array(
+    'type' => 'og',
+    'name' => t('Public group'),
+    'description' => t('All users may view public content from this group. User may join this group at will.'),
+    'preset' => array(
+      'og' => array(
+        'og_selective' => OG_OPEN,
+        'og_directory' => OG_DIRECTORY_ALWAYS,
+        'og_register' => OG_REGISTRATION_ALWAYS,
+        'og_private' => defined(OG_PRIVATE_GROUPS_NEVER) ? OG_PRIVATE_GROUPS_NEVER : 0,
+      ),
+    ),
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_context_links_alter().
+ */
+function spaces_og_context_links_alter(&$links) {
+  $space = spaces_get_space();
+  if ($space && $space->type == 'og') {
+    return;
+  }
+  else {
+    // Yank any group-enabled node types out of the links array.
+    // @TODO: implement this through access callback overrides and menu access checks.
+    foreach ($links as $key => $link) {
+      $args = explode('/', $link['href']);
+      if ($args[0] == 'node' && $args[1] == 'add' && $type = $args[2]) {
+        $type = str_replace('-', '_', $type);
+        if (!og_is_omitted_type($type) && !og_is_group_type($type)) {
+          unset($links[$key]);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function spaces_og_menu() {
+  $spaces_path = drupal_get_path('module', 'spaces');
+
+  $items = array();
+  $items['user/%user/groups'] = array(
+    'title' => 'Groups',
+    'title callback' => 'spaces_og_menu_title',
+    'title arguments' => array(1),
+
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('spaces_og_user_groups_form', 1),
+
+    'access callback' => 'user_edit_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items["og/users/%node/ucreate"] = array(
+    'title' => 'Add new account',
+    'page callback' => 'spaces_og_ucreate',
+    'page arguments' => array(2),
+    'type' => MENU_LOCAL_TASK,
+    'access callback' => 'spaces_admin_access',
+    'access arguments' => array('og'),
+    'weight' => 1,
+  );
+  $items["node/%node/spaces/features"] = array(
+    'title' => 'Features',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('spaces_features_form'),
+    'access callback' => '_spaces_og_admin_access',
+    'access arguments' => array(1, 'og', 'features'),
+    'file' => 'spaces_admin.inc',
+    'file path' => $spaces_path,
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+  );
+  $items["node/%node/spaces/features/%"] = array(
+    'title' => 'Features',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('spaces_customize_form', NULL, 4),
+    'access callback' => '_spaces_og_admin_access',
+    'access arguments' => array(1, 'og', 'features'),
+    'file' => 'spaces_admin.inc',
+    'file path' => $spaces_path,
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+  );
+  return $items;
+}
+
+/**
+ * Menu title callback for nicer user account tab titles.
+ */
+function spaces_og_menu_title($account) {
+  global $user;
+  return ($user->uid == $account->uid) ? t('My groups') : t('Groups');
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function spaces_og_perm() {
+  return array('view users outside groups');
+}
+
+/**
+ * Form for modifying a user's OG subscriptions quickly.
+ */
+function spaces_og_user_groups_form($form_state, $account) {
+  $form = og_user('register', array(), $account, $category = NULL);
+  $form['og_register']['og_register']['#default_value'] = array_keys($account->og_groups);
+
+  // Don't display as a fieldset
+  unset($form['og_register']['#type']);
+
+  $form['account'] = array(
+    '#type' => 'value',
+    '#value' => $account,
+  );
+
+  $form['buttons'] = array('#tree' => FALSE);
+  $form['buttons']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+  return $form;
+}
+
+/**
+ * Submit handler for OG user groups form.
+ */
+function spaces_og_user_groups_form_submit($form, &$form_state) {
+  if (is_array($form_state['values']['og_register']) && !empty($form_state['values']['account'])) {
+    $og_register = $form_state['values']['og_register'];
+    $account = $form_state['values']['account'];
+    $dsm = FALSE;
+
+    $active_groups = array_keys(array_filter($og_register));
+
+    // Subscribe users to any selected groups.
+    foreach (array_diff($active_groups, array_keys($account->og_groups)) as $gid) {
+      $return = og_subscribe_user($gid, $account);
+      if (!empty($return['message'])) {
+        $dsm = TRUE;
+        drupal_set_message($return['message']);
+      }
+    }
+
+    // Remove users from any unselected groups.
+    foreach (array_diff(array_keys($og_register), $active_groups) as $gid) {
+      og_delete_subscription($gid, $account->uid);
+    }
+
+    if (!$dsm) {
+      drupal_set_message(t('Your group membership settings were saved successfully.'));
+    }
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function spaces_og_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
+  switch ($op) {
+    case 'prepare':
+      if (og_is_group_type($node->type) && $space = spaces_load('og', $node->nid)) {
+        $node->purl = $space->purl;
+      }
+      else if (!og_is_omitted_type($node->type)) {
+        $space = spaces_get_space();
+        if ($space->type == 'og') {
+          _spaces_enforce_feature($space->sid, $node);
+        }
+      }
+      break;
+    case 'presave':
+      // switch node's group if specified
+      if (!og_is_omitted_type($node->type)) {
+        if (isset($node->spaces_og['gid']) && !in_array($node->spaces_og['gid'], $node->og_groups)) {
+          $new_gid = $node->spaces_og['gid'];
+          _spaces_enforce_feature($new_gid, $node);
+        }
+      }
+      break;
+    case 'insert':
+    case 'update':
+      // save PURL modifier & preset from node form information
+      if (og_is_group_type($node->type)) {
+        $space = !empty($node->space) ? $node->space : spaces_load('og', $node->nid);
+        $space->purl = is_array($node->purl) && !empty($node->purl['value']) ? $node->purl['value'] : $space->purl;
+        $space->preset = isset($node->preset) ? $node->preset : $space->preset;
+        $space->group = $node;
+
+        // Save that shiz
+        spaces_save($space);
+
+        // Enforce OG preset directly on node object for inserts
+        if ($op == 'insert') {
+          $node->og_selective = $space->group->og_selective;
+          $node->og_register = $space->group->og_register;
+          $node->og_directory = $space->group->og_directory;
+          $node->og_private = $space->group->og_private;
+        }
+      }
+      break;
+    case 'delete':
+      if (og_is_group_type($node->type)) {
+        $space = spaces_load('og', $node->nid);
+        if ($space) {
+          spaces_delete($space);
+        }
+      }
+      break;
+  }
+}
+
+/*
+ * Implementation of hook_form_alter()
+ */
+function spaces_og_form_alter(&$form, $form_state, $form_id) {
+  switch ($form_id) {
+    case 'node_delete_confirm':
+      $node = node_load($form['nid']['#value']);
+      if (og_is_group_type($node->type)) {
+        $form['#submit'][] = '_spaces_og_node_delete_confirm_submit';
+      }
+      break;
+    default:
+      if ($form['#id'] == 'node-form' && (arg(0) .'/'. arg(1) != 'admin/content')) {
+        // GROUP NODES
+        if (og_is_group_type($form['#node']->type)) {
+          _spaces_og_form_alter_group($form, $form_state);
+        }
+        // GROUP ENABLED CONTENT TYPES
+        elseif (!og_is_omitted_type($form['#node']->type)) {
+          _spaces_og_form_alter_node($form, $form_state);
+        }
+      }
+      break;
+  }
+}
+
+/**
+ *  Implementation of hook_form_alter for node_type_form.
+ */
+function spaces_og_form_node_type_form_alter(&$form, $form_state) {
+  if (isset($form['identity']['type'])) {
+    $map = spaces_features_map('node');
+    $features = spaces_features('og');
+    if (!empty($map[$form['#node_type']->type])) {
+      $feature = $map[$form['#node_type']->type];
+      if (!empty($features[$feature])) {
+        $form['og']['#collapsible'] =
+        $form['og']['#collapsed'] = FALSE;
+        $form['og']['message'] = array(
+          '#type' => 'markup',
+          '#value' => t('This content type is provided by the <strong>!feature</strong> feature and will be used as a <strong>standard group post</strong>.', array('!feature' => $feature)),
+        );
+        $form['og']['og_content_type_usage']['#access'] = FALSE;
+      }
+    }
+  }
+}
+
+/**
+ * Group node form_alter().
+ * @TODO: repair default values on node previews.
+ */
+function _spaces_og_form_alter_group(&$form, $form_state) {
+  _spaces_og_make_hidden($form['og_selective']);
+  _spaces_og_make_hidden($form['og_register']);
+  _spaces_og_make_hidden($form['og_private']);
+  _spaces_og_make_hidden($form['og_directory']);
+  _spaces_og_make_hidden($form['themes']);
+
+  // Add purl form
+  // This case handles node previews
+  if (isset($form_state['node_preview'])) {
+    $form['purl'] = purl_form('spaces_og', $form['#node']->nid, $form['#node']->purl['value']);
+  }
+  // Regular edit form
+  else {
+    $form['purl'] = purl_form('spaces_og', $form['#node']->nid, $form['#node']->purl);
+  }
+
+  // Add presets form
+  $nid = isset($form['#node']->nid) ? $form['#node']->nid : NULL;
+  $space = spaces_load('og', $nid);
+
+  // Preserve value on preview
+  if (isset($form_state['node_preview'])) {
+    $space->preset = $form_state['values']['preset'];
+  }
+  $form['spaces_preset'] = spaces_form_presets($space);
+
+  // Pass existing space through
+  if ($nid) {
+    $form['space'] = array('#type' => 'value', '#value' => $space);
+  }
+
+  // Add custom submit handler
+  $form['#submit'][] = '_spaces_og_group_node_form_submit';
+}
+
+/**
+ * Custom submit handler for group delete confirmation.
+ */
+function _spaces_og_node_delete_confirm_submit($form, &$form_state) {
+  purl_disable(TRUE);
+}
+
+/**
+ * Custom submit handler for group node forms
+ */
+function _spaces_og_group_node_form_submit($form, &$form_state) {
+  // Prefix might have changed -- do the redirect correctly
+  if (isset($form_state['values']['nid'])) {
+    $nid = $form_state['values']['nid'];
+    if (isset($form_state['values']['space'])) {
+      $space = $form_state['values']['space'];
+
+      // Disable PURL for the current redirect
+      purl_disable(TRUE);
+      $form_state['redirect'] = "node/{$nid}";
+
+      // If the preset has changed we need to adust feature settings.
+      if ($form_state['values']['preset'] != $form['spaces_preset']['preset']['#default_value']) {
+        // Change settings the enabled features to match the preset.
+        $preset = spaces_presets('og');
+        foreach ($space->features as $feature => $access) {
+          $space->features[$feature] = $preset[$form_state['values']['preset']]['preset']['features'][$feature];
+        }
+      }
+      else {
+        // Set a flag to block node access rebuilding.
+        $space->no_access_rebuid = true;
+      }
+    }
+  }
+}
+
+/**
+ * Group-enabled node form_alter()
+ */
+function _spaces_og_form_alter_node(&$form, $form_state) {
+  global $user;
+  $space = spaces_get_space();
+
+  // Retrieve the content type label
+  $types = node_get_types();
+  if ($group_type = array_filter(array_keys($types), 'og_is_group_type')) {
+    $type = array_pop($group_type);
+    $typename = $types[$type]->name;
+  }
+
+  // Collect groups for which this feature is enabled
+  $options = array(0 => '--'. t('Select a !typename', array('!typename' => $typename)) .'--');
+  $valid_groups = _spaces_og_group_options($form['#node']->type);
+  $user_groups = array();
+  foreach (og_get_subscriptions($user->uid) as $node) {
+    if (!empty($valid_groups[$node['nid']])) {
+      $user_groups[$node['nid']] = $node['title'];
+    }
+  }
+  // Give users access to only their groups
+  $options[t('My !typenames', array('!typename' => $typename))] = $user_groups;
+  // Give admins access to all group options
+  if (user_access('administer organic groups')) {
+    $options[t('All !typenames', array('!typename' => $typename))] = array_diff_key($valid_groups, $user_groups);
+  }
+
+  // Only show the dialogue if we have at least 1 group to target
+  if (count($options > 1)) {
+
+    // Node preview handling
+    if (!empty($form['#node']->spaces_og['gid'])) {
+      $default_gid = $form['#node']->spaces_og['gid'];
+    }
+    else if (is_array($form['#node']->og_groups) && count($form['#node']->og_groups)) {
+      reset($form['#node']->og_groups);
+      $default_gid = key($form['#node']->og_groups);
+    }
+    else if ($space) {
+      $default_gid = $space->sid;
+    }
+    else {
+      $default_gid = 0; // The invalid group
+    }
+
+    // If the current user doesn't have this group as an option,
+    // they probably aren't a member here but have admin perms.
+    if (!isset($valid_groups[$default_gid])) {
+      $disabled = TRUE;
+    }
+    // If there is a default group and the user hasn't access to
+    // administer spaces/groups, disable this feature. They could
+    // get burned.
+    else if (!empty($default_gid) && !user_access('administer spaces') && !user_access('administer organic groups')) {
+      $disabled = TRUE;
+    }
+
+    if ($disabled) {
+      $form['spaces_og'] = array(
+        '#tree' => TRUE,
+        'gid' => array('#type' => 'value', '#value' => $default_gid),
+      );
+    }
+    else {
+      $form['spaces_og'] = array(
+        '#type' => 'fieldset',
+        '#tree' => true,
+        '#title' => $typename,
+      );
+      $message = $form['#node']->nid ? t('Please select a !typename to move this post to.', array('!typename' => strtolower($typename))) : t('Please select a !typename to add this post to.', array('!typename' => strtolower($typename)));
+      $form['spaces_og']['gid'] = array(
+        '#required' => TRUE,
+        '#type' => 'select',
+        '#options' => $options,
+        '#default_value' => $default_gid,
+        '#description' => $message,
+        '#element_validate' => array('spaces_og_nodeform_validate'),
+      );
+    }
+  }
+
+  // Recurse into og_options hiding all of them.
+  _spaces_og_make_hidden($form['og_nodeapi']);
+
+  // We can only determine the privacy of this node if currently in
+  // a group space. Otherwise, it will be determined by the feature
+  // setting of the group targeted by the selector above.
+  if ($space->type == 'og') {
+    $form['spaces'] = array(
+      '#title' => t('Privacy'),
+      '#type' => 'fieldset',
+      '#weight' => 100,
+    );
+    switch ($form['#node']->og_public) {
+      case OG_VISIBLE_GROUPONLY:
+        $form['spaces']['#description'] = t('A post of this type is <strong>private</strong>. Only members of this !typename will be able to see it.', array('!typename' => strtolower($typename)));
+        break;
+      case OG_VISIBLE_BOTH:
+        $form['spaces']['#description'] = t('A post of this type is <strong>public</strong>. All visitors will be able to see it.');
+        break;
+    }
+  }
+}
+
+/**
+ * Element validator for group targeting selector.
+ */
+function spaces_og_nodeform_validate($element, &$form_state) {
+  if ($element['#value'] == 0) {
+    // Retrieve the content type label
+    $types = node_get_types();
+    if (!empty($types['group'])) {
+      $typename = $types['group']->name;
+    }
+
+    form_error($element, t('Please choose a !typename to post to.', array('!typename' => strtolower($typename))));
+  }
+}
+
+/**
+ * Set all elements in a given form to 'value'. Using value preserves the tree and prevents
+ * The element from being rendered.
+ */
+function _spaces_og_make_hidden(&$form) {
+  if (isset($form['#type'])) {
+    $form['#type'] = 'value';
+    $form['#required'] = false;
+  }
+  if (is_array($form)) {
+    foreach ($form as $key => $value) {
+      if (is_array($value) && strpos($key, '#') !== 0) {
+        _spaces_og_make_hidden($form[$key]);
+      }
+    }
+  }
+}
+
+/**
+ * Spaces OG wrapper
+ */
+function spaces_og_ucreate($node) {
+  drupal_set_title(t('Add new account'));
+  if (module_exists('ucreate')) {
+    $form = drupal_get_form('ucreate_user_form');
+    return $form;
+  }
+  return '';
+}
+
+/**
+ * Custom subscription link - use "join" instead of "subscribe" - make it shorter.
+ */
+function spaces_og_subscription_link() {
+  global $user;
+  if ($user->uid && is_array($user->og_groups) && $space = spaces_get_space()) {
+    $gid = $space->sid;
+    $node = node_load($gid);
+
+    // User is a member
+    if (isset($user->og_groups[$gid])) {
+      // Do not let managers leave the group -- TODO: figure out a
+      // better workflow for these situations.
+      if (!og_is_group_admin($node) && $node->og_selective != OG_CLOSED) {
+        return array(
+          'title' => t('Leave this group'),
+          'href' => "og/unsubscribe/{$node->nid}/{$user->uid}",
+          'query' => 'destination='. $_GET['q'],
+        );
+      }
+    }
+    // User has requested membership
+    else if (db_result(db_query("SELECT count(nid) FROM {og_uid} WHERE nid = %d AND uid = %d AND is_active = 0", $gid, $user->uid))) {
+      return array(
+        'title' => t('Cancel request to join'),
+        'href' => "og/unsubscribe/{$node->nid}/{$user->uid}",
+        'query' => 'destination='. $_GET['q'],
+      );
+    }
+    // User is not a member
+    else {
+      if ($node->og_selective == OG_MODERATED) {
+        return array(
+          'title' => t('Request to join'),
+          'href' => "og/subscribe/". $node->nid,
+          'query' => 'destination='. $_GET['q'],
+        );
+      }
+      elseif ($node->og_selective == OG_OPEN) {
+        return array(
+          'title' => t('Join this group'),
+          'href' => "og/subscribe/". $node->nid,
+          'query' => 'destination='. $_GET['q'],
+        );
+      }
+    }
+  }
+  return;
+}
+
+/**
+ * API function that enforces OG group and privacy settings on a node.
+ */
+function _spaces_enforce_feature($gid, &$node) {
+  $map = spaces_features_map('node');
+  $space = spaces_load('og', $gid);
+  if ($space) {
+    if (isset($map[$node->type])) {
+      $privacy = $space->features[$map[$node->type]];
+    }
+    // Use reasonable defaults for types that are not included in a feature.
+    else {
+      $privacy = $space->group->og_private ? SPACES_OG_PRIVATE : SPACES_OG_PUBLIC;
+    }
+    switch ($privacy) {
+      case SPACES_OG_PRIVATE:
+        $node->og_public = OG_VISIBLE_GROUPONLY;
+        break;
+      case SPACES_OG_PUBLIC:
+        $node->og_public = OG_VISIBLE_BOTH;
+        break;
+    }
+    $node->og_groups = array($gid => $gid);
+  }
+}
+
+/**
+ * Generates an array of groups that a node could potentially
+ * be a member of based on enabled spaces features and optionally
+ * the specified user's groups
+ */
+function _spaces_og_group_options($type, $uid = 0) {
+  $types = spaces_features_map('node');
+  $group_options = array();
+
+  $where = $join = '';
+  $args = array();
+
+  // Only join to features table if this node is part of a feature.
+  if (isset($types[$type])) {
+    $join .= " JOIN {spaces_features} sf ON sf.sid = og.nid";
+    $where .= " AND sf.id = '%s' AND sf.value != '%s'";
+    $args = array($types[$type], 0);
+  }
+  if ($uid) {
+    $join .= " JOIN {og_uid} ogu ON ogu.nid = og.nid";
+    $where .= " AND ogu.uid = %d AND ogu.is_active >= 1";
+    $args[] = $uid;
+  }
+  $result = db_query(
+    "SELECT og.nid, n.title
+      FROM {og} og
+      JOIN {node} n ON og.nid = n.nid
+      $join
+    WHERE n.status = 1
+      $where
+    ORDER BY n.title ASC",
+    $args);
+  while ($group = db_fetch_object($result)) {
+    $group_options[$group->nid] = $group->title;
+  }
+  return $group_options;
+}
+
+/**
+ * Wrapper around spaces_admin_access(). Used to determine menu local
+ * task visibility : |
+ */
+function _spaces_og_admin_access($node, $type = NULL, $op = NULL) {
+  if (og_is_group_type($node->type)) {
+    return spaces_admin_access($type, $op);
+  }
+  return false;
+}
+
+/**
+ * Implementation of hook_token_values().
+ **/
+function spaces_og_token_values($type, $object = NULL, $options = array()) {
+  if ($type == 'node' && (property_exists($object, 'og_groups') || property_exists($object, 'spaces_og'))) {
+    $node = $object;
+    if (property_exists($node, 'spaces_og')) {
+      $gid = $node->spaces_og['gid'];
+    }
+    elseif (property_exists($object, 'og_groups')) {
+      $gid = current($node->og_groups);
+    }
+    $space = spaces_load('og', $gid);
+    $tokens['space-og-path'] = check_plain($space->purl);
+    $tokens['space-og-path-raw'] = $space->purl;
+    return $tokens;
+  }
+  else {
+    return array(
+      'space-og-path' => '',
+      'space-og-path-raw' => '',
+    );
+  }
+}
+
+/**
+ * Implementation of hook_token_list().
+ **/
+function spaces_og_token_list($type = 'all') {
+  if ($type == 'node' || $type == 'all') {
+    $tokens['node']['space-og-path'] = t("The filtered value of the space prefix path");
+    $tokens['node']['space-og-path-raw'] = t("The raw value of the space prefix path");
+    return $tokens;
+  }
+}
+
+/**
+ * DEPRECATED FUNCTIONS ===============================================
+ */
+
+/**
+ * Tests for user membership in group
+ */
+function spaces_og_is_member($gid = null, $uid = null) {
+  return og_is_group_member($gid);
+}

@@ -1,0 +1,75 @@
+<?php
+// $Id: activism_tellafriend.install,v 1.1.2.1 2009/05/11 15:43:12 morbus Exp $
+
+/**
+ * @file
+ * Installation file for Activism Tell a Friend module.
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function activism_tellafriend_schema() {
+  $schema['activism_tellafriend_mail'] = array(
+    'description' => 'Store campaign-specific headers, footers, and subject lines.',
+    'fields' => array(
+      'nid' => array(
+        'description'   => 'The {node} this version belongs to.',
+        'not null'      => TRUE,
+        'type'          => 'int',
+        'unsigned'      => TRUE,
+      ),
+      'subject' => array(
+        'default'       => '',
+        'description'   => 'The subject line of the e-mail sent to friends.',
+        'length'        => 255,
+        'not null'      => TRUE,
+        'type'          => 'varchar',
+      ),
+      'header' => array(
+        'default'       => '',
+        'description'   => "The header prepended to the user's e-mail message.",
+        'not null'      => FALSE,
+        'size'          => 'normal',
+        'type'          => 'text',
+      ),
+      'header_format' => array(
+        'description'   => "The input filter format used by the header.",
+        'type'          => 'int',
+        'not null'      => TRUE,
+        'default'       => 0,
+      ),
+      'footer' => array(
+        'default'       => '',
+        'description'   => "The footer appended to the user's e-mail message.",
+        'not null'      => FALSE,
+        'size'          => 'normal',
+        'type'          => 'text',
+      ),
+      'footer_format' => array(
+        'description'   => "The input filter format used by the footer.",
+        'type'          => 'int',
+        'not null'      => TRUE,
+        'default'       => 0,
+      ),
+    ),
+    'primary key' => array('nid')
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function activism_tellafriend_install() {
+  drupal_install_schema('activism_tellafriend');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function activism_tellafriend_uninstall() {
+  drupal_uninstall_schema('activism_tellafriend');
+}
+

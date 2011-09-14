@@ -1,0 +1,508 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Admin
+ *
+ *  This module provides the custom Senator Content Administration Page.
+ */
+
+/**
+ *  Implements hook_menu().
+ */
+function nyss_admin_menu() {
+  $items = array();
+  $items['senator/content/node'] = array(
+    'title' => 'Senator Content Administration',
+    'description' => "View and edit your senators' content.",
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_admin_admin_content'),
+    'access arguments' => array('access senator content administration'),
+  );
+  $items['senator/content/comment'] = array(
+    'title' => 'Senator Comment Administration',
+    'description' => "View and edit your senators' comments.",
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_admin_admin_comment'),
+    'access arguments' => array('access senator content administration'),
+  );
+  $items['admin/nyss'] = array(
+    'title' => 'NYSS',
+    'description' => 'Custom configuration for the NY Senate website.',
+    'position' => 'left',
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+  return $items;
+}
+
+/**
+ *  Implementation of hook_perm to get special permission for "senator content administration" page
+ */
+function nyss_admin_perm() {
+  return array('access senator content administration');
+}
+
+/**
+ *  Custom Senator Content Administration Page 
+ */
+function nyss_admin_admin_content($form_state) {
+  if (isset($form_state['values']['operation']) && $form_state['values']['operation'] == 'delete') {
+    return nyss_admin_multiple_delete_confirm($form_state, array_filter($form_state['values']['nodes']));
+  }
+  include_once(drupal_get_path('module', 'node') .'/node.admin.inc');
+  $form = nyss_admin_filter_form();
+  $form['#theme'] = 'node_filter_form';
+  $form['admin'] = nyss_admin_admin_nodes();
+  return $form;
+}
+
+/**
+ *  Custom Senator Comment Administration Page 
+ */
+function nyss_admin_admin_comment($form_state) {
+  include_once(drupal_get_path('module', 'node') .'/node.admin.inc');
+  $form['#theme'] = 'node_filter_form';
+  $form['admin'] = nyss_admin_admin_comments();
+  return $form;
+}
+
+/**
+ * Supply confirmation form for multiple deletions to Senator Content Administration Page
+ * @see nyss_admin_admin_content().
+ */
+function nyss_admin_multiple_delete_confirm(&$form_state, $nodes) {
+  $form['nodes'] = array('#prefix' => '<ul>', '#suffix' => '</ul>', '#tree' => TRUE);
+  // array_filter returns only elements with TRUE values
+  foreach ($nodes as $nid => $value) {
+    $title = db_result(db_query('SELECT title FROM {node} WHERE nid = %d', $nid));
+    $form['nodes'][$nid] = array(
+      '#type' => 'hidden',
+      '#value' => $nid,
+      '#prefix' => '<li>',
+      '#suffix' => check_plain($title) ."</li>\n",
+    );
+  }
+  $form['operation'] = array('#type' => 'hidden', '#value' => 'delete');
+  $form['#submit'][] = 'nyss_admin_multiple_delete_confirm_submit';
+  return confirm_form($form,
+                      t('Are you sure you want to delete these items?'),
+                      'senator/content/node', t('This action cannot be undone.'),
+                      t('Delete all'), t('Cancel'));
+}
+
+function nyss_admin_multiple_delete_confirm_submit($form, &$form_state) {
+  if ($form_state['values']['confirm']) {
+    foreach ($form_state['values']['nodes'] as $nid => $value) {
+      node_delete($nid);
+    }
+    drupal_set_message(t('The items have been deleted.'));
+  }
+  $form_state['redirect'] = 'senator/content/node';
+  return;
+}
+
+/**
+ * Return form for node administration filters.
+ */
+function nyss_admin_filter_form() {
+  $session = &$_SESSION['node_overview_filter'];
+  $session = is_array($session) ? $session : array();
+  $filters = node_filters();
+
+  $i = 0;
+  $form['filters'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Show only items where'),
+    '#theme' => 'node_filters',
+  );
+  $form['#submit'][] = 'node_filter_form_submit';
+  foreach ($session as $filter) {
+    list($type, $value) = $filter;
+    if ($type == 'category') {
+      // Load term name from DB rather than search and parse options array.
+      $value = module_invoke('taxonomy', 'get_term', $value);
+      $value = $value->name;
+    }
+    else if ($type == 'language') {
+      $value = empty($value) ? t('Language neutral') : module_invoke('locale', 'language_name', $value);
+    }
+    else {
+      $value = $filters[$type]['options'][$value];
+    }
+    if ($i++) {
+      $form['filters']['current'][] = array('#value' => t('<em>and</em> where <strong>%a</strong> is <strong>%b</strong>', array('%a' => $filters[$type]['title'], '%b' => $value)));
+    }
+    else {
+      $form['filters']['current'][] = array('#value' => t('<strong>%a</strong> is <strong>%b</strong>', array('%a' => $filters[$type]['title'], '%b' => $value)));
+    }
+    if (in_array($type, array('type', 'language'))) {
+      // Remove the option if it is already being filtered on.
+      unset($filters[$type]);
+    }
+  }
+
+  foreach ($filters as $key => $filter) {
+    $names[$key] = $filter['title'];
+    $form['filters']['status'][$key] = array('#type' => 'select', '#options' => $filter['options']);
+  }
+
+  $form['filters']['filter'] = array('#type' => 'radios', '#options' => $names, '#default_value' => 'status');
+  $form['filters']['buttons']['submit'] = array('#type' => 'submit', '#value' => (count($session) ? t('Refine') : t('Filter')));
+  if (count($session)) {
+    $form['filters']['buttons']['undo'] = array('#type' => 'submit', '#value' => t('Undo'));
+    $form['filters']['buttons']['reset'] = array('#type' => 'submit', '#value' => t('Reset'));
+  }
+  drupal_add_js('misc/form.js', 'core');
+  return $form;
+}
+
+/**
+ * Theme node administration overview.
+ *
+ * @ingroup themeable
+ */
+function theme_nyss_admin_admin_nodes($form) {
+  // If there are rows in this form, then $form['title'] contains a list of
+  // the title form elements.
+  $has_posts = isset($form['title']) && is_array($form['title']);
+  $select_header = $has_posts ? theme('table_select_header_cell') : '';
+  $header = array($select_header, t('Title'), t('Type'), t('Senator'), t('Status'));
+  if (isset($form['language'])) {
+    $header[] = t('Language');
+  }
+  $header[] = t('Operations');
+  $output = '';
+
+  $output .= drupal_render($form['options']);
+  if ($has_posts) {
+    foreach (element_children($form['title']) as $key) {
+      $row = array();
+      $row[] = drupal_render($form['nodes'][$key]);
+      $row[] = drupal_render($form['title'][$key]);
+      $row[] = drupal_render($form['name'][$key]);
+      $row[] = drupal_render($form['username'][$key]);
+      $row[] = drupal_render($form['status'][$key]);
+      if (isset($form['language'])) {
+        $row[] = drupal_render($form['language'][$key]);
+      }
+      $row[] = drupal_render($form['operations'][$key]);
+      $rows[] = $row;
+    }
+
+  }
+  else {
+    $rows[] = array(array('data' => t('No posts available.'), 'colspan' => '6'));
+  }
+  $output .= theme('table', $header, $rows);
+  if ($form['pager']['#value']) {
+    $output .= drupal_render($form['pager']);
+  }
+  $output .= drupal_render($form);
+  return $output;
+}
+
+/**
+ * Build query for node administration filters based on session.
+ */
+function nyss_admin_build_filter_query() {
+  $filters = node_filters();
+  // Build query
+  $where = $args = array();
+  $join = '';
+  foreach ($_SESSION['node_overview_filter'] as $index => $filter) {
+    list($key, $value) = $filter;
+    switch ($key) {
+      case 'status':
+        // Note: no exploitable hole as $key/$value have already been checked when submitted
+        list($key, $value) = explode('-', $value, 2);
+        $where[] = 'n.'. $key .' = %d';
+        break;
+      case 'category':
+        $table = "tn$index";
+        $where[] = "$table.tid = %d";
+        $join .= "INNER JOIN {term_node} $table ON n.nid = $table.nid ";
+        break;
+      case 'type':
+        $where[] = "n.type = '%s'";
+        break;
+      case 'language':
+        $where[] = "n.language = '%s'";
+        break;
+    }
+    
+    $args[] = $value;
+  }
+  $where = count($where) ? 'WHERE '. implode(' AND ', $where) : '';
+
+  return array('where' => $where, 'join' => $join, 'args' => $args);
+}
+
+/**
+ * Form builder: Builds the node administration overview.
+ */
+function nyss_admin_admin_nodes() {
+  $filter = nyss_admin_build_filter_query();
+  if (user_access('administer nodes') != TRUE) {
+    global $user;
+    $queryset = FALSE;
+    
+    //If this user is a Web Editor+, only get Majority Senators
+    if (in_array('Web Editor+', $user->roles)) {
+      $query = db_rewrite_sql(
+      'SELECT n.nid AS nid, n.type, n.title, n.status, n2.title AS senName, n2.vid, cts.field_majority_value AS maj, n2.nid AS senNid
+      FROM {node} AS n ' . $filter['join'] . ' 
+      INNER JOIN {content_field_senator} AS cfs
+      ON cfs.vid = n.vid
+      INNER JOIN {node} AS n2
+      ON n2.nid = cfs.field_senator_nid 
+      LEFT JOIN {content_type_senator} AS cts ON n2.vid = cts.vid ' . $filter['where'] . $whereclause . ' ORDER BY n.changed DESC');
+      $queryset = TRUE;
+    }
+    // Or a Web Editor, no plus, only get non-senator content
+    else if (in_array('Web Editor', $user->roles)) {
+      if($filter['where'] != '') {
+        $whereclause = ' AND ';
+      } else {
+        $whereclause = ' WHERE ';
+      }
+      $whereclause .= 'cfs.field_senator_nid IS NULL';
+      
+      $query = db_rewrite_sql('SELECT n.nid AS nid, n.type, n.title, n.status, "No Senator" AS senName, "" AS senNid
+      FROM {node} AS n ' . $filter['join'] . ' 
+      LEFT JOIN {content_field_senator} AS cfs
+      ON cfs.vid = n.vid ' . $filter['where'] . $whereclause . ' ORDER BY n.changed DESC');
+      $queryset = TRUE;
+    }
+    else { //If this user is an Office Editor, only get their senator's content
+      $query = 'SELECT nid FROM {content_field_editors} WHERE field_editors_uid = %d GROUP BY nid';
+      $result = db_query($query, $user->uid);
+      if($filter['where'] != '') {
+        $whereclause = ' AND ';
+      } else {
+        $whereclause = ' WHERE ';
+      }
+      $whereclause .= 'cfs.field_senator_nid IN (';
+      while ($row = db_fetch_array($result)) {
+        if ($whereclause != ' WHERE cfs.field_senator_nid IN (' && $whereclause != ' AND cfs.field_senator_nid IN (') {
+          $whereclause .= ', ';
+        }
+        $whereclause .= $row['nid'];
+      }
+      $whereclause .= ')';
+    }
+  }
+  if ($queryset == FALSE) {
+    $query = db_rewrite_sql('SELECT n.nid AS nid, n.type, n.title, n.status, n2.title AS senName, n2.nid AS senNid 
+    FROM {node} AS n ' . $filter['join'] . ' 
+    INNER JOIN {content_field_senator} AS cfs
+    ON cfs.vid = n.vid
+    INNER JOIN {node} AS n2
+    ON n2.nid = cfs.field_senator_nid ' . $filter['where'] . $whereclause . ' ORDER BY n.changed DESC');
+  }
+  $result = pager_query($query, 50, 0, NULL, $filter['args']); 
+  
+  $form['options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Update options'),
+    '#prefix' => '<div class="container-inline">',
+    '#suffix' => '</div>',
+  );
+/*  foreach (module_invoke_all('node_operations') as $operation => $array) {
+    $options[$operation] = $array['label'];
+  }*/
+  $options['publish'] = 'Publish';
+  $options['unpublish'] = 'Unpublish';
+  $form['options']['operation'] = array(
+    '#type' => 'select',
+    '#options' => $options,
+    '#default_value' => 'approve',
+  );
+  $form['options']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update'),
+    '#submit' => array('nyss_admin_admin_nodes_submit'),
+  );
+
+  $languages = language_list();
+  $destination = drupal_get_destination();
+  $nodes = array();
+  while ($node = db_fetch_object($result)) {
+    $nodes[$node->nid] = '';
+    $form['title'][$node->nid] = array('#value' => l($node->title, 'node/'. $node->nid, $options) .' '. theme('mark', node_mark($node->nid, $node->changed)));
+    $form['name'][$node->nid] =  array('#value' => check_plain(node_get_types('name', $node)));
+    $form['username'][$node->nid] = array('#value' => l($node->senName, 'node/'. $node->senNid));
+    $form['status'][$node->nid] =  array('#value' => ($node->status ? t('published') : t('not published')));
+    
+    if($node->maj == '1') {
+      $form['operations'][$node->nid] = array('#value' => l(t('edit'), 'node/'. $node->nid .'/edit', array('query' => $destination)));
+    }
+    else {
+      $form['operations'][$node->nid] = array('#value' => '--');
+    }
+  }
+
+  $form['nodes'] = array('#type' => 'checkboxes', '#options' => $nodes);
+  $form['pager'] = array('#value' => theme('pager', NULL, 50, 0));
+  $form['#theme'] = 'node_admin_nodes';
+  return $form;
+}
+
+/**
+ * Validate nyss_admin_admin_nodes form submissions.
+ * 
+ * Check if any nodes have been selected to perform the chosen
+ * 'Update option' on.
+ * @see nyss_admin_admin_nodes()
+ */
+function nyss_admin_admin_nodes_validate($form, &$form_state) {
+  $nodes = array_filter($form_state['values']['nodes']);
+  if (count($nodes) == 0) {
+    form_set_error('', t('No items selected.'));
+  }
+}
+
+function nyss_admin_admin_nodes_submit($form, &$form_state) {
+  $operations = module_invoke_all('node_operations');
+  $operation = $operations[$form_state['values']['operation']];
+    
+  // Filter out unchecked nodes
+  $nodes = array_filter($form_state['values']['nodes']);
+  if ($function = $operation['callback']) {
+    // Add in callback arguments if present.
+    if (isset($operation['callback arguments'])) {
+      $args = array_merge(array($nodes), $operation['callback arguments']);
+    }
+    else {
+      $args = array($nodes);
+    }
+
+    global $nyss_admin;
+    
+    if ($args['updates']['status'] == 0) {
+      $nyss_admin = 'unpub';
+    }
+    else {
+      $nyss_admin = 'pub';
+    }
+    call_user_func_array($function, $args);
+    unset($nyss_admin);
+    cache_clear_all();
+  }
+  else {
+    // We need to rebuild the form to go to a second step.  For example, to
+    // show the confirmation form for the deletion of nodes.
+    $form_state['rebuild'] = TRUE;
+  }
+}
+
+/**
+ * Form builder: Builds the comment administration overview.
+ */
+function nyss_admin_admin_comments() {
+  global $user;
+  if (user_access('administer nodes') != TRUE || $user->uid == 1) {
+    $queryset = FALSE;
+    //If this user is a Web Editor+, only get Majority Senators
+    if ((in_array('Web Editor+', $user->roles)) || ($user->uid == 1)) {
+      $query = '
+      SELECT c.cid, c.subject, c.status AS status, c.comment, n.nid, n.title AS article, cfs_n.title AS senName, cfs_n.nid AS senNid
+      FROM `comments` AS c
+      LEFT JOIN `content_field_senator` AS cfs ON cfs.nid = c.nid
+      LEFT JOIN `node` AS n ON c.nid = n.nid
+      LEFT JOIN `node` AS cfs_n ON cfs.field_senator_nid = cfs_n.nid
+      LEFT JOIN `content_type_senator` AS cts ON cts.nid = cfs_n.nid
+      WHERE (cts.field_majority_value = 1 OR cfs.nid IS NULL) 
+       GROUP BY c.cid ORDER BY c.timestamp DESC;      
+      ';
+      $queryset = TRUE;
+    }
+    // Or a Web Editor, no plus, only get non-senator content
+    else if (in_array('Web Editor', $user->roles)) {
+      $query = '
+      SELECT c.cid, c.subject, c.status AS status, c.comment, n.nid, n.title AS article, cfs_n.title AS senName, cfs_n.nid AS senNid
+      FROM `comments` AS c
+      LEFT JOIN `content_field_senator` AS cfs ON cfs.nid = c.nid
+      LEFT JOIN `node` AS n ON c.nid = n.nid
+      LEFT JOIN `node` AS cfs_n ON cfs.field_senator_nid = cfs_n.nid
+      WHERE (cfs.nid IS NULL) 
+       GROUP BY c.cid ORDER BY c.timestamp DESC;      
+      ';
+      $queryset = TRUE;
+    }
+    else { //If this user is an Office Editor, only get their senator's content
+      $query = 'SELECT MAX(vid), nid FROM {content_field_editors} WHERE field_editors_uid = %d GROUP BY nid';
+      $result = db_query($query, $user->uid);
+      $commentwhere = ' WHERE ';
+      $commentwhere .= 'cfs.field_senator_nid IN (';
+      while ($row = db_fetch_array($result)) {
+        if ($commentwhere != ' WHERE cfs.field_senator_nid IN (' && $commentwhere != ' AND cfs.field_senator_nid IN (') {
+          $commentwhere .= ', ';
+        }
+        $commentwhere .= $row['nid'];
+      }
+      $commentwhere .= ')';
+    }
+  }
+  if ($queryset == FALSE) {
+    $query = '
+    SELECT c.cid, c.subject, c.status AS status, c.comment, n.nid, n.title AS article, cfs_n.title AS senName, cfs_n.nid AS senNid
+    FROM `comments` AS c
+    LEFT JOIN `content_field_senator` AS cfs ON cfs.nid = c.nid
+    LEFT JOIN `node` AS n ON c.nid = n.nid
+    LEFT JOIN `node` AS cfs_n ON cfs.field_senator_nid = cfs_n.nid'
+    . $commentwhere .     
+    ' GROUP BY c.cid ORDER BY c.timestamp DESC;
+    ';
+  }
+  $result = db_query($query, $filter['args']); 
+  
+  /*  foreach (module_invoke_all('node_operations') as $operation => $array) {
+    $options[$operation] = $array['label'];
+  }*/
+  $options['publish'] = 'Publish';
+  $options['unpublish'] = 'Unpublish';
+
+  $languages = language_list();
+  $destination = drupal_get_destination();
+  $nodes = array();
+  while ($node = db_fetch_object($result)) {
+    //$nodes[$node->nid] = '';
+    $form['title'][$node->nid] = array('#value' => l($node->subject, 'node/'. $node->nid, array('fragment'=>'comment-'.$node->cid) ) . '<br />' .substr(strip_tags($node->comment), 0, 200) .'... '. theme('mark', node_mark($node->nid, $node->changed)));
+    $form['name'][$node->nid] =  array('#value' => check_plain(node_get_types('name', $node)));
+    $form['username'][$node->nid] = array('#value' => l($node->senName, 'node/'. $node->senNid));
+    $form['status'][$node->nid] =  array('#value' => ($node->status ? t('unpublished') : t('published')));
+    
+    if($node->maj == '1') {
+      $form['operations'][$node->nid] = array('#value' => l(t('edit'), 'node/'. $node->nid .'/edit', array('query' => $destination)));
+    }
+    else {
+      $form['operations'][$node->nid] = array('#value' => '--');
+    }
+  }
+
+  $form['nodes'] = array('#type' => 'checkboxes', '#options' => $nodes);
+  $form['pager'] = array('#value' => theme('pager', NULL, 50, 0));
+  $form['#theme'] = 'node_admin_nodes';
+  return $form;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function nyss_admin_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  switch ($op) {
+    case 'presave':
+      global $nyss_admin;
+      if ($nyss_admin == 'unpub') {
+        $node->status = 0; 
+      }
+      else if ($nyss_admin == 'pub') {
+        $node->status = 1;
+      }
+  }
+}
+

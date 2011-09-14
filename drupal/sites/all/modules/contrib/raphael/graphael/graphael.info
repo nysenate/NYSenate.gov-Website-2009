@@ -1,0 +1,14 @@
+; $Id: graphael.info,v 1.1 2010/04/23 09:37:43 mikl Exp $
+
+name = gRaphaël
+description = API module for the Raphaël vector chart/graph JavaScript library.
+core = 6.x
+dependencies[] = raphael
+
+
+; Information added by drupal.org packaging script on 2010-12-21
+version = "6.x-1.0"
+core = "6.x"
+project = "raphael"
+datestamp = "1292953283"
+

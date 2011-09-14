@@ -1,0 +1,70 @@
+Index: views-view-json.tpl.php
+===================================================================
+--- views-view-json.tpl.php	(revision 2852)
++++ views-view-json.tpl.php	(revision 2853)
+@@ -26,14 +26,15 @@
+ 		$field_count = 0;
+ 		foreach($node as $field_label => $field_value) {
+ 		  $label = trim(views_json_strip_illegal_chars(views_json_encode_special_chars($field_label)));
+-          $value = views_json_encode_special_chars(trim(views_json_is_date($field_value)));
+-          if ((is_null($value)) || ($value == '')) continue;
++      $value = views_json_encode_special_chars(trim(views_json_is_date(_convert_garbage_quotes($field_value))));
++      ++$field_count;
++      if ((is_null($value)) || ($value == '')) continue;
+ //          if (preg_match('/\d/', $value)) {
+ //            if (strtotime($value))
+ //              $value = gmstrftime(EXHIBIT_DATE_FORMAT, strtotime($value));
+ //          }
+           $label = str_replace('_value', '', str_replace("profile_values_profile_", '', $label)); //strip out Profile: from profile fields
+-          $json.=str_repeat(" ", 8).'"'.$label.'"'. " ".": ".'"'.$value.'"'.((++$field_count == $total_field_count) ? "":",")."\n";
++          $json.=str_repeat(" ", 8).'"'.$label.'"'. " ".": ".'"'.$value.'"'.(($field_count == $total_field_count) ? "":",")."\n";
+ 		}
+ 		$json.=str_repeat(" ", 6)."}".((++$view_result_count == $total_view_result_count) ? "":",")."\n";	
+ 	}
+@@ -51,7 +52,46 @@
+ 	
+ }
+ 
++function _convert_garbage_quotes($string) {
++  $search = array(
++    'â€œ',
++    'â€',
++    'â€˜',
++    'â€™',
++    'â€¦',
++    'â€”',
++    'â€“',
++  );
++  $replace = array(
++    '"',
++    '"',
++    "'",
++    "'",
++    "...",
++    "-",
++    "-",
++  );
++  $string = str_replace($search, $replace, $string);
++  $search = array(
++    chr(145),
++    chr(146),
++    chr(147),
++    chr(148),
++    chr(151),
++  );
++  $replace = array(
++    "'",
++    "'",
++    '"',
++    '"',
++    '-',
++    "-",
++  );
++ return str_replace($search, $replace, $string);
++}
+ 
++
++
+ function json_exhibit_render($view) {
+   define('EXHIBIT_DATE_FORMAT', '%Y-%m-%d %H:%M:%S');
+   $json = "{\n".'  "items":'."\n".str_repeat(" ", 4)."[\n";

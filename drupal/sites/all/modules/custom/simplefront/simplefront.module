@@ -1,0 +1,36 @@
+<?php
+// $Id:$
+
+/**
+ * @file
+ */
+
+/**
+ * Implementation of hook_menu()
+ */
+function simplefront_menu() {
+  $items = array();
+/*  $items['front'] = array(
+    'page callback' => 'simplefront_display',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+*/
+  $items['committees'] = array(
+    'title' => 'All Committees',
+    'page callback' => 'simplefront_display',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Get default display for front page.
+ *
+ * @return String
+ *   An empty string to get a blank page.
+ */
+function simplefront_display() {
+  return '';
+}

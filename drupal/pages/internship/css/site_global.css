@@ -1,0 +1,281 @@
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,code,form,fieldset,legend,input,button,textarea,p,blockquote,th,td
+{
+	margin: 0;
+	padding: 0;
+	border-width: 0;
+}
+
+table
+{
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+fieldset,img
+{
+	border: 0;
+}
+
+address,caption,cite,code,dfn,em,strong,th,var,optgroup
+{
+	font-style: inherit;
+	font-weight: inherit;
+}
+
+del,ins
+{
+	text-decoration: none;
+}
+
+li
+{
+	list-style: none;
+}
+
+caption,th
+{
+	text-align: left;
+}
+
+h1,h2,h3,h4,h5,h6
+{
+	font-size: 100%;
+	font-weight: normal;
+}
+
+input,button,textarea,select,optgroup,option
+{
+	font-family: inherit;
+	font-size: inherit;
+	font-style: inherit;
+	font-weight: inherit;
+}
+
+body
+{
+	font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
+	text-align: left;
+	font-size: 14px;
+	line-height: 1.2;
+	word-wrap: break-word;
+	text-rendering: optimizeLegibility;/* kerning, primarily */
+	-webkit-font-smoothing: antialiased;/* improves safari */
+}
+
+a
+{
+	color: inherit;
+	text-decoration: inherit;
+}
+
+a:link
+{
+	color: #000000;
+	visibility: inherit;
+	font-weight: bold;
+	text-decoration: none;
+}
+
+a:visited
+{
+	color: #800080;
+	visibility: inherit;
+	text-decoration: underline;
+}
+
+a:hover
+{
+	color: #2E3192;
+	visibility: inherit;
+	text-decoration: underline;
+}
+
+a:active
+{
+	color: #EE0000;
+	visibility: inherit;
+	text-decoration: underline;
+}
+
+.TabbedPanelsTab
+{
+	white-space: nowrap;
+}
+
+.MenuBar  .MenuBarView, .MenuBar  .SubMenuView /* Resets for ul and li in menus */
+{
+	display: block;
+	list-style: none;
+}
+
+.MenuBar .SubMenu
+{
+	display: none;
+	position: absolute;
+}
+
+.MenuBar .SubMenuVisible, .MenuBarVertical .SubMenuVisible, .MenuBar .SubMenu .SubMenuVisible, .colelem, .popup_element.Active, span.actAsPara, .actAsDiv
+{
+	display: block;
+}
+
+.NoWrap
+{
+	white-space: nowrap;
+	word-wrap: normal;
+}
+
+.MenuBar .MenuItemContainer
+{
+	position: relative;
+}
+
+.rootelem /* the root of the artwork tree */
+{
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.grpelem /* a child element of a group */
+{
+	display: inline;
+	float: left;
+}
+
+.wrap /* used to force wrap after floated array */
+{
+	content: '';
+	clear: left;
+}
+
+.position_content, .excludeFromNormalFlow /* used when child content is larger than parent */
+{
+	float: left;
+}
+
+.inclusion_context /* context for positioning a group of elements that share the same height */
+{
+	display: table;
+}
+
+.inclelem /* element of an inclusion context */
+{
+	display: table-cell;
+	vertical-align: top;
+}
+
+.f3s_top, .f3s_bot /* 3-slice frame, top slice */
+{
+	background-repeat: no-repeat;
+}
+
+.f3s_mid /* 3-slice frame, middle slice */
+{
+	background-repeat: repeat;
+}
+
+.f9s_top_left, .f9s_bot_left /* 9-slice frame, left corner slice */
+{
+	background-repeat: no-repeat;
+	background-position: left;
+}
+
+.f9s_top_right, .f9s_bot_right /* 9-slice frame, right corner slice */
+{
+	background-repeat: no-repeat;
+	background-position: right;
+}
+
+.f9s_top_mid, .f9s_bot_mid /* 9-slice frame, top/bottom horizontal slice */
+{
+	background-repeat: repeat-x;
+	background-position: 0px 0px;
+}
+
+.f9s_mid_left /* 9-slice frame, left vertical slice */
+{
+	background-repeat: repeat-y;
+	background-position: left;
+}
+
+.f9s_mid_right /* 9-slice frame, right vertical slice */
+{
+	background-repeat: repeat-y;
+	background-position: right;
+}
+
+.f9s_center /* 9-slice frame, center slice */
+{
+	background-repeat: repeat;
+	background-position: 0px 0px;
+}
+
+.popup_anchor /* anchors an abspos popup */
+{
+	position: relative;
+	width: 0px;
+	height: 0px;
+}
+
+.popup_element
+{
+	z-index: 100000;
+}
+
+.popup_element.Inactive
+{
+	display: none;
+}
+
+.pointer_cursor
+{
+	cursor: pointer;
+}
+
+span.wrap /* used to force wrap after floated array when nested inside a paragraph */
+{
+	content: '';
+	clear: left;
+	display: block;
+}
+
+span.actAsInlineDiv /* used to simulate a DIV with inline display when already nested inside a paragraph */
+{
+	display: inline-block;
+}
+
+.preload_images /* used to preload images used in non-defaul states */
+{
+	position: absolute;
+	overflow: hidden;
+	left: -9999px;
+	top: -9999px;
+	height: 1px;
+	width: 1px;
+}
+
+preload /* used to specifiy the dimension of preload item */
+{
+	height: 1px;
+	width: 1px;
+}
+
+.animateStates
+{
+	-webkit-transition: 0.3s ease-in-out;
+	-moz-transition: 0.3s ease-in-out;
+	-o-transition: 0.3s ease-in-out;
+	transition: 0.3s ease-in-out;
+}
+
+.widget_invisible /* used to hide the widget before loaded */
+{
+	visibility: hidden;
+}
+
+.anchor_item /* used to specify anchor properties */
+{
+	width: 22px;
+	height: 18px;
+}
+

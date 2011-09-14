@@ -1,0 +1,61 @@
+div.ui-tabs ul.ui-tabs-nav {
+	border-bottom: 1px solid #E2DED5;
+	display: block;
+	list-style: none;
+	position: relative;
+	height: 13px;
+	padding: 0 0 0 5px;
+	margin: 0 0 0 0;
+}
+
+div.ui-tabs ul.ui-tabs-nav li {
+	border: none;
+	padding: 0;
+	margin: 0;
+	display: block;
+	float: left;
+}
+
+div.ui-tabs ul.ui-tabs-nav li a {
+	border: none;
+	padding: 0 0 0 0;
+	display: block;
+	height: 13px;
+	text-indent: -9999em;
+	line-height: 1000px;
+	overflow: hidden;
+	margin: 0 6px 0 0;
+}
+
+div.ui-tabs ul.ui-tabs-nav li.press-release a {
+	background: url(../images/sprite_tab_press.png) 0 0 no-repeat;
+	width: 92px;
+}
+
+div.ui-tabs ul.ui-tabs-nav li.blogs a {
+	background: url(../images/sprite_tab_blogs.png) 0 0 no-repeat;
+	width: 45px;
+}
+
+div.ui-tabs ul.ui-tabs-nav li.news-clips a {
+	background: url(../images/sprite_tab_news.png) 0 0 no-repeat;
+	width: 74px;
+}
+
+div.ui-tabs ul.ui-tabs-nav li.ui-tabs-selected {
+	border-bottom: 1px solid #ffffff;
+}
+
+div.ui-tabs ul.ui-tabs-nav li.ui-tabs-selected a {
+	border-bottom: 1px solid #ffffff;
+	background-position: 0 -16px;
+	height: 15px;
+}
+
+div.ui-tabs .ui-tabs-hide {
+	display: none;
+}
+
+div.ui-tabs .ui-tabs-panel {
+	margin-top: 12px;
+}

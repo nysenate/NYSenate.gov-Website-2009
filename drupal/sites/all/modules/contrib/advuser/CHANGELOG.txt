@@ -1,0 +1,10 @@
+$Id: CHANGELOG.txt,v 1.1.2.3 2009/06/23 15:33:25 earnie Exp $
+
+Advanced User 6.x-2, 2009-06-23
+-----------------------------------
+#470604: Need to remember the page the action was executed from. 
+
+Advanced User 6.x-2, 2009-05-07
+-----------------------------------
+#377282: Clicking UPDATE OPTIONS does not work.
+#427170: "This version is incompatible with the 6.10 version of Drupal core".

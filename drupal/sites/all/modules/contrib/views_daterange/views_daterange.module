@@ -1,0 +1,59 @@
+<?php
+// $Id: views_daterange.module,v 1.1 2009/03/18 19:35:22 crell Exp $
+
+/**
+ * Implementation of hook_views_api().
+ */
+function views_daterange_views_api() {
+  return array(
+    'api' => '2.0',
+  );
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function views_daterange_theme() {
+  return array(
+    'daterange_periods_form' => array(
+      'arguments' => array('form' => array()),
+    ),
+  );
+}
+
+
+/**
+ * Theme the form fragment for the views argument configuration form into a table.
+ *
+ * @ingroup themeable
+ */
+function theme_daterange_periods_form($form) {
+  $output = '';
+
+  // Retheme the date range form fragment into a table, which is much nicer
+  // to read anyway.
+  $header = array(t('Label'), t('Start day'), t('End day'));
+
+  $rows = array();
+  foreach (element_children($form) as $key) {
+    $range = &$form[$key];
+
+    // We don't want the labels on each element, since they're already the table header.
+    $range['period']['#title'] = '';
+    $range['start']['day']['#title'] = '';
+    $range['start']['month']['#title'] = '';
+    $range['end']['day']['#title'] = '';
+    $range['end']['month']['#title'] = '';
+
+    $rows[] = array(
+      drupal_render($range['period']),
+      drupal_render($range['start']['month']) . drupal_render($range['start']['day']),
+      drupal_render($range['end']['month']) . drupal_render($range['end']['day']),
+    );
+  }
+
+  $output .= theme('table', $header, $rows);
+
+  $output .= drupal_render($form);
+  return $output;
+}

@@ -1,0 +1,112 @@
+<?php
+// $Id: json_server.module,v 1.8.4.2 2010/05/04 20:00:36 skyredwang Exp $
+
+/**
+ *
+ *  A jSON server implementation for the services module.
+ *
+ */
+
+
+/**
+ *  Implementation of hook_server_info().
+ */
+function json_server_server_info() {
+  return array(
+    '#name' => 'JSON',
+    '#path' => 'json'
+  );
+}
+
+
+/**
+ *  Implementation of hook_server_error().
+ */
+function json_server_server_error($message) {
+  return array("#error" => TRUE, "#message" => $message);
+}
+
+
+/**
+ *  Implementation of hook_server().
+ */
+function json_server_server() {
+if (!isset($_POST)) {
+  return drupal_to_js(array('#error' => TRUE, '#data' => "JSON server accepts POST requests only."));
+}
+  
+  $methods = services_get_all();
+  services_strip_hashes($methods);
+  $request = drupal_parse_json($_POST['method']);
+  $args = array();
+  
+  foreach ($methods as $method) {
+    if ($method['method'] == $request) {
+      unset($_POST['q']);
+      unset($_POST['method']);
+      $args = array();
+      foreach($method['args'] as $arg) {
+        if(isset($_POST[$arg['name']])) {
+          $args[] = drupal_parse_json($_POST[$arg['name']]);
+        }
+        elseif($arg['optional'] == 0) {
+          return drupal_to_js(array("#error" => TRUE, "#data" => "Argument ". $arg['name'] ." not recieved"));
+        }
+        else {
+          $args[$arg['name']] = NULL;
+        }
+      }
+      $result = services_method_call($method['method'], $args);
+      if (is_array($result) && $result['error'] === TRUE)
+        return drupal_to_js(array('#error' => TRUE, '#data' => $result['message']));
+      
+      // patch by Sheldon
+      if(function_exists('json_encode')) {
+        return json_encode(array('#error' => FALSE, '#data' => $result));
+      }
+      else {
+        return drupal_to_js(array('#error' => FALSE, '#data' => $result));
+      }
+      //return drupal_to_js(array('#error' => FALSE, '#data' => $result));
+    }
+  }
+
+  return drupal_to_js(array('#error' => TRUE, '#data' => "Invalid method $request"));
+}
+      
+
+/**
+ *  Load the needed assets to run the server via js.
+ */
+function json_load() {
+  global $base_url;
+  $path = drupal_get_path("module", "json_server");
+  drupal_add_js($path ."/json_server.js");
+  drupal_add_js(array("baseurl" => $base_url ."/"), 'setting');
+}
+
+function drupal_parse_json($v) {
+  // PHP 5 only
+  if (function_exists('json_decode')) {
+    return json_decode($v);
+  }
+  if ($v{0} == '"') {
+    $v = substr($v, 1, -1);
+  }
+  elseif ($v{0} == '{') {
+    $var = explode(",", substr($v, 1, -2));
+    $v = array();
+    foreach ($var as $value) {
+      $va = explode(":", $value);
+      $v[$va[0]] = drupal_parse_json($va[1]);
+    }
+  }
+  elseif ($v{0} == '[') {
+    $var = explode(",", substr($v, 1, -2));
+    $v = array();
+    foreach ($var as $value) {
+      $v[] = drupal_parse_json($va[0]);
+    }
+  }
+  return $v;
+}

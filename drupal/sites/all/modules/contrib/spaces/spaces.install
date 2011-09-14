@@ -1,0 +1,220 @@
+<?php
+// $Id: spaces.install,v 1.1.4.6.2.3 2009/04/14 19:45:32 yhahn Exp $
+
+/**
+ * Implementaton of hook_install().
+ */
+function spaces_install() {
+  drupal_install_schema('spaces');
+}
+
+/**
+ * Implementation of hook_uninstall()
+ */
+function spaces_uninstall() {
+  drupal_uninstall_schema('spaces');
+
+  db_query("DELETE FROM {menu_custom} WHERE menu_name = 'spaces'");
+  db_query("DELETE FROM {menu_links} WHERE module = 'spaces'");
+
+  // Delete variables
+  $variables = array();
+  foreach ($variables as $variable) {
+    variable_del($variable);
+  }
+}
+
+/**
+ * Implementaton of hook_enable().
+ */
+function spaces_enable() {
+  db_query("UPDATE {system} SET weight = -1 WHERE name = 'spaces' AND type = 'module'");
+}
+
+/**
+ * Implementation of hook_schema()
+ */
+function spaces_schema() {
+  $schema = array();
+  $schema['spaces'] = array(
+    'description' => t('spaces.'),
+    'fields' => array(
+      'sid' => array(
+        'description' => t('The space id.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'type' => array(
+        'description' => t('The space type.'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'preset' => array(
+        'description' => t('The space preset.'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'customizer' => array(
+        'description' => t('The spaces customizer stored as a serialized array.'),
+        'type' => 'text',
+        'size' => 'big',
+      ),
+    ),
+    'unique keys' => array(
+      'key1' => array('sid', 'type'),
+    ),
+  );
+  $schema['spaces_presets'] = array(
+    'description' => t('spaces presets.'),
+    'fields' => array(
+      'type' => array(
+        'description' => t('The space type for which this preset applies.'),
+        'type' => 'varchar',
+        'length' => '64',
+        'not null' => TRUE,
+      ),
+      'id' => array(
+        'description' => t('The preset string identifier.'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'name' => array(
+        'description' => t('The human-readable name for this preset.'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'description' => array(
+        'description' => t('The description for this preset.'),
+        'type' => 'text',
+        'size' => 'big',
+      ),
+      'value' => array(
+        'description' => t('A serialized array that represents this preset\'s definition.'),
+        'type' => 'text',
+        'size' => 'big',
+      ),
+    ),
+    'unique keys' => array(
+      'key1' => array('type', 'id'),
+    ),
+  );
+  $schema['spaces_settings'] = array(
+    'description' => t('spaces settings.'),
+    'fields' => array(
+      'sid' => array(
+        'description' => t('The space id.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'type' => array(
+        'description' => t('The space type.'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'id' => array(
+        'description' => t('The spaces setting identifer.'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'value' => array(
+        'description' => t('A serialized array that represents this setting\'s custom value(s).'),
+        'type' => 'text',
+        'size' => 'big',
+      ),
+    ),
+    'unique keys' => array(
+      'key1' => array('type', 'sid', 'id'),
+    ),
+  );
+  $schema['spaces_features'] = array(
+    'description' => t('spaces features.'),
+    'fields' => array(
+      'sid' => array(
+        'description' => t('The space id.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'type' => array(
+        'description' => t('The space type.'),
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'id' => array(
+        'description' => t('The spaces feature identifer.'),
+        'type' => 'text',
+        'size' => 'big',
+      ),
+      'value' => array(
+        'description' => t('A serialized array that represents this feature\'s custom value(s).'),
+        'type' => 'text',
+        'size' => 'big',
+      ),
+      'weight' => array(
+        'description' => t('A weight value for this feature.'),
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => FALSE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'type' => array('type', 'sid'),
+    ),
+  );
+  return $schema;
+}
+
+/**
+ * Update script 6001.
+ */
+function spaces_update_6001() {
+  $ret = array();
+
+  // Lose some weight, spaces!
+  db_query("UPDATE {system} SET weight = -1 WHERE name = 'spaces' AND type ='module'");
+
+  // Schema -- add weight column to features table
+  $schema = spaces_schema();
+  db_add_field($ret, 'spaces_features', 'weight', $schema['spaces_features']['fields']['weight']);
+
+  return $ret;
+}
+
+/**
+ * Update script 6002.
+ */
+function spaces_update_6002() {
+  // Install modules that constitute "sideways" migrations
+  $modules = array('purl', 'features');
+  foreach ($modules as $module) {
+    if (!module_exists($module)) {
+      drupal_install_modules(array($module));
+    }
+  }
+  return array();
+}
+
+/**
+ * Update script 6003.
+ */
+function spaces_update_6003() {
+  $ret = array();
+  $ret[] = update_sql("ALTER TABLE spaces MODIFY sid int(10) NOT NULL");
+  $ret[] = update_sql("ALTER TABLE spaces_settings MODIFY sid int(10) NOT NULL");
+  $ret[] = update_sql("ALTER TABLE spaces_features MODIFY sid int(10) NOT NULL");
+  return $ret;
+}

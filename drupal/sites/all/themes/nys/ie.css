@@ -1,0 +1,481 @@
+/* $Id: ie.css,v 1.1 2008/02/15 16:22:09 johnalbin Exp $ */
+
+/*
+ * IE CSS
+ *
+ * CSS targeted specifically for Internet Explorer for Windows.
+ *
+ * Properties starting with an underscore _ are for IE 5 and 6 only.
+ * Properties starting with head:first-child+body are for IE7 only.
+ * Properties with a child selector (>) or sibling selector (+) are for IE7 only.
+ *
+ */
+
+/*
+ * Layout CSS
+ */
+
+/** body **/
+  body
+  {
+    _text-align: center; /* 1st part of IE5/IE6quirks centering hack */
+  }
+
+  #page
+  {
+    _text-align: left; /* 2nd part of IE5/IE6quirks centering hack */
+  }
+
+  #header {
+	position: static;
+	z-index: 9999;
+	width: 900px;
+
+  #header #home-link {
+  right: 0;
+  }
+
+}
+
+#search-box /* Wrapper for the search form */
+{
+  float: right;
+}
+
+#primary ul.nice-menu ul {
+	padding: 8px 16px 16px 16px;
+}
+
+#navbar {
+  _margin-top: 2px;
+}
+
+#senator_header {
+  _padding-top: 11px;
+  _padding-left: 10px;
+}
+
+#navbar ul li a {
+  margin-right: 5px;
+}
+
+#main {
+  z-index: 0;
+  position: static;
+}
+
+#navbar ul.nice-menu {
+  margin-left: 3px;
+}
+
+#navbar ul li {
+  position: relative;
+  margin-left: -5px;
+}
+
+.block h2.title {
+  zoom:1;
+}
+
+iframe {
+  border: 0px;
+}
+
+iframe#lightboxFrame {
+	border: 1px solid #fff;
+}
+
+.sidebar-left #content {
+  _width: 580px;
+  _margin-left: 310px;
+}
+
+/** scrollbars and bad line-wraps in iframe on senator search pages **/
+
+.page-senator iframe {
+  _width: 560px;
+}
+
+
+/** main (container for everything else) **/
+  #main
+  {
+    _zoom: 1; /* Otherwise with a liquid layout, sidebars disappear when resizing the windows in IE6 */
+  }
+
+#main-inner {
+	position: relative;
+}
+
+#content-inner-inner {
+	_zoom: 1;
+}
+
+.front #main #content-inner-inner {
+	_z-index: -1;
+	_position: relative;
+}
+
+#block-nyss_blocks-front_carousel {
+	height: 344px;
+}
+
+#sidebar-left #block-nyss_blocks-global_nyss_senator_search form,
+#sidebar-left #block-nyss_blocks-nyss_senator_search form {
+	margin-left: 5px;
+	_margin-left:5px;
+}
+
+#sidebar-left #block-nyss_blocks-nyss_senator_search form * {
+	_position: relative;
+}
+
+#sidebar-left #block-nyss_blocks-global_nyss_senator_search #edit-zip-wrapper,
+#sidebar-left #block-nyss_blocks-nyss_senator_search #edit-zip-wrapper {
+	margin-right: 5px;
+	_margin-right:0;
+	_width:80px
+}
+
+.jcarousel-skin-tango .jcarousel-item .views-field-title,
+.view-flag-feature-on-front-carousel .views-field-title,
+.view-senator-carousel .views-field-title {
+	bottom: 21px;
+}
+
+
+/** floating divs **/
+  #content,
+  #navbar,
+  #sidebar-left,
+  #sidebar-right
+  {
+    _display: inline; /* display inline or double your floated margin! [1] */
+    _overflow: hidden; /* in ie6, overflow auto is broken [2] and so is overflow visible [3] */
+    _overflow-y: visible;
+  }
+
+  #content {
+    margin-left: -5px;
+  }
+
+.front #content-inner {
+	  top: 0px;
+}
+
+/*
+ * Tabs CSS - IE 5 and 6 don't support PNGs with alpha transparency.
+ */
+
+  ul.primary li a,
+  ul.primary li a .tab,
+  ul.secondary li a,
+  ul.secondary li a .tab
+  {
+    _display: inline; /* Otherwise the blocks mistakenly get 100% width in IE5 */
+    _di\splay: inline-block; /* Otherwise the blocks mistakenly get 100% width in IE6 */
+  }
+
+  ul.primary,
+  ul.secondary
+  {
+    _width: 100%; /* Otherwise IE5 treats the ul as floated */
+    _w\idth: auto; /* Reset to auto width for IE6 */
+  }
+
+  ul.primary li a
+  {
+    _background: url(images/tab-left-ie6.png) no-repeat left -38px;
+  }
+
+  ul.primary li a .tab
+  {
+    _background: url(images/tab-right-ie6.png) no-repeat right -38px;
+  }
+
+  ul.primary li a:hover
+  {
+    _background: url(images/tab-left-ie6.png) no-repeat left -76px;
+  }
+
+  ul.primary li a:hover .tab
+  {
+    _background: url(images/tab-right-ie6.png) no-repeat right -76px;
+  }
+
+  ul.primary li.active a,
+  ul.primary li.active a:hover
+  {
+    _background: url(images/tab-left-ie6.png) no-repeat left 0;
+  }
+
+  ul.primary li.active a .tab,
+  ul.primary li.active a:hover .tab
+  {
+    _background: url(images/tab-right-ie6.png) no-repeat right 0;
+  }
+
+/** Drupal nodes **/
+  .node-unpublished .node-inner>*
+  {
+    position: relative; /* Otherwise these elements will appear below the "Unpublished" text. */
+  }
+
+/** Drupal admin tables **/
+  .section-admin #content tr.even th,
+  .section-admin #content tr.even td,
+  .section-admin #content tr.odd th,
+  .section-admin #content tr.odd td
+  {
+    border-bottom: 1px solid #ccc; /* IE doesn't display borders on table rows */
+  }
+
+.fieldset-wrapper {
+	zoom:1
+}
+
+/*
+ * REFERECES
+ *
+
+1. http://www.positioniseverything.net/explorer/doubled-margin.html
+2. http://browservulsel.blogspot.com/2005/04/ie-overflow-auto-scrollbar-overlap.html
+3. http://www.howtocreate.co.uk/wrongWithIE/?chapter=overflow%3Avisible%3B
+
+ *
+ */
+
+
+/** IE 6 Login nav bar theming **/
+
+#user-bar {
+  _color: #DFEEF4;
+  _text-transform: uppercase;
+  _font-family: helvetica, arial, sans-serif;
+  _font-weight: bold;
+  _font-size: .9em;
+}
+
+#user-bar a {
+  _color: #C6B44A;
+  _font-weight: bold;
+}
+
+#user-bar a:hover {
+  _color: #DFEEF4;
+  _font-weight: bold;
+}
+
+#user-bar a:visited {
+  _font-weight: bold;
+}
+
+#user-bar div.login a {
+  _background-image: none;
+  _height: 15px;
+  _padding: 0;
+  _overflow: visible;
+}
+
+#user-bar div.or {
+  _background-image: none;
+  _height: 15px;
+  _padding: 0 0 0 5px;
+  _overflow: visible;
+}
+
+#user-bar div.register a {
+  _background-image: none;
+  _height: 15px;
+  _padding: 0;
+  _overflow: visible;
+}
+
+#user-bar div.myaccount a {
+  _background-image: none;
+  _height: 15px;
+  _padding: 0;
+  _overflow: visible;
+}
+
+#user-bar div.logout a {
+  _background-image: none;
+  _height: 15px;
+  _padding: 0;
+  _overflow: visible;
+}
+
+#user-bar div.login a span,
+#user-bar div.register a span,
+#user-bar div.myaccount a span,
+#user-bar div.logout a span {
+  display: none;
+  _display: inline;
+}
+
+#logo /* Wrapper for logo */
+{
+  _background: transparent url(images/nyss_seal.png) no-repeat top left;
+  _height: 63px;
+  _padding-left: 60px;
+  _margin: 0 10px;
+  _text-indent: 0px;
+  _text-transform: uppercase;
+  _color: white;
+  _font-size: 2.5em;
+  _letter-spacing: 1px;
+  _line-height: .8em;
+}
+
+#logo .state_senate {
+  _font-size: .75em;
+  _color: #C6B44A;
+}
+
+.front #content-bottom .link_live_feed {
+  _margin-top: 0px;
+}
+
+#sidebar-left #block-nyss_blocks-nyss_signup #edit-zip-1-wrapper {
+  _margin-right: 3px;
+}
+
+#sidebar-left #block-nyss_blocks-nyss_signup #edit-mobile-wrapper {
+  _margin-right: 3px;
+}
+
+#sidebar-left #block-nyss_blocks-committees .form-item,
+#sidebar-left #block-nyss_blocks-issues .form-item {
+   margin-top: 0;
+}
+
+#content-bottom {
+	position: relative;
+	z-index: 1;
+}
+
+#block-nyss_blocks-most_popular {
+	position: relative;
+	height: 300px ;
+}
+
+div.ui-tabs ul.ui-tabs-nav li a {
+	_position: relative;
+	_top: 4px;
+}
+
+div.ui-tabs ul.ui-tabs-nav li.ui-tabs-selected a {
+	_position: relative;
+	_top: 3px;
+}
+
+.front #sidebar-left #block-nyss_blocks-social_buttons #social_buttons {
+  margin: 7px auto 0;
+}
+
+.front #content-bottom #block-views-5880aedbb982c2793ab700505b2bb051 .views-field-title {
+  margin-top: 20px;
+  margin-left: 20px;
+}
+
+.front #content-bottom #block-views-5880aedbb982c2793ab700505b2bb051 .views-field-teaser {
+  margin-left: 20px;
+}
+
+.front #content-bottom #block-views-5880aedbb982c2793ab700505b2bb051 .share_links {
+  margin-left: 20px;
+}
+
+.front #content-bottom #block-views-5880aedbb982c2793ab700505b2bb051 .link_live_feed {
+  margin-left: 0px;
+  float: left;
+  clear: none;
+}
+.front #content-bottom #block-views-5880aedbb982c2793ab700505b2bb051 .session_info {
+  float: right;
+  clear: right;
+  width: 270px;
+  margin-left: 20px;
+}
+
+
+/** MAPS **/
+
+.page-districts-map #content,
+.page-districts-map-new_york #content,
+.page-districts-map-long_island #content {
+  _width: 880px;
+  _margin-left: 10px;
+}
+
+
+/** BLOG **/
+
+.page-blog h4.section_header {
+  _position: relative;
+  _top: 10px;
+}
+
+
+/** LIGHTBOX **/
+
+#framePrevLink, #frameNextLink {
+	_position: absolute;
+}
+
+#frameNextLink {
+    _right: -10px;
+	_float: right;
+}
+
+#nyss-opendata-search-form {
+  margin-top: 0;
+}
+#opendata-results th#od-csv, #opendata-results th#od-txt, #opendata-results th#od-pdf, #opendata-results th#od-xls, #opendata-results th#od-doc {
+  width: 28px;
+}
+
+
+/** FOOTER **/
+#sitemap-footer {
+  margin: 1em 1em 0;
+  background-color: #FFF;
+  float: left;
+}
+#sitemap-footer h2.title {
+  margin: 1em 0 5px 13px;
+  font-weight: bold;
+}
+#sitemap-footer ul.menu {
+  margin: 0 0 1.5em 0;
+}
+#sitemap-footer ul.menu li.expanded {
+  float: left;
+  font-size: 12px;
+  max-width: 110px;
+  padding-right: 0.5em;
+}
+#sitemap-footer ul, #sitemap-footer li.leaf, #sitemap-footer li.expanded {
+  list-style: none;
+  list-style-image: none;
+  text-indent: 0;
+  margin-left: 0;
+}
+#views-exposed-form-livestream-calendar-calendar-1 select,
+#views-exposed-form-global-calendar-calendar-1 select {
+  width: auto;
+}
+
+#views-exposed-form-livestream-calendar-calendar-1 #edit-committee-wrapper select,
+#views-exposed-form-global-calendar-calendar-1 #edit-committee-wrapper select {
+  width: 400px;
+}
+
+#views-exposed-form-gallery-page-1 select {
+  width: auto;
+}
+#views-exposed-form-gallery-page-1 input.form-text {
+  width: 220px;
+}
+
+Ω

@@ -1,0 +1,65 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Filters user-inputted content to only allow creation of HTML forms that link to approved
+ * external domains
+ *
+ * Future development could enable whitelisting other user-inputted content in addition to
+ * HTML forms, such as hyperlinks or images.
+ */
+
+/**
+ * Implementation of hook_filter().
+ */
+function whitelist_filter($op, $delta = 0, $format = -1, $text = '') {
+  switch ($op) {
+    case 'list':
+      return array(0 => t('Whitelist filter'));
+
+    case 'description':
+      return t('Whitelist approved external domains for which HTML forms can be created.'); 
+
+    case 'process':
+      $preg = '|(<form\s+[^>]*action\s*=\s*["\']?)(https?://)([^/]*)([^"\'>]*)(["\']?[^>]*>)|i';
+      $domains = explode("\n", variable_get('whitelist_form_domains_$format', ''));
+      if (preg_match_all($preg, $text, $match)) {
+        $index = 0;
+        foreach($match[0] as $pattern_matched) {
+          if (_whitelist_matches_end($domains, $match[3][$index])) {
+          }
+          else {
+            $text = str_replace($pattern_matched, $match[1][$index] . $match[5][$index], $text);
+          }
+          $index++;
+        }
+      }
+      return $text; 
+    case 'settings':
+      $form['whitelist'] = array('#type' => 'fieldset', '#title' => t('Whitelist settings'), '#collapsible' => TRUE, '#collapsed' => FALSE);
+      $description = t("Enter one domain per line for each external domain whose external forms are allowed. Examples: google.com would allow the entire google.com domain, while calendar.google.com would only allow that subdomain.");
+      $form['whitelist']['whitelist_form_domains_$format'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Allowed domains'),
+        '#default_value' => variable_get('whitelist_form_domains_$format', ''),
+        '#description' => $description,
+      );
+      return $form;
+    default:
+      return $text;
+  }
+}
+
+function _whitelist_matches_end($domains, $string) {
+  foreach($domains as $pattern) {
+    $pattern = trim($pattern);
+    $string = trim($string);
+    $pattern_length = strlen($pattern);
+    $diff = strlen($string) - strlen($pattern);
+    if ($pattern_length > 0 && $diff >= 0 && strtolower(substr($string, $diff)) == strtolower($pattern)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}

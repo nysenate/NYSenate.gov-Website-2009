@@ -1,0 +1,382 @@
+# $Id: modules-iframe.ja.pot,v 1.7 2010/11/10 00:23:46 neffets Exp $
+#
+# Japanese translation of Drupal (iframe)
+# Copyright 2008 0829 <hixarg+0829@gmail.com>
+# Generated from files:
+#  iframe.info,v 1.2 2008/03/31 06:50:42 quicksketch Exp
+#  iframe.module,v 1.24.2.10 2008/04/20 19:38:36 quicksketch Exp
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Drupal 6.x\n"
+"POT-Creation-Date: 2010-11-10 01:22+0100\n"
+"PO-Revision-Date: 2008-05-01 16:49+0900\n"
+"Last-Translator: 0829 <hixarg+0829@gmail.com>\n"
+"Language-Team: DRUPAL*DRUPAL <hixarg+0829@gmail.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+#: iframe.module:34 iframe.info:0
+msgid "IFrame"
+msgstr ""
+
+#: iframe.module:35
+#, fuzzy
+msgid ""
+"Store a title, src, and attributes in the database to assemble an iframe."
+msgstr ""
+"リンクを作成するために title, href およびその他の属性をデータベースに保存しま"
+"す。"
+
+#: iframe.module:54
+#, fuzzy
+msgid "Optional url"
+msgstr "タイトルオプション"
+
+#: iframe.module:57
+#, fuzzy
+msgid ""
+"If checked, the url field is optional. If the url is ommitted, nothing will "
+"be displayed."
+msgstr ""
+"有効にした場合、URL フィールドはオプションとなり、タイトルのみを設定すること"
+"が可能になります。 URL が省略された場合タイトルはプレーンテキストとして表示さ"
+"れます。"
+
+#: iframe.module:61
+msgid "Optional Title"
+msgstr "タイトルオプション"
+
+#: iframe.module:62
+msgid "Required Title"
+msgstr "タイトル必須"
+
+#: iframe.module:63
+msgid "Static Title: "
+msgstr "タイトル固定"
+
+#: iframe.module:64
+msgid "No Title"
+msgstr "タイトルなし"
+
+#: iframe.module:69
+#, fuzzy
+msgid "IFrame Title"
+msgstr "タイトル必須"
+
+#: iframe.module:72
+#, fuzzy
+msgid ""
+"If the iframe title is optional or required, a field will be displayed to "
+"the end user. If the iframe title is static, the iframe will always use the "
+"same title. If <a href=\"http://drupal.org/project/token\">token module</a> "
+"is installed, the static title value may use any other node field as its "
+"value. Static and token-based titles may include most inline XHTML tags such "
+"as <em>strong</em>, <em>em</em>, <em>img</em>, <em>span</em>, etc."
+msgstr ""
+"リンクタイトルにオプションまたは必須を選択した場合、コンテンツ編集時にリンク"
+"タイトルの入力フィールドが表示されます。 固定を選択した場合、常に同じタイトル"
+"が使用されます。 <a href=\"http://drupal.org/project/token\">Token モジュール"
+"</a>がインストールされていれば固定タイトルに他のフィールドの内容を利用するこ"
+"とができます。"
+
+#: iframe.module:87
+msgid "Placeholder tokens"
+msgstr "プレースホルダートークン"
+
+#: iframe.module:88
+msgid ""
+"The following placeholder tokens can be used in both paths and titles. When "
+"used in a path or title, they will be replaced with the appropriate values."
+msgstr ""
+"タイトルと URL の両方で、以下のトークン構文が使用できます。 使用されたトーク"
+"ン構文は適切な値に置換されます。"
+
+#: iframe.module:96
+#, fuzzy
+msgid "Allow user-entered tokens"
+msgstr "トークンの許可"
+
+#: iframe.module:98
+msgid ""
+"Checking will allow users to enter tokens in URLs and Titles on the node "
+"edit form. This does not affect the field settings on this page."
+msgstr ""
+"有効にした場合、コンテンツの編集時にトークンを利用したタイトルや URL を設定で"
+"きるようになります。 このページのフィールド設定には影響を及ぼしません。"
+
+#: iframe.module:111
+msgid "Additional CSS Class"
+msgstr "CSS クラスの追加"
+
+#: iframe.module:112
+#, fuzzy
+msgid ""
+"When output, this iframe will have this class attribute. Multiple classes "
+"should be separated by spaces."
+msgstr ""
+"出力時にリンクに class 属性を持たせることができます。 複数のクラスを追加した"
+"い場合はスペースで区切って入力してください。"
+
+#: iframe.module:117
+msgid "width of the iframe"
+msgstr ""
+
+#: iframe.module:118;126
+msgid "iframes need fix width and height, only numbers are allowed."
+msgstr ""
+
+#: iframe.module:125
+msgid "height of the iframe"
+msgstr ""
+
+#: iframe.module:133;565
+msgid "Frameborder"
+msgstr ""
+
+#: iframe.module:134;566
+msgid "no frameborder"
+msgstr ""
+
+#: iframe.module:134;566
+msgid "show frameborder"
+msgstr ""
+
+#: iframe.module:136
+msgid ""
+"Frameborder is the border arround the iframe. Mostly people want it silent, "
+"so the default value for frameborder is 0 = no."
+msgstr ""
+
+#: iframe.module:140;573
+msgid "Scrolling"
+msgstr ""
+
+#: iframe.module:141;574
+msgid "Scrolling automatic"
+msgstr ""
+
+#: iframe.module:141;574
+msgid "Scrolling disabled"
+msgstr ""
+
+#: iframe.module:141;574
+msgid "Scrolling enabled"
+msgstr ""
+
+#: iframe.module:143;575
+msgid ""
+"Scrollbars help the user to reach all iframe content despite the real height "
+"of the iframe content. Please disable it only if You know what You are doing."
+msgstr ""
+
+#: iframe.module:147;581
+msgid "Transparency"
+msgstr ""
+
+#: iframe.module:148;582
+msgid "no transparency"
+msgstr ""
+
+#: iframe.module:148;582
+msgid "allow transparency"
+msgstr ""
+
+#: iframe.module:150;583
+msgid ""
+"Allow transparency per CSS in the outer iframe tag. You have to set "
+"background-color:transparent in Your IFrame too for the body tag!"
+msgstr ""
+
+#: iframe.module:156
+msgid "A default title must be provided if the title is a static value"
+msgstr "固定タイトルを使用する場合、デフォルトタイトルの設定が必要です。"
+
+#: iframe.module:159;162
+msgid "A default width and height must be provided."
+msgstr ""
+
+#: iframe.module:223
+msgid "At least one title or URL must be entered."
+msgstr "少なくとも1つのタイトルまたは URL を入力する必要があります。"
+
+#: iframe.module:307
+#, fuzzy
+msgid "Not a valid iframe-url."
+msgstr "有効な URL ではありません。"
+
+#: iframe.module:311
+#, fuzzy
+msgid "Titles are required for all iframes."
+msgstr "すべてのリンクにタイトルを設定する必要があります。"
+
+#: iframe.module:316
+#, fuzzy
+msgid "You cannot enter a title without a iframe url."
+msgstr ""
+"リンク URL が設定されていないため、タイトルを入力することはできません。"
+
+#: iframe.module:487
+msgid "Width and Height of the IFrame"
+msgstr ""
+
+#: iframe.module:533
+msgid "URL"
+msgstr "URL"
+
+#: iframe.module:542
+msgid "Title"
+msgstr "タイトル"
+
+#: iframe.module:551
+msgid "Width"
+msgstr ""
+
+#: iframe.module:559
+msgid "Height"
+msgstr ""
+
+#: iframe.module:567
+msgid ""
+"Frameborder is the border arround the iframe. Mostly people want it silent, "
+"so the default value for frameborder is 0."
+msgstr ""
+
+#: iframe.module:597
+msgid "Title, over iframe (default)"
+msgstr ""
+
+#: iframe.module:602
+msgid "IFrame without title"
+msgstr ""
+
+#: iframe.module:607
+#, fuzzy
+msgid "A link with the given title"
+msgstr "ラベル（ラベルにリンクを設定）"
+
+#: iframe.module:612
+msgid "A link with the iframe uri"
+msgstr ""
+
+#: iframe.module:678
+msgid "iframe URL"
+msgstr ""
+
+#: iframe.module:679
+#, fuzzy
+msgid "iframe title"
+msgstr "タイトル必須"
+
+#: iframe.module:680
+msgid "Formatted html iframe"
+msgstr ""
+
+#: iframe.module:854
+msgid ""
+"Your browser does not support iframes. But You can use the following link."
+msgstr ""
+
+#: iframe.module:0
+msgid "iframe"
+msgstr ""
+
+#: iframe.install:30;50
+msgid "Required module \"content\" (cck) not found!"
+msgstr ""
+
+#: (duplicate) iframe.install:17
+msgid "CCK needed"
+msgstr ""
+
+#: (duplicate) iframe.install:18
+msgid "CCK module \"content\" required."
+msgstr ""
+
+#: iframe.info:0
+#, fuzzy
+msgid "Defines simple iframe field types as CCK submodule."
+msgstr "シンプルなリンク用のフィールドタイプを定義します。"
+
+#: iframe.info:0
+msgid "CCK"
+msgstr "CCK"
+
+#, fuzzy
+#~ msgid "@label protocol"
+#~ msgstr "プロトコル"
+
+#~ msgid "Protocol"
+#~ msgstr "プロトコル"
+
+#~ msgid "Default (no target attribute)"
+#~ msgstr "デフォルト（target 属性を使用しない）"
+
+#, fuzzy
+#~ msgid "Open search in window root"
+#~ msgstr "ルートウィンドウに表示（_top）"
+
+#, fuzzy
+#~ msgid "Open search in new window"
+#~ msgstr "新しいウィンドウに表示（_blank）"
+
+#~ msgid "Allow the user to choose"
+#~ msgstr "ユーザによる選択を許可"
+
+#~ msgid "Open URL in a New Window"
+#~ msgstr "新しいウィンドウで開く"
+
+#~ msgid "Link"
+#~ msgstr "リンク"
+
+#~ msgid "Optional URL"
+#~ msgstr "URL オプション"
+
+#~ msgid "Link Title"
+#~ msgstr "リンクタイトル"
+
+#~ msgid "URL Display Cutoff"
+#~ msgstr "URL 表示の省略"
+
+#~ msgid ""
+#~ "If the user does not include a title for this link, the URL will be used "
+#~ "as the title. When should the link title be trimmed and finished with an "
+#~ "elipsis (&hellip;)? Leave blank for no limit."
+#~ msgstr ""
+#~ "リンクタイトルが設定されていない場合、URL がタイトルとして使用されます。 "
+#~ "タイトルに使用された URL の末尾を省略し（&hellip;）に置き換える場合はその"
+#~ "位置を設定します。 制限しない場合は空欄にしてください。"
+
+#~ msgid "Link Target"
+#~ msgstr "リンクターゲット"
+
+#~ msgid "Rel Attribute"
+#~ msgstr "Rel 属性"
+
+#~ msgid ""
+#~ "When output, this link will have this rel attribute. The most common "
+#~ "usage is <a href=\"http://en.wikipedia.org/wiki/Nofollow\">rel=&quot;"
+#~ "nofollow&quot;</a> which prevents some search engines from spidering "
+#~ "entered links."
+#~ msgstr ""
+#~ "出力時に rel 属性を持たせることができます。 最も一般的な使用例として、いく"
+#~ "つかのサーチエンジンに対してリンクを集計の対象に含めないようにするための "
+#~ "<a href=\"http://en.wikipedia.org/wiki/Nofollow\">rel=&quot;nofollow&quot;"
+#~ "</a> があります。"
+
+#~ msgid "Link URL"
+#~ msgstr "リンク URL"
+
+#~ msgid "Default, as link with title"
+#~ msgstr "デフォルト（タイトルにリンクを設定）"
+
+#~ msgid "Plain, as the text URL"
+#~ msgstr "プレーン（URL をテキスト表示）"
+
+#~ msgid "Short, as link with title \"Link\""
+#~ msgstr "ショート（\"リンク\" にリンクを設定）"
+
+#~ msgid "link"
+#~ msgstr "リンク"

@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Node
+description = Handles external table entries for all extra, important content-related data.
+package = NYSS
+core = 6.x
+dependencies[] = nyss_senator

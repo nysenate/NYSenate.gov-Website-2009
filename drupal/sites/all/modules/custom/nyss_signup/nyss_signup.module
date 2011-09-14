@@ -1,0 +1,527 @@
+<?php
+
+/**
+ *  @file
+ *  NYSS Signup
+ *
+ *  Integrate with Bronto and mCommons from mailing list and text message signups.
+ */
+
+include_once dirname(__FILE__) . '/nyss_signup_classes.inc';
+define('NYSS_SIGNUP_FIRST_ITEM', -1);
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_signup_menu() {
+  $items = array();
+  $items['admin/settings/nyss_signup'] = array(
+    'title' => 'NYSS Signup Settings',
+    'description' => 'Set up Bronto and mCommons settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_signup_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/nyss_signup.admin.inc',
+  );
+  $items['nyss_signup/confirm'] = array(
+    'title' => 'Sign Up Confirmation',
+    'page callback' => 'nyss_signup_confirm_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/nyss_signup.confirm.inc',
+  );
+  $items['nyss_signup/unsubscribe'] = array(
+    'title' => 'Unsubscribe from Mailing Lists',
+    'page callback' => 'nyss_signup_unsubscribe_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/nyss_signup.unsubscribe.inc',
+  );
+  return $items;
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_signup_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items['nyss_signup_block'] = array(
+      'arguments' => array('fields' => NULL),
+      'file' => "themes/nyss_signup.theme.inc",
+  );
+  return $items;
+}
+
+/**
+ *  Defines the FormAPI array for mailing list signup.
+ *
+ *  @return
+ *    FormAPI form array.
+ */
+function nyss_signup_block_form() {
+  $before_focus = t('Email');
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $before_focus,
+    '#size' => 15,
+    '#attributes' => array(
+      'onblur' => "if (this.value == '') {this.value = '" . $before_focus . "';}", 
+      'onfocus' => "if (this.value == '" . $before_focus . "') {this.value = '';}",
+    ),
+  );
+  $before_focus = t('Zip');
+  $form['zip'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $before_focus,
+    '#size' => 15,
+    '#attributes' => array(
+      'onblur' => "if (this.value == '') {this.value = '" . $before_focus . "';}", 
+      'onfocus' => "if (this.value == '" . $before_focus . "') {this.value = '';}",
+    ),
+  );
+  $before_focus = t('Mobile');
+  $form['mobile'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $before_focus,
+    '#size' => 15,
+    '#attributes' => array(
+      'onblur' => "if (this.value == '') {this.value = '" . $before_focus . "';}", 
+      'onfocus' => "if (this.value == '" . $before_focus . "') {this.value = '';}",
+    ),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+    '#attributes' => array('id' => "edit-submit-signup"),
+  );
+  return $form;
+}
+
+/**
+ * Implementation of hook_validate().
+ */
+function nyss_signup_block_form_validate(&$form, &$form_state) {
+  if (!$form_state['values']['email'] || !valid_email_address($form_state['values']['email'])) {
+    form_set_error('email', t('You have not entered a valid email address.'));  
+  }
+}
+
+/**
+ * Implementation of hook_submit().
+ */
+function nyss_signup_block_form_submit(&$form, &$form_state) {
+  // Get the list that the user is subscribing to, depending on context
+  $list = variable_get('bronto_general_list', '');
+  $sitename = variable_get('bronto_general_sitename', '');
+  
+  $senator = nyss_senator();
+  if ($senator->vid) {
+    $result = db_result(db_query("SELECT field_bronto_sitename_value AS sitename FROM {content_field_bronto_sitename} WHERE vid = %d", $senator->vid));
+    if ($result) {
+      $list = nyss_signup_get_list_name_from_nid($senator->nid);
+      $sitename = $result;
+    }
+  }
+  $committee = context_get('nyss', 'committee');
+  if ($committee->nid) {
+    $result = db_result(db_query("SELECT field_bronto_sitename_value AS sitename FROM {content_field_bronto_sitename} WHERE vid = %d", $committee->vid));
+    if ($result) {
+      $list = nyss_signup_get_list_name_from_nid($committee->nid);
+      $sitename = $result;
+    }
+  }
+
+  if (isset($_SESSION['bronto_mobile'])) {
+    unset($_SESSION['bronto_mobile']);
+  }
+  if ($form_state['values']['mobile'] != t('Mobile')) {
+    $fields['mobile'] = $form_state['values']['mobile'];
+    $_SESSION['bronto_mobile'] = $form_state['values']['mobile'];
+  }
+  
+  if (isset($_SESSION['bronto_zip'])) {
+    unset($_SESSION['bronto_zip']);
+  }
+  if ($form_state['values']['zip'] != t('Zip')) {
+    $fields['zip'] = $form_state['values']['zip'];
+    $_SESSION['bronto_zip'] = $form_state['values']['zip'];
+  }
+
+  $_SESSION['bronto_email'] = $form_state['values']['email'];
+  $_SESSION['bronto_list'] = $list;
+  $_SESSION['bronto_sitename'] = $sitename;
+  $_SESSION['bronto_redirect'] = $_GET['q'];
+  
+  unset($_SESSION['bronto_issues_nid']);
+  if ($senator) {
+    $_SESSION['bronto_issues_nid'] = $senator->nid;
+  }
+  elseif ($committee) {
+    $_SESSION['bronto_issues_nid'] = $committee->nid;  
+  }
+  
+  $form_state['redirect'] = 'nyss_signup/confirm';
+}
+
+/*
+ * The default body text of the subscribe confirmation email.
+ */
+function nyss_signup_confirm_body_default() {
+  return "You have successfully subscribed to the following !site mailing lists:\n\n!lists\n\nIf this has been in error, you can unsubscribe here:\n\n!unsubscribe_link\n\nThanks,\nThe !site Team";
+}
+
+/*
+ * The default body text of the subscribe confirmation email.
+ */
+function nyss_signup_unsubscribe_body_default() {
+  return "You have successfully unsubscribed from the following !site mailing lists:\n\n!lists\n\nIf this has been in error, you can visit !site_link to resubscribe to site updates.\n\nThanks,\nThe !site Team";
+}
+
+/**
+* Implements hook_mail
+*/
+function nyss_signup_mail($key, &$message, $params) {
+  $message['subject'] = $params['subject'];
+  $message['body'][] = $params['body'];
+}
+
+/**
+ * Returns an array of agency accounts.
+ *
+ * After this runs the first time, accounts will be stored in a Drupal variable.
+ *
+ * @return
+ *   An array of accounts with the sitename as key and the siteid as value.
+ */
+function nyss_signup_accounts() {
+  $accounts = variable_get('nyss_signup_accounts', FALSE);
+  if (!$accounts) {
+    $accounts = _nyss_signup_accounts();
+    variable_set('nyss_signup_accounts', $accounts);
+  }
+  return $accounts;
+}
+
+/**
+ * Helper function to nyss_signup_accounts().
+ */
+function _nyss_signup_accounts() {
+  $accounts = array();
+  
+  require_once(drupal_get_path('module', 'nyss_signup') . '/includes/bronto_api.inc');
+  $bronto = new bronto_api(variable_get('bronto_login', ''), variable_get('bronto_sitename', ''), variable_get('bronto_password', ''));
+
+  $response = $bronto->get_accounts();
+  if (!$response) {
+    drupal_set_message('Error: ' . $bronto->get_error_code() . "<br/>" . $bronto->get_error_message(), 'error');
+  }
+  foreach ($response as $account) {
+    $accounts[$account->name] = $account->id;
+  }
+  unset($bronto);
+  return $accounts;
+}
+
+/**
+ * Returns the Bronto list name based on a node's path alias.  If the alias is first-m-last the 
+ * list name will be First-M-Last-Signups.
+ *
+ * @param $nid
+ *   The nid of the node whose list we want the list name for.
+ * @return
+ *   The list name based on the path alias.
+ */
+function nyss_signup_get_list_name_from_nid($nid) {
+  $node = node_load($nid);
+  return $node->field_bronto_mailing_list[0]['value'];
+}
+
+/**
+ * Returns a senator or committee's node ID based on its Bronto mailing list.
+ *
+ * @param $mailing_list
+ *   The mailing list (CCK field_bronto_mailing_list).
+ * @return
+ *   The nid.
+ */
+function nyss_signup_get_nid_from_mailing_list($mailing_list) {
+  $sql = "SELECT DISTINCT(node.nid) AS nid,
+    node_data_field_date.field_date_value AS node_data_field_date_field_date_value
+    FROM {node} node 
+    LEFT JOIN {content_field_bronto_mailing_list} node_data_field_bronto_mailing_list ON node.vid = node_data_field_bronto_mailing_list.vid
+    LEFT JOIN {content_field_date} node_data_field_date ON node.vid = node_data_field_date.vid
+    WHERE node_data_field_bronto_mailing_list.field_bronto_mailing_list_value = '%s'";
+  $nid = db_result(db_query($sql, $mailing_list));
+  return $nid;
+}
+
+/**
+ * Returns the Bronto list name based on a node's path alias.  If the alias is first-m-last the 
+ * list name will be First-M-Last-Signups.
+ *
+ * @param $nid
+ *   The nid of the node whose list we want the list name for.
+ * @return
+ *   The list name based on the path alias.
+ */
+function nyss_signup_calculate_list_name_from_nid($nid) {
+  $list_name = '';
+  $alias = drupal_get_path_alias('node/' . $nid);
+  $split = split('-', array_pop(split('/', $alias)));
+  foreach ($split as $key => $elem) {
+    $split[$key] = ucfirst($elem);
+  }
+  
+  $type = db_result(db_query("SELECT type FROM {node} WHERE nid = %d", $nid));
+  if ($type == 'committee') {
+    $list_name = implode('-', $split) . '-Committee-Signups';
+  }
+  else {
+    $list_name = implode('-', $split) . '-Signups';
+  }
+  
+  return $list_name;
+}
+
+/**
+ * Adds a mailing list signup to the database.
+ *
+ * @param $list
+ *   The mailing list name.
+ * @param $siteID
+ *   The Bronto site ID.
+ * @param $email
+ *   The email address that is subscribing.
+ * @param $fields
+ *   An associative array of fields to be added for the subscriber: first name, last name, address, etc.
+ */
+function nyss_signup_add_to_db($list, $siteID, $email, $nid=0, $fields=NULL) {
+  if (!$fields) {
+    $fields = array(
+      'firstname' => '',
+      'lastname' => '',
+      'address1' => '',
+      'address2' => '',
+      'city' => '',
+      'state' => '',
+      'mobile' => '',
+      'zip' => '',
+      'issues' => '',
+    );
+  }
+  $fields['list'] = $list;
+  $fields['siteID'] = $siteID;
+  $fields['email'] = $email;
+  $fields['datetime'] = time();
+  $fields['nid'] = $nid;
+  drupal_write_record('nyss_signup', $fields);
+}
+
+/*
+* Implementation of hook_disable()
+* Perform necessary actions before module is disabled. (like clear the services:methods cache)
+*/
+function nyss_signup_disable() {
+  cache_clear_all('services:methods', 'cache');
+}
+/*
+* Implementation of hook_enable()
+* Perform necessary actions after module is enabled. (like clear the services:methods cache)
+*/
+function nyss_signup_enable() {
+  cache_clear_all('services:methods', 'cache');
+}
+
+/*
+* Implementation of hook_service()
+* Required by all server modules
+* Returns array defining all the methods available in the service
+*/
+function nyss_signup_service() {
+  return array(
+   
+    /**
+     * nyss_signup.get
+     * We define methods in hashed arrays
+     */
+    array(
+     
+      /**
+       * #method - defines the namespace and method name
+       * the namespace is everything before the last period, so you can do
+       * methods like 'nyss_signup.lunch.all' where 'nyss_signup.lunch' is the namespace,
+       * or service, and 'all' is the method
+       */
+      '#method' => 'nyss_signup.get',
+     
+      // #callback - the php function to map the method call to
+      '#callback' => 'nyss_signup_service_get',
+     
+      '#access callback'  => 'nyss_signup_service_get_access',
+      /**
+       * #args - a list of method arguments
+       * These may be in lazy form - array('string','array') with only an array
+       * of datatypes.
+       * Or, they may be in in the form of an array of hashed arrays like shown
+       * below:
+       */
+      '#args' => array(
+        array(
+          '#name'         => 'start_date',
+          '#type'         => 'int',
+          '#optional'       => TRUE,
+          '#description'  => t('An optional start date in timestamp format indicating the earliest date from which signups are requested.')),
+        array(
+          '#name'         => 'end_date',
+          '#type'         => 'int',
+          '#optional'       => TRUE,
+          '#description'  => t('An optional end date in timestamp format indicating the latest date for which signups are requested.')),
+          array(
+            '#name'         => 'start_sid',
+            '#type'         => 'int',
+            '#optional'       => TRUE,
+            '#description'  => t('An optional start signup ID number for the range from which results are desired.')),
+          array(
+            '#name'         => 'end_sid',
+            '#type'         => 'int',
+            '#optional'       => TRUE,
+            '#description'  => t('An optional last signup ID number for the range from which results are desired.')),
+          array(
+            '#name'         => 'limit',
+            '#type'         => 'int',
+            '#optional'       => TRUE,
+            '#description'  => t('The maximum number of responses to return (default 100). If a limit of "0" is specified, all responses will be returned.')),
+      ),
+      // #return - The return data type, may be used by certain server modules
+      '#return' => 'struct',
+     
+      // #help - Used in the service browser
+      '#help' => 'Returns a list of nyss_signups'
+    )
+   
+  );
+}
+
+/**
+ * Callback for "nyss_signup.get"
+ * We need to include the fields argument and set a default value because
+ * it is optional,
+ * We do not need to include an API key or SESSID field if these are enabled
+ * for Services.  These arguments are handled by Services transparently and
+ * stripped before we reach this callback.
+ *
+ * Additional parameters for the nyss_signup.get method:
+ * @param $start_date
+ *   Number. An optional start date of the date range for which results are desired.
+ * @param $end_date
+ *   Number. An optional end date of the date range for which results are desired.
+ * @param $start_sid
+ *   Number. An optional start submission ID number for the range from which results are desired.
+ * @param $end_sid
+ *   Number. An optional end submission ID number for the range from which results are desired.
+ * @param $limit
+ *   Number. The maximum number of responses to return (default 100). 
+ *   If a limit of "0" is specified, all responses will be returned. Warning: setting no limit could result in timeout or memory errors!
+ * @return
+ *    a SignupData object
+ */
+function nyss_signup_service_get($start_date=NULL, $end_date=NULL, $start_sid=NULL, $end_sid=NULL, $limit=100) {
+  $filters = array();
+  $where = array();
+  if ($start_date) {
+    $filters['start_date'] = $start_date;
+  }
+  if ($end_date) {
+    $filters['end_date'] = $end_date;
+  }
+  if ($start_sid) {
+    $filters['start_sid'] = $start_sid;
+  }
+  if ($end_sid) {
+    $filters['end_sid'] = $end_sid;
+  }
+  foreach ($filters as $column => $value) {
+    switch ($column) {
+      case 'start_date':
+        $where[] = "datetime >= '%d'";
+        break;
+      case 'end_date':
+        $where[] = "datetime <= '%d'";
+        break;
+      case 'start_sid':
+        $where[] = "sid >= '%d'";
+        break;
+      case 'end_sid':
+        $where[] = "sid <= '%d'";
+        break;
+    }
+  }
+  $query = 'SELECT * FROM {nyss_signup}' 
+    . ($where ? ' WHERE ' . implode(' AND ', $where) : '') 
+    . ($limit ? ' LIMIT ' . $limit : '');
+  $arguments = array_values($filters);
+  $results = db_query($query, $arguments);
+  $return = new SignupData;
+  $return->startingId = NYSS_SIGNUP_FIRST_ITEM;
+  $return->endingId = 0;
+  $accounts = array();
+  while ($signup = db_fetch_object($results)) {
+    if ($return->startingId == NYSS_SIGNUP_FIRST_ITEM) {
+      $return->startingId = $signup->sid;
+    }
+    else {
+      $return->startingId = min($return->startingId, $signup->sid);
+    }
+    $return->endingId = max($return->startingId, $signup->sid);
+    if ($signup->nid) {
+      $node = node_load($signup->nid);
+      $short_name = $node->field_short_name[0]['value'];
+    } else {
+      $short_name = 'nyss';
+    }
+    $list = new MailingList($signup->list);
+    if (!isset($accounts[$short_name])) {
+      $accounts[$short_name] = new Account($short_name);
+      $accounts[$short_name]->lists[] = $list;
+    }
+    $issues_raw = explode('|', $signup->issues);
+    $issues = array();
+    foreach ($issues_raw as $issue) {
+      if (trim($issue)) {
+        $issues[] = trim($issue);
+      }
+    }
+    $contact = new Contact( 
+      $signup->sid,
+      $signup->firstname, 
+      $signup->lastname, 
+      $signup->address1, 
+      $signup->address2, 
+      $signup->city, 
+      $signup->state, 
+      $signup->zip, 
+      $signup->mobile, 
+      $issues, 
+      $signup->email
+    );
+    $contact->lists[] = $list;
+    $accounts[$short_name]->contacts[] = $contact;
+  }
+  foreach ($accounts as $short_name => $account) {
+    $return->accounts[] = $account;
+  }
+  return $return;
+}
+
+/**
+ * Check if the user has the permission to get the
+ * node's data thru services.
+ *
+ * @return
+ *   Boolean. TRUE if the user has view access.
+ */
+function nyss_signup_service_get_access() {
+  return TRUE;
+}
+

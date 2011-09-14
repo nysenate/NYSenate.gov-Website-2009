@@ -1,0 +1,26 @@
+<?php
+
+/**
+* Implementation of hook_ctools_plugin_api().
+*/
+function nyss_homepage_ctools_plugin_api($module, $api) {
+  if ($module == 'page_manager' && $api == 'pages_default') {
+    return array('version' => 1); 
+  }
+}
+
+/**
+ * Implementation of hook_default_page_manager_pages().
+ */
+function nyss_homepage_default_page_manager_pages() {
+  $files = file_scan_directory(drupal_get_path('module', 'nyss_homepage'). '/pages', '.inc');
+  foreach ($files as $absolute => $file) {
+    require $absolute;
+    if (isset($page)) {
+      $pages[$file->name] = $page;
+    }   
+  }
+  return $pages;
+}
+
+

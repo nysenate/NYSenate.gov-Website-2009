@@ -1,0 +1,12 @@
+; $Id: chartbeat.info,v 1.1 2009/11/11 16:30:41 robloach Exp $
+name = Chartbeat
+description = Shows real-time traffic to your website using the third party Chartbeat service.
+package = Statistics
+core = 6.x
+
+; Information added by drupal.org packaging script on 2010-03-05
+version = "6.x-1.2"
+core = "6.x"
+project = "chartbeat"
+datestamp = "1267806904"
+

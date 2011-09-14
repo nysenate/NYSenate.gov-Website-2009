@@ -1,0 +1,383 @@
+# translation of modules-iframe.po to German
+# $Id: modules-iframe.de.pot,v 1.9 2010/11/10 00:23:46 neffets Exp $
+# LANGUAGE translation of Drupal (general)
+# Copyright 2008-2009 Schüssler <drupal@neffets.de>
+# Generated from files:
+#  iframe.module,v 1.14 2010/01/03 04:36:56 neffets
+#  iframe.info,v 1.3 2008/11/09 21:59:35 neffets
+#
+# Steffen Schüssler <drupal@neffets.de>, 2008.
+msgid ""
+msgstr ""
+"Project-Id-Version: modules-iframe\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2010-11-10 01:22+0100\n"
+"PO-Revision-Date: 2010-01-03 23:44+0100\n"
+"Last-Translator: Steffen Schüssler <drupal@neffets.de>\n"
+"Language-Team: German\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms:  nplurals=2; plural=(n != 1);\n"
+"X-Generator: KBabel 1.11.4\n"
+
+#: iframe.module:34 iframe.info:0
+msgid "IFrame"
+msgstr "IFrame"
+
+#: iframe.module:35
+msgid ""
+"Store a title, src, and attributes in the database to assemble an iframe."
+msgstr ""
+"Speichere einen Titel, eine Verweis-src und weitere Attribute in die "
+"Datenbank, um daraus ein IFrame zu basteln."
+
+#: iframe.module:54
+msgid "Optional url"
+msgstr "Verweis optional"
+
+#: iframe.module:57
+msgid ""
+"If checked, the url field is optional. If the url is ommitted, nothing will "
+"be displayed."
+msgstr ""
+"Wenn ausgewählt, dann ist das Verweis Feld optional, kann also weggelassen "
+"werden und Nichts wird angezeigt."
+
+#: iframe.module:61
+msgid "Optional Title"
+msgstr "Titel optional"
+
+#: iframe.module:62
+msgid "Required Title"
+msgstr "Titel notwendig"
+
+#: iframe.module:63
+msgid "Static Title: "
+msgstr "Statischer Titel: "
+
+#: iframe.module:64
+msgid "No Title"
+msgstr "Kein Titel"
+
+#: iframe.module:69
+msgid "IFrame Title"
+msgstr "IFrame Titel"
+
+#: iframe.module:72
+msgid ""
+"If the iframe title is optional or required, a field will be displayed to "
+"the end user. If the iframe title is static, the iframe will always use the "
+"same title. If <a href=\"http://drupal.org/project/token\">token module</a> "
+"is installed, the static title value may use any other node field as its "
+"value. Static and token-based titles may include most inline XHTML tags such "
+"as <em>strong</em>, <em>em</em>, <em>img</em>, <em>span</em>, etc."
+msgstr ""
+"Wenn der Titel optional oder notwendig ist, dann wird dem Benutzer ein "
+"Textfeld präsentiert. Wenn der Titel statisch (fix) ist, dann wird immer "
+"derselbe Titel verwendet. Wenn das·<a·href=\"http://drupal.org/project/token"
+"\">Token·Modul</a> installiert ist, kann der statische Titel jedes andere "
+"Node-Feld als Wert benutzen. Statische und Token-basierende Titel können "
+"auch viele XHTML tags enthalten, wie <em>strong</em>,·<em>em</em>,·<em>img</"
+"em>,·<em>span</em>,·usw."
+
+#: iframe.module:87
+msgid "Placeholder tokens"
+msgstr "Token-Platzhalter"
+
+#: iframe.module:88
+msgid ""
+"The following placeholder tokens can be used in both paths and titles. When "
+"used in a path or title, they will be replaced with the appropriate values."
+msgstr ""
+"Die folgenden Platzhalter können sowohl für den Pfad als auch den Titel "
+"verwendet werden. Sie werden dann automatisch mit den entsprechenden Werten "
+"befüllt."
+
+#: iframe.module:96
+msgid "Allow user-entered tokens"
+msgstr "Erlaube dem Benutzer Platzhalter"
+
+#: iframe.module:98
+msgid ""
+"Checking will allow users to enter tokens in URLs and Titles on the node "
+"edit form. This does not affect the field settings on this page."
+msgstr ""
+"Ausgewählt, hat der Benutzer die Möglichkeit für den Verweis und den Titel "
+"Platzhalter zu benutzen. Das betrifft aber nicht die Feldeinstellungen hier "
+"auf der Admin-Seite."
+
+#: iframe.module:111
+msgid "Additional CSS Class"
+msgstr "Zusätzliche CSS-Klassen"
+
+#: iframe.module:112
+msgid ""
+"When output, this iframe will have this class attribute. Multiple classes "
+"should be separated by spaces."
+msgstr ""
+"Bei der Ausgabe wird das IFrame die zusätzlichen CSS-Klassen haben. Mehrere "
+"Klassen sollten mit Leerzeichen getrennt sein."
+
+#: iframe.module:117
+msgid "width of the iframe"
+msgstr "Breite des IFrame"
+
+#: iframe.module:118;126
+msgid "iframes need fix width and height, only numbers are allowed."
+msgstr ""
+"IFrames brauchen eine feste definierte Breite und Höhe, nur Zahlen sind "
+"erlaubt oder ganzzahlige Prozentangaben."
+
+#: iframe.module:125
+msgid "height of the iframe"
+msgstr "Höhe des IFrame"
+
+#: iframe.module:133;565
+msgid "Frameborder"
+msgstr "Frameborder"
+
+#: iframe.module:134;566
+msgid "no frameborder"
+msgstr "keine Frameborder"
+
+#: iframe.module:134;566
+msgid "show frameborder"
+msgstr "zeige Frameborder"
+
+#: iframe.module:136
+msgid ""
+"Frameborder is the border arround the iframe. Mostly people want it silent, "
+"so the default value for frameborder is 0 = no."
+msgstr ""
+"Frameborder ist die Umrandung um den IFrame herum. Die meisten Menschen "
+"wollen das nicht sehen, deshalb ist der Standardwert 0."
+
+#: iframe.module:140;573
+msgid "Scrolling"
+msgstr "Seitenlaufleiste"
+
+#: iframe.module:141;574
+msgid "Scrolling automatic"
+msgstr "Seitenlaufleiste automatisch"
+
+#: iframe.module:141;574
+msgid "Scrolling disabled"
+msgstr "keine Seitenlaufleiste"
+
+#: iframe.module:141;574
+msgid "Scrolling enabled"
+msgstr "Seitenlaufleiste immer an"
+
+#: iframe.module:143;575
+msgid ""
+"Scrollbars help the user to reach all iframe content despite the real height "
+"of the iframe content. Please disable it only if You know what You are doing."
+msgstr ""
+"Seitenlaufleisten helfen dem Nutzer Bereiche des IFrame zu sehen, die bei zu "
+"grosser Höhe sonst nicht sichtbar wären."
+
+#: iframe.module:147;581
+msgid "Transparency"
+msgstr "Transparenz"
+
+#: iframe.module:148;582
+msgid "no transparency"
+msgstr "nicht transparent"
+
+#: iframe.module:148;582
+msgid "allow transparency"
+msgstr "erlaube Transparenz"
+
+#: iframe.module:150;583
+msgid ""
+"Allow transparency per CSS in the outer iframe tag. You have to set "
+"background-color:transparent in Your IFrame too for the body tag!"
+msgstr ""
+"Erlaubt per CSS dem iframe-Tag transparent zu sein. Um wirklich transparenti "
+"zu werden,muss im IFrame selbst für das body-Tag background-color:"
+"transparent gesetzt werden!"
+
+#: iframe.module:156
+msgid "A default title must be provided if the title is a static value"
+msgstr ""
+"Ein Standard-Titel muss angegeben werden, wenn der Titel ein fixer Titel "
+"sein soll."
+
+#: iframe.module:159;162
+msgid "A default width and height must be provided."
+msgstr "Eine Standard-Breite und Höhe müssen angegeben werden."
+
+#: iframe.module:223
+msgid "At least one title or URL must be entered."
+msgstr "Mindestens ein Titel oder ein Verweis müssen angegeben werden."
+
+#: iframe.module:307
+msgid "Not a valid iframe-url."
+msgstr "Kein gültiger IFrame-Verweis."
+
+#: iframe.module:311
+msgid "Titles are required for all iframes."
+msgstr "Titel sind für alle IFrames notwendig."
+
+#: iframe.module:316
+msgid "You cannot enter a title without a iframe url."
+msgstr "Ohne einen IFrame-Verweis macht ein Titel keinen Sinn."
+
+#: iframe.module:487
+msgid "Width and Height of the IFrame"
+msgstr "Breite und Höhe des IFrames"
+
+#: iframe.module:533
+msgid "URL"
+msgstr "Verweis"
+
+#: iframe.module:542
+msgid "Title"
+msgstr "Titel"
+
+#: iframe.module:551
+msgid "Width"
+msgstr "Breite"
+
+#: iframe.module:559
+msgid "Height"
+msgstr "Höhe"
+
+#: iframe.module:567
+msgid ""
+"Frameborder is the border arround the iframe. Mostly people want it silent, "
+"so the default value for frameborder is 0."
+msgstr ""
+"Frameborder ist die Umrandung um den IFrame herum. Die meisten Menschen "
+"wollen das nicht sichtbar, deshalb ist der Standardwert 0."
+
+#: iframe.module:597
+msgid "Title, over iframe (default)"
+msgstr "Titel über dem IFrame (default)"
+
+#: iframe.module:602
+msgid "IFrame without title"
+msgstr "IFrame ohne Titel"
+
+#: iframe.module:607
+msgid "A link with the given title"
+msgstr "Ein Link mit dem vorgegeben Titel als Linktext"
+
+#: iframe.module:612
+msgid "A link with the iframe uri"
+msgstr "Ein Link mit der URI als Linktext"
+
+#: iframe.module:678
+msgid "iframe URL"
+msgstr "IFrame Verweis"
+
+#: iframe.module:679
+msgid "iframe title"
+msgstr "IFrame Titel"
+
+#: iframe.module:680
+msgid "Formatted html iframe"
+msgstr "Formatiertes IFrame-html"
+
+#: iframe.module:854
+msgid ""
+"Your browser does not support iframes. But You can use the following link."
+msgstr ""
+"Ihr Browser unterstützt keine IFrames. Sie können aber den folgenden Link "
+"benutzen."
+
+#: iframe.module:0
+msgid "iframe"
+msgstr "IFrame"
+
+#: iframe.install:30;50
+msgid "Required module \"content\" (cck) not found!"
+msgstr ""
+
+#: (duplicate) iframe.install:17
+msgid "CCK needed"
+msgstr ""
+
+#: (duplicate) iframe.install:18
+msgid "CCK module \"content\" required."
+msgstr ""
+
+#: iframe.info:0
+msgid "Defines simple iframe field types as CCK submodule."
+msgstr "Definiert einfache IFrames als CCK submodule."
+
+#: iframe.info:0
+msgid "CCK"
+msgstr "CCK-Modul"
+
+#~ msgid "@label IFRAME-URL"
+#~ msgstr "@label IFrame-url"
+
+#~ msgid "Content"
+#~ msgstr "Inhalt"
+
+#~ msgid "@label title"
+#~ msgstr "IFrame Titel"
+
+#~ msgid "@label protocol"
+#~ msgstr "IFrame Protokoll"
+
+#~ msgid "@label target"
+#~ msgstr "IFrame Ziel (target)"
+
+#~ msgid "Action to take if argument is not present"
+#~ msgstr "Was soll getan werden, wenn Nichts ausgewählt ist"
+
+#~ msgid "Wildcard"
+#~ msgstr "Wildcard"
+
+#~ msgid ""
+#~ "If this value is received as an argument, the argument will be ignored; i."
+#~ "e, \"all values\""
+#~ msgstr ""
+#~ "Wenn dieses Argument angegeben wird, dann wird es ignoriert; z.B. \"alle\""
+
+#~ msgid "Wildcard title"
+#~ msgstr "Freier Titel"
+
+#~ msgid "Action to take if argument does not validate"
+#~ msgstr "Was soll getan werden, wenn das Argument nicht validiert"
+
+#~ msgid "Is one of"
+#~ msgstr "ist eins von"
+
+#~ msgid "Protocol"
+#~ msgstr "Protokoll"
+
+#~ msgid ""
+#~ "The protocols displayed here are those globally available. You may add "
+#~ "more protocols by modifying the <em>filter_allowed_protocols</em> "
+#~ "variable in your installation."
+#~ msgstr ""
+#~ "Die hier verfügbaren Protokolle können erweitert werden. Dazu ist die "
+#~ "Variable <em>filter_allowed_protocols</em> in der Installation anzupassen."
+
+#~ msgid "IFrame url as plain url"
+#~ msgstr "IFrame nur als Link darstellen"
+
+#~ msgid "Default (no target attribute)"
+#~ msgstr "Standard (kein target-Attribut)"
+
+#~ msgid "Open search in window root"
+#~ msgstr "Öffne die Suche im gleichen Fenster"
+
+#~ msgid "Open search in new window"
+#~ msgstr "Öffne die Suche in einem neuen Fenster"
+
+#~ msgid "Allow the user to choose"
+#~ msgstr "Erlaube dem Benutzer auszuwählen"
+
+#~ msgid "IFrame Target"
+#~ msgstr "IFrame Ziel (target)"
+
+#~ msgid "Open URL in a New Window"
+#~ msgstr "Öffne den Verweis im neuen Fenster"
+
+#~ msgid "@label url"
+#~ msgstr "IFrame URL"

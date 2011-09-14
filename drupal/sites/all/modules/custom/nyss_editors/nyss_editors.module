@@ -1,0 +1,744 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Editors
+ *
+ *  This module controls content permissions of Office Editors.
+ *
+ *  A Senator's editors may add and edit content only referencing the Senator
+ *  to which they've been assigned.
+ */
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_editors_menu() {
+  $items = array();
+  $items['nyss-editors/select-committee-chairs/js'] = array(
+    'title' => 'Select committee chairs',
+    'page callback' => 'nyss_editors_select_committee_chairs_js',
+    'page arguments' => array(),
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['nyss-editors/autocomplete'] = array(
+    'title' => 'Editor autocomplete',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'nyss_editors_autocomplete',
+    'page arguments' => array(),
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+/**
+ *  Implement hook_perm().
+ */
+function nyss_editors_perm() {
+  return array('administer non-senator content', 'add related events', 'edit all majority senator content');
+}
+
+/**
+ *  Implement hook_theme().
+ */
+function nyss_editors_theme($existing, $type, $theme, $path) {
+  return array(
+    'nyss_editors_autocomplete' => array(
+      'arguments' => array(),
+    ),
+    'nyss_editors_senate_offices' => array(
+      'arguments' => array('account' => NULL, 'reset' => FALSE),
+    ),
+  );
+}
+
+function nyss_editors_autocomplete($test = '') {
+  $offices = nyss_editors_senate_offices();
+  $matches = array();
+  foreach ($offices as $nid => $senator) {
+//    if (stristr($senator, $test) !== FALSE) {
+      $matches[$senator .' [nid:' . $nid . ']'] = '<div class="reference-autocomplete">'. $senator .'</div>';
+//    }
+  }
+  print drupal_to_js($matches);
+  exit();
+}
+
+/**
+ *  Implements hook_node_grants().
+ */
+function nyss_editors_node_grants($account, $op) {
+  $grants['all'] = array(0);
+  // Our grant keys will equal the senators we're allowed to edit content for.
+  if (($op == 'update' || $op == 'view') && in_array('Office Editor', $account->roles)) {
+    $grants['senators'] = array_keys(nyss_editors_senate_offices($account));
+  }
+  if (($op == 'update' || $op == 'view') && in_array('Web Editor+', $account->roles)) {
+    $grants['webeditors'] = array(2);
+  }
+  else if (($op == 'update' || $op == 'view') && user_access('administer non-senator content')) {
+    $grants['webeditors'] = array(1);
+  }
+  return $grants;
+}
+
+/**
+ *  Implements hook_node_access_records().
+ */
+function nyss_editors_node_access_records($node) { 
+  // Grant access to nodes referencing a senator.
+  if ($senator_nid = $node->field_senator[0]['nid']) {
+    $grants = array();
+    $grants[] = array(
+      'realm' => 'all',
+      'gid' => 0,
+      'grant_view' => TRUE,
+      'grant_update' => FALSE,
+      'grant_delete' => FALSE,
+      'priority' => 0,
+    );
+    $grants[] = array(
+      'realm' => 'owner',
+      'gid' => 1,
+      'grant_view' => TRUE,
+      'grant_update' => TRUE,
+      'grant_delete' => FALSE,
+      'priority' => 0,
+    );
+    $grants[] = array(
+      'realm' => 'senators',
+      'gid' => $senator_nid,
+      'grant_view' => TRUE,
+      'grant_update' => TRUE,
+      'grant_delete' => FALSE,
+      'priority' => 0,
+    );
+    
+    if ($node->field_majority[0]['value'] == 1) {
+      $grants[] = array(
+        'realm' => 'webeditors',
+        'gid' => 2,
+        'grant_view' => TRUE,
+        'grant_update' => TRUE,
+        'grant_delete' => FALSE,
+        'priority' => 1,
+      );
+    }
+    else {
+      $grants[] = array(
+        'realm' => 'webeditors',
+        'gid' => 1,
+        'grant_view' => TRUE,
+        'grant_update' => TRUE,
+        'grant_delete' => FALSE,
+        'priority' => 0,
+      );
+    }
+  }
+  return $grants;
+}
+
+/**
+ *  Implement hook_menu_alter().
+ */
+function nyss_editors_menu_alter(&$callbacks) {
+  // Office Editors may only edit content belonging to a specific Senator.
+  $callbacks['node/%node/edit']['access callback'] = 'nyss_editors_node_access_callback';
+  $callbacks['node/%node/edit']['access arguments'] = array(1, 'update');
+  $callbacks['node/%node/revisions']['access callback'] = 'nyss_editors_node_access_callback';
+  $callbacks['node/%node/revisions']['access arguments'] = array(1, 'update');
+  $callbacks['node/%node/outline']['access callback'] = 'nyss_editors_node_access_callback';
+  $callbacks['node/%node/outline']['access arguments'] = array(1, 'update');
+
+  // Ensure Office Editors can view unpublished content from their Senator.
+  $callbacks['node/%node']['access callback'] = 'nyss_editors_node_access_callback';
+  $callbacks['node/%node']['access arguments'] = array(1, 'view');
+  
+  // Give any editors who have update access the ability to access campaign reports.
+  if (function_exists('_nyss_editors_campaign_node_access')) {
+    $callbacks['node/%node/activism_cta']['access callback'] = '_nyss_editors_campaign_node_access';
+    $callbacks['node/%node/activism_report']['access callback'] = '_nyss_editors_campaign_node_access';
+    $callbacks['node/%node/activism_export']['access callback'] = '_nyss_editors_campaign_node_access';
+  }
+  // Webforms
+  if (function_exists('_nyss_editors_webform_node_access')) {
+    $callbacks['node/%webform_menu/webform-results']['access callback'] = '_nyss_editors_webform_node_access';
+    $callbacks['node/%webform_menu/webform-results']['access arguments'] = array('update', 1);
+    $callbacks['node/%webform_menu/webform-results/submissions']['access callback'] = '_nyss_editors_webform_node_access';
+    $callbacks['node/%webform_menu/webform-results/submissions']['access arguments'] = array('update', 1);
+    $callbacks['node/%webform_menu/webform-results/analysis']['access callback'] = '_nyss_editors_webform_node_access';
+    $callbacks['node/%webform_menu/webform-results/analysis']['access arguments'] = array('update', 1);
+    $callbacks['node/%webform_menu/webform-results/table']['access callback'] = '_nyss_editors_webform_node_access';
+    $callbacks['node/%webform_menu/webform-results/table']['access arguments'] = array('update', 1);
+    $callbacks['node/%webform_menu/webform-results/download']['access callback'] = '_nyss_editors_webform_node_access';
+    $callbacks['node/%webform_menu/webform-results/download']['access arguments'] = array('update', 1);
+    $callbacks['node/%webform_menu/webform-results/clear']['access callback'] = '_nyss_editors_webform_node_access';
+    $callbacks['node/%webform_menu/webform-results/clear']['access arguments'] = array('update', 1);
+  }
+
+  // Rename node export tab so it's not the same as petition report export tab.
+  $callbacks['node/%node/node_export']['title'] = 'Node Export';
+  $callbacks['node/%node/node_export']['weight'] = 20;
+}
+
+function _nyss_editors_campaign_node_access($op, $node) {
+  if ($node->type == 'campaign') {
+    return nyss_editors_node_access_callback($node, 'update');
+  }
+  return FALSE;
+}
+
+function _nyss_editors_webform_node_access($op, $node) {
+  if ($node->type == 'webform') {
+    return nyss_editors_node_access_callback($node, 'update');
+  }
+  return FALSE;
+}
+/**
+ *  Override menu access callback for node/%node/edit.
+ */
+function nyss_editors_node_access_callback($node, $op = 'update') {
+  // Administrators can do anything.
+  if (user_access('administer nodes')) {
+    return TRUE;
+  }
+
+  if ($node->type == 'committee') {
+    // Office editors for a committee chair may edit that committee. Also, owners of the committee, for non-chaired committees.
+    global $user;
+    if((isset($node->name) && isset($user->name) && $node->name == $user->name) && $user->uid != 0) {
+      return TRUE;
+    }
+    foreach ($node->field_chairs as $chair) {
+      $senator = nyss_senator_node(node_load($chair['nid']));
+      if (nyss_editors_user_may_edit($senator)) {
+        return TRUE;
+      }
+    }
+    // If we're attempting to edit, we're not really allowed, so stop here.
+    if ($op == 'update') {
+      return FALSE;
+    }
+
+    // Fall back to default behavior.
+    return node_access($op, $node);
+  }
+
+  // The senator node will either be the node itself (if a senator node),
+  // or the senator referenced by the node, or the senator referencing the district.
+  $senator = nyss_senator_node($node);
+  if ($senator && $senator->nid) {
+    // If this node is a Senator node or associated with a senator,
+    // then only that senator's office editors may edit the node.
+    if (nyss_editors_user_may_edit($senator)) {
+      return TRUE;
+    }
+    if ($op == 'flags' || $op == 'flagsmaj') {
+      global $user;
+      if (in_array('Web Editor', $user->roles) || in_array('Web Editor+', $user->roles)) {
+        if ($op == 'flagsmaj') {
+          if ($senator->field_majority[0]['value'] == 1) {
+            return TRUE;
+          }
+        }
+        else {
+          return TRUE;
+        }
+      }
+    }
+    // If we're attempting to edit, we're not really allowed, so stop here.
+    if ($op == 'update') {
+      return FALSE;
+    }
+  }
+  else if ($senator == FALSE) {
+    global $user;
+    if (in_array('Web Editor', $user->roles) || 
+      in_array('Web Editor+', $user->roles) || 
+      isset($node->name) && isset($user->name) && $node->name == $user->name && $user->uid != 0) {
+      return TRUE;
+    }
+  }
+
+  // Fall back to default behavior for anything else.
+  return node_access($op, $node);
+}
+
+/**
+ *  Implements hook_form_alter().
+ */
+function nyss_editors_form_alter(&$form, $form_state, $form_id) {
+  if (isset($form['type']['#value']) && $form['type']['#value'] .'_node_form' == $form_id) {
+    if (!in_array($form['type']['#value'], array('senator', 'district', 'committee'))) {
+      // All content will pre-select a senator if added or edited by an Office Editor.
+      nyss_editors_form_alter_set_senator($form, $form_state, $form_id);
+      nyss_editors_filter_committee($form, $form_state, $form_id);
+    }
+    else if ($form['type']['#value'] == 'senator') {
+      if ($form['#node']->nid) {
+        if (!nyss_editors_user_may_edit($form['#node'])) {
+          // Don't allow other offices to edit our senator node.
+          drupal_access_denied();
+          exit();
+        }
+      }
+    }
+  }
+  if (!user_access('administer nodes')) {
+    $form['field_majority']['#access'] = FALSE;
+  }
+  // Office Editors should not even worry about the Initiative link.
+  if (!user_access('create initiative content')) {
+    $form['field_initiative']['#access'] = FALSE;
+  }
+}
+
+function theme_nyss_editors_autocomplete() {
+  drupal_add_js(drupal_get_path('module', 'nyss_editors') .'/nyss_editors.autocomplete.js');
+}
+
+/**
+ *  This will preselect the senator.
+ *
+ *  If we go to /node/add/blog/[nid], then [nid] needs to match a Senator node.
+ *  In that case, we need to make sure the user has the proper permission,
+ *  which is determined by being both of an Office Editor role, and by being on
+ *  the Senator's list of Editors (available when editing a Senator's node).
+ *
+ *  If we go to /node/add/blog, then if we're an Office Editor, we pre-select
+ *  the referenced Senator.
+ *
+ *  If on the other hand we're editing content, we need to ensure the node
+ *  references a senator we're allowed to edit.
+ */
+function nyss_editors_form_alter_set_senator(&$form, $form_state, $form_id) {
+  if ($form_id == 'cable_broadcast_node_form') {
+    return; // ignore this if the content being created is a cable broadcast
+  }
+  if (($senator_nid = arg(3)) && is_numeric($senator_nid) && (arg(1) == 'add')) {
+    // Get the senator referenced in the arg.
+    $senator_node = node_load($senator_nid);
+    // Ensure the referenced type is a senator.
+    if ($senator_node->type != 'senator' || !nyss_editors_user_may_edit($senator_node)) {
+      drupal_access_denied();
+      exit();
+    }
+
+    $form['field_senator'][0]['#default_value']['nid'] = $senator_node->nid;
+    $form['field_senator'][0]['#default_value']['_error_element'] = 'default_value_widget][field_senator][0][nid][nid';
+    // Office editors may not change the senator.
+    if (!user_access('administer nodes')) {
+      $form['field_senator']['#type'] = 'value';
+    }
+  }
+  else if (arg(1) == 'add') {
+    // If we're not a Web Editor, then our senator will be pre-selected when adding content.
+    if (user_access('administer nodes')) {
+      return;
+    }
+    else if (user_access('administer non-senator content')) {
+      global $user;
+      // Get a list of senators our user may edit.
+      $offices = nyss_editors_senate_offices();
+      $form['#validate'][] = 'nyss_editors_form_alter_set_senator_validate';
+      if (!sizeof($offices)) {
+        // Only allow adding senator-related content if authorized
+        $form['field_senator']['#type'] = 'value';
+      }
+      else if (sizeof($offices) > 1) {
+        $form['field_senator']['#theme'] = 'nyss_editors_autocomplete';
+      }
+      else {
+        unset($form['field_senator'][0]['#value_callback']);
+        foreach ($offices as $nid => $senator) {
+          $form['field_senator'][0]['#default_value']['nid'] = $nid;
+          $form['field_senator'][0]['#options'][$nid] = $senator;
+        }
+        $form['field_senator'][0]['#type'] = 'value';
+      }
+    }
+    else {
+      global $user;
+      // Get a list of senators our user may edit.
+      $offices = nyss_editors_senate_offices();
+      $form['#validate'][] = 'nyss_editors_form_alter_set_senator_validate';
+      if (!sizeof($offices)) {
+        // We cannot add content unless we're assigned to a senator.
+        drupal_access_denied();
+        exit();
+      }
+      else if (sizeof($offices) > 1) {
+        $form['field_senator']['#theme'] = 'nyss_editors_autocomplete';
+      }
+      else {
+        unset($form['field_senator'][0]['#value_callback']);
+        foreach ($offices as $nid => $senator) {
+          $form['field_senator'][0]['#default_value']['nid'] = $nid;
+          $form['field_senator'][0]['#options'][$nid] = $senator;
+        }
+        $form['field_senator'][0]['#type'] = 'value';
+      }
+    }
+  }
+  else if (arg(2) == 'edit') {
+    if (user_access('administer nodes')) {
+      return;
+    }
+    if (($senator_nid = $form['#node']->field_senator[0]['nid']) && (is_numeric($senator_nid))) {
+      // Let's make sure we're assigned to this senator.
+      $senator_node = node_load($senator_nid);
+      if (nyss_editors_user_may_edit($senator_node)) {
+        $offices = nyss_editors_senate_offices();
+        $form['#validate'][] = 'nyss_editors_form_alter_set_senator_validate';
+        if (!sizeof($offices)) {
+          // Only allow adding senator-related content if authorized
+          $form['field_senator']['#type'] = 'value';
+        }
+        else {
+          $form['field_senator']['#theme'] = 'nyss_editors_autocomplete';
+        }
+      }
+      else {
+        // Hold on, partner!
+        drupal_access_denied();
+        exit();
+      }
+    }
+    else if (user_access('administer non-senator content')) {
+      // Get a list of senators our user may edit.
+      $offices = nyss_editors_senate_offices();
+      $form['#validate'][] = 'nyss_editors_form_alter_set_senator_validate';
+      if (!sizeof($offices)) {
+        // Only allow adding senator-related content if authorized
+        $form['field_senator']['#type'] = 'value';
+      }
+      else {
+        $form['field_senator']['#theme'] = 'nyss_editors_autocomplete';
+      }
+    }
+    else {
+      global $user;
+      // Only Web Editors may edit site-wide content, which is any content not referencing a senator.
+      if (($user->name != $form['#node']->name) || ($user->uid == 0)) {
+        drupal_access_denied();
+        exit();
+      }
+    }
+  }
+}
+
+function nyss_editors_form_alter_set_senator_validate(&$form, $form_state) {
+  // Get a list of senators our user may edit.
+  $offices = nyss_editors_senate_offices();
+  if (!$form_state['values']['field_senator'][0]['nid']) {
+    if (!user_access('administer non-senator content')) {
+      form_set_error('field_senator', t('You must select a Senator to associate with this content.'));
+    }
+  }
+  else if (!isset($offices[$form_state['values']['field_senator'][0]['nid']])) {
+    form_set_error('field_senator', t('You are not allowed to add content for that Senator.'));
+  }
+}
+
+function nyss_editors_form_alter_set_senator_submit(&$form, $form_state) {
+  $form['group_categories']['field_senator'][0]['#type'] = 'value';
+  $form['group_categories']['field_senator'][0]['#default_value'] = $form_state['values']['field_senator'][0];
+}
+
+/**
+ *  Filter the available committees to those the senator chairs.
+ */
+function nyss_editors_filter_committee_after_build(&$form, $form_element) {
+  $chairs = array(0 => t('- None -'));
+  if ($form['#senator_value']['nid'] && is_numeric($form['#senator_value']['nid'])) {
+    $senator = node_load($form['#senator_value']['nid']);
+    if ($senator->nid) {
+      // Find the committees the senator chairs.
+      $chairs += nyss_editors_senate_chairs($senator);
+    }
+  }
+  else {
+    // Get a list of senators our user may edit.
+    $offices = nyss_editors_senate_offices();
+    foreach ($offices as $nid => $title) {
+      $senator = node_load($nid);
+      $chairs += nyss_editors_senate_chairs($senator);
+    }
+  }
+  $form['nid']['nid']['#options'] = $chairs;
+  return $form;
+}
+
+/**
+ *  The Committee drop-down will be filtered by committees that the office's
+ *  senator is a chair for.
+ *  @TODO: Fix this so FAPI doesn't complain on submission.
+ */
+function nyss_editors_filter_committee(&$form, $form_state, $form_id) {
+  if (!user_access('administer nodes')) {
+    // We need to filter the committees available to this senator,
+    // but we have to do that after nodereference does its magic.
+    $form['field_committee']['#after_build'] = array('nyss_editors_filter_committee_after_build');
+    $form['field_committee']['#senator_value'] = $form['field_senator'][0]['#default_value'];
+
+    // @TODO: The next part actually works, except a final error on submission.
+    drupal_add_js(drupal_get_path('module', 'nyss_editors') .'/nyss_editors.senator-select-committees.js');
+    drupal_add_js(array('nyss_editors' => array('senator_select_committees_url' => url('nyss-editors/select-committee-chairs/js'))), 'setting');
+  }
+}
+
+/**
+ *  Determines whether an editor may edit content for a specific senator.
+ *  @param $senator_node
+ *    The Senator node object.
+ *  @param $account
+ *    The user account to check. Defaults to the global user.
+ *  @return
+ *    TRUE or FALSE.
+ */
+function nyss_editors_user_may_edit($senator_node = NULL, $account = NULL) {
+  // Set the account to default if not provided.
+  if (!isset($account)) {
+    global $user;
+    $account = $user;
+  }
+
+  if (!isset($senator_node)) {
+    $senator_node = nyss_senator();
+  }
+
+  // Admins may always edit any content.
+  if (user_access('administer nodes', $account)) {
+    return TRUE;
+  }
+
+  // If the user has lost their Editorial privs, then respect that.
+  if (!in_array('Office Editor', $account->roles) && !in_array('Web Editor+', $account->roles)) {
+    return FALSE;
+  }
+
+  if (!empty($senator_node->field_editors)) {
+    // If the user is in the list of senator editors, then they may edit.
+    foreach($senator_node->field_editors as $editor) {
+      if ($editor['uid'] == $account->uid) {
+        return TRUE;
+      }
+    }
+  }
+  // If the user is a Web Editor+ and this senator is a member of the majority or this is not a senator, then they may edit.
+  if (in_array('Web Editor+', $account->roles)) {
+    if ($senator_node->field_majority[0]['value'] == 1) {
+      return TRUE;
+    }
+    else if ($senator_node == FALSE) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ *  Implement hook_link_alter
+ *  
+ *  Disable flag links for editors who aren't supposed to be able to edit that node.
+ */
+function nyss_editors_link_alter(&$links, $node) {
+  if (!nyss_editors_user_may_edit()) {
+    unset($links['flag-senator_tabs']);
+    unset($links['flag-senator_no_gallery']);
+    unset($links['flag-senator_exclude_newsroom']);
+  }
+}
+
+/**
+ *  Returns an array of all senate offices a user may edit.
+ *  @param $account
+ *    (optional) The User account we're checking, defaults to global user.
+ *  @param $reset
+ *    (optional) If TRUE, then reset the static cache.
+ *  @return
+ *    An array of all senator nodes the user may edit.
+ */
+function nyss_editors_senate_offices($account = NULL, $reset = FALSE) {
+  static $senators;
+
+  // Set the account to default global user if not provided.
+  if (!isset($account)) {
+    global $user;
+    $account = $user;
+  }
+  else if (is_numeric($account)) {
+    $account = user_load($account);
+  }
+
+  // Reset the static cache when requested.
+  if (is_null($senators) || $reset) {
+    $senators = array();
+  }
+
+  // Fetch the senators this user account is allowed to edit content for.
+  if (empty($senators[$account->uid])) {
+    $senators[$account->uid] = array();
+    if (user_access('edit all majority senator content', $account)) {
+      $ids = db_query("SELECT DISTINCT(node.nid) AS nid, node.title FROM {node} node 
+        LEFT JOIN {content_type_senator} node_data_field_majority ON node.vid = node_data_field_majority.vid
+        WHERE (node.status <> 0) AND (node.type in ('senator')) AND (node_data_field_majority.field_majority_value = 1)"
+      );
+    }
+    else {
+      $ids = db_query("SELECT n.nid, n.title FROM {node} n LEFT JOIN {content_field_editors} f ON n.vid = f.vid WHERE f.field_editors_uid = %d AND n.status = 1", $account->uid);
+    }
+    while ($data = db_fetch_object($ids)) {
+      $senators[$account->uid][$data->nid] = $data->title;
+    }
+  }
+
+  return $senators[$account->uid];
+}
+
+/**
+ *  Output all the committees a senator chairs in a select format.
+ */
+function nyss_editors_select_committee_chairs_js($senator = NULL) {
+  drupal_set_header('Content-Type: text/javascript; charset=utf-8');
+
+  // We may have been passed the value of the selection before changing the senator.
+  $value = $_REQUEST['value'];
+
+  if (is_null($senator)) {
+    if ($_REQUEST['nid'] && is_numeric($_REQUEST['nid'])) {
+      $senator = $_REQUEST['nid'];
+    }
+    else {
+      preg_match('@\[nid:([0-9]+)\]@i', $_REQUEST['nid'], $matches);
+      if ($matches[1]) {
+        $senator = $matches[1];
+      }
+    }
+    $senator = node_load($senator);
+  }
+
+  if (!nyss_editors_user_may_edit($senator)) {
+    drupal_access_denied();
+    exit();
+  }
+
+  // Find the committees the senator chairs.
+  $chairs = array(t('- None -')) + nyss_editors_senate_chairs($senator);
+
+  // Create a pseudo-form element with the options.
+  $element = array('#options' => $chairs);
+
+  // If we were passed a committee, and the new senator is a chair for the same committee,
+  // then honor the request.
+  if (isset($chairs[$value])) {
+    $element['#value'] = $value;
+  }
+
+  // Print the Form Select Options to JSON.
+  print drupal_to_js(array(
+    'status' => TRUE,
+    'options' => form_select_options($element),
+  ));
+  exit();
+}
+
+/**
+ *  Returns an array of all committees that this senator chairs.
+ */
+function nyss_editors_senate_chairs($senator, $reset = NULL) {
+  static $chairs;
+
+  // Reset the static cache when requested.
+  if (is_null($chairs) || $reset) {
+    $chairs = array();
+  }
+
+  if (empty($chairs[$senator->nid])) {
+    $chairs[$senator->nid] = array();
+    $ids = db_query(db_rewrite_sql("SELECT n.nid, n.title FROM {node} n LEFT JOIN {content_field_chairs} f ON n.vid = f.vid WHERE f.field_chairs_nid = %d AND n.status = 1"), $senator->nid);
+    while ($data = db_fetch_object($ids)) {
+      $chairs[$senator->nid][$data->nid] = $data->title;
+    }
+  }
+
+  return $chairs[$senator->nid];
+}
+
+/**
+ *  Returns an array of all committees that this user may edit.
+ *  @param $account
+ *    (optional) The User account we're checking, defaults to global user.
+ *  @param $reset
+ *    (optional) If TRUE, then reset the static cache.
+ *  @return
+ *    An array of all senator nodes the user may edit, or the string 'all' if the user has unrestricted editing permission
+ */
+function nyss_editors_allowed_committees($account = NULL, $reset = FALSE) {
+  static $committees;
+
+  // Reset the static cache when requested.
+  if (is_null($committees) || $reset) {
+    $committees = array();
+  }
+  if (!isset($account)) {
+    global $user;
+    $account = $user;
+  }
+
+  if (empty($committees[$account->uid])) {
+    if (user_access('administer nodes', $account) || user_access('add related events', $account)) {
+      $committees[$account->uid] = 'all';
+    }
+    else {
+      $committees[$account->uid] = array();
+      // Office editors for a committee chair may edit that committee. 
+      $offices = nyss_editors_senate_offices($account);
+      foreach ($offices as $nid => $title) {
+        $senator = node_load($nid);
+        $committees[$account->uid] += nyss_editors_senate_chairs($senator);
+      }
+      // Also, owners of the committee, for non-chaired committees.
+      $ids = db_query(db_rewrite_sql("SELECT n.nid, n.title FROM {node} n WHERE n.uid = %d AND n.type = 'committee'"), $account->uid);
+      while ($data = db_fetch_object($ids)) {
+        $committees[$account->uid][$data->nid] = $data->title;
+      }
+    }
+  }
+  return $committees[$account->uid];
+}
+
+/**
+ *  Returns an comma-separated list of all senators whose content this user may edit.
+ *  @param $account
+ *    (optional) The User account we're checking, defaults to global user.
+ *  @param $reset
+ *    (optional) If TRUE, then reset the static cache.
+ *  @return
+ *    A comma-separate list of senators' names with links back to each senator's home page
+ */
+function theme_nyss_editors_senate_offices($account = NULL, $reset = FALSE) {
+  if (!isset($account)) {
+    global $user;
+    $account = $user;
+  }
+  elseif (is_numeric($account)) {
+    $account = user_load($account);
+  }
+  if (user_access('administer nodes', $account)) {
+    return t('All Senators');
+  }
+  if (user_access('edit all majority senator content', $account)) {
+    return t('All Majority Senators');
+  }
+  $senators = nyss_editors_senate_offices($account, $reset);
+  $titles = array();
+  foreach ($senators as $nid => $title) {
+    $titles[] = l($title, "node/$nid");
+  }
+  return implode(', ', $titles);
+}

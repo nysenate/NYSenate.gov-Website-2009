@@ -1,0 +1,6 @@
+; $Id:$
+name = NYSS Event
+description = Special handling events
+package = NYSS
+dependencies[] = nyss_videosettings
+core = 6.x

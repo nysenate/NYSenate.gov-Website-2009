@@ -1,0 +1,21 @@
+/* $Id: ie.css,v 1.1 2008/02/15 16:22:09 johnalbin Exp $ */
+
+/*
+ * IE CSS
+ *
+ * CSS targeted specifically for Internet Explorer for Windows.
+ *
+ * Properties starting with an underscore _ are for IE 5 and 6 only.
+ * Properties starting with head:first-child+body are for IE7 only.
+ * Properties with a child selector (>) or sibling selector (+) are for IE7 only.
+ *
+ */
+
+/*
+ * Left sidebar CSS
+ */
+
+.front #sidebar-left #block-nyss_blocks-social_buttons {
+  background: url(images/nyss_bg_social.png) left -5px no-repeat;
+}
+

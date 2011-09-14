@@ -1,0 +1,3 @@
+<?php
+
+include_once('spaces_blog.features.inc');

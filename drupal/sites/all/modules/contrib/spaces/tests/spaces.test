@@ -1,0 +1,73 @@
+<?php
+// $Id: spaces.test,v 1.2.4.1 2009/03/09 13:52:59 yhahn Exp $
+
+require_once dirname(__FILE__). '/../../og/tests/og_testcase.php';
+
+class spaces extends OgTestCase {
+  /**
+   * Implementation of get_info() for information
+   */
+  function get_info() {
+    return array(
+      'name' => t('Group Creation'),
+      'desc' => t('Test group creation and basic feature settings.') ,
+      'group' => 'Spaces Tests'
+    );
+  }
+  
+  function setUp() {
+    $this->drupalModuleEnable('context');
+    $this->drupalModuleEnable('purl');
+    $this->drupalModuleEnable('views');
+    $this->drupalModuleEnable('og');
+    $this->drupalModuleEnable('spaces');
+    
+    parent::setUp();
+  }
+
+  function tearDown() {    
+    $this->drupalModuleDisable('context');
+    $this->drupalModuleDisable('purl');
+    $this->drupalModuleDisable('views');
+    $this->drupalModuleDisable('og');
+    $this->drupalModuleDisable('spaces');
+    
+    parent::tearDown();
+  }
+  
+  function testSpaces() {
+    $og_type = $this->addNodeType();
+    variable_set('og_content_type_usage_'. $og_type, 'group'); // OG's own test is currently broken. Once it's fixed this line can be removed.
+    $web_user = $this->drupalCreateUserRolePerm(array('access content', "create $og_type content", "edit $og_type content", 'create pages', 'create groups', 'view users outside groups', 'administer group features'));
+    $this->drupalLoginUser($web_user);
+    
+    // Create the group using the modified interface for each type.
+    foreach(array('private', 'public', 'controlled') as $type) {
+      $edit = array();
+      $edit['title']              = '!SimpleTest test group node! ' . $this->randomName(10);
+      $edit['og_description']     = '!SimpleTest test group body! ' . $this->randomName(32) . ' ' . $this->randomName(32);
+      $edit['spaces_groupmask']   = $type;
+      $edit['spaces_path']        = $this->randomName(10);
+      $this->drupalPostRequest("node/add/$og_type", $edit, 'Submit');
+      
+      $node = node_load(array('title' => $edit['title']));
+      $this->assertNotNull($node, 'Group found in database. %s');
+      $this->assertIdentical($node->spaces_path, $edit['spaces_path'], 'Group path found in database %s');
+      $mask = spaces_groupmask('mask');
+      foreach ($mask[$type]['mask'] as $key => $value) {
+        $this->assertIdentical($node->$key, (string)$value, "Node $key has been properly set %s");
+      }
+      
+      // Establish features
+      $edit = array();
+      $edit['settings-spaces-home'] = 'pass_thru';
+      $this->drupalPostRequest("node/". $node->nid ."/features", $edit, 'Submit');
+      
+      $features = spaces_features($node->nid, 'settings');
+      $this->assertIdentical($edit['settings-spaces-home'], $features['spaces_home'], "Home page was set %s");
+      
+      $this->_cleanupGroups[] = $node->nid;
+    }
+    return $node->nid;
+  }
+}

@@ -1,0 +1,10 @@
+; $Id$
+name = Revision Deletion
+description = Enables the ability to mass delete aging node revisions.
+core=6.x
+; Information added by drupal.org packaging script on 2009-10-09
+version = "6.x-1.0-rc2"
+core = "6.x"
+project = "revision_deletion"
+datestamp = "1255101069"
+

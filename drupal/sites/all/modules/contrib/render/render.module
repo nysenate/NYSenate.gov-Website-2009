@@ -1,0 +1,1056 @@
+<?php
+// $Id: render.module,v 1.11 2009/01/17 20:13:55 sun Exp $
+
+/**
+ * @file
+ * Implements an administrative interface for various CSS/JS-based rendering
+ * technologies.
+ * 
+ * @todo Implement generic download handler for all generated files.
+ * @todo Allow different rules for each site.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function render_menu() {
+  $items = array();
+  $items['admin/settings/render'] = array(
+    'title' => 'Dynamic Rendering',
+    'description' => 'Configure which elements in a theme are rendered.',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'render_rules',
+  );
+  $items['admin/settings/render/rules'] = array(
+    'title' => 'Rules',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'render_rules',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -2,
+  );
+  $items['admin/settings/render/addrule'] = array(
+    'title' => 'Add rule',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('render_add_rule'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => -1,
+  );
+  $items['admin/settings/render/manage'] = array(
+    'title' => 'Manage fonts',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'render_manage',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+  );
+  $items['admin/settings/render/cache-clear'] = array(
+    'title' => 'Clear cache',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'render_cache_clear',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10,
+  );
+  $items['render/download'] = array(
+    'title' => 'Download font file',
+    'page callback' => 'render_octet_download',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/settings/render/edit/%'] = array(
+    'title' => 'Edit',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'render_edit_rule',
+    'page arguments' => array(4),
+  );
+  $items['admin/settings/render/duplicate'] = array(
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'render_duplicate_rule',
+    'type' => MENU_CALLBACK,
+    'weight' => 5,
+  );
+  $items['admin/settings/render/rules/delete/%'] = array(
+    'title' => 'Delete rule',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('render_delete_rule_form', 5),
+  );
+  $items['admin/settings/render/deletefont'] = array(
+    'title' => 'Delete font',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'render_fontdelete_confirm',
+    'type' => MENU_CALLBACK,
+    'weight' => 6,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function render_init() {
+  render_all_pages();
+}
+
+/**
+ * Retrieve all available plugins.
+ */
+function render_plugins() {
+  static $listing;
+  
+  if (isset($listing)) {
+    return $listing;
+  }
+  
+  $dir = drupal_get_path('module', 'render') .'/plugins';
+  $listing = file_scan_directory($dir, '.+\.inc', array('.', '..', 'CVS', '.svn'), 0, FALSE, 'name');
+  foreach ($listing as $plugin) {
+    include_once($plugin->filename);
+    $function = $plugin->name .'_render_info';
+    if (function_exists($function)) {
+      $listing[$plugin->name] = $function();
+    }
+    else {
+      // Prevent use of malformed plugins.
+      unset($listing[$plugin->name]);
+    }
+  }
+  
+  return $listing;
+}
+
+/**
+ * List the rules.
+ */
+function render_rules() {
+  $plugins = render_plugins();
+  $rules   = render_get_rules();
+  $renderdir = drupal_get_path('module', 'render');
+  $header  = array(t('Plugin'), t('Rule Name'), t('CSS Selector'), t('Font'), t('Colors'), t('Weight'), array('data' => t('Operations'), 'colspan' => 2));
+  $rows    = array();
+  $img_edit      = theme('image', $renderdir .'/images/editor.png');
+  $img_duplicate = theme('image', $renderdir .'/images/copy.png');
+  $img_delete    = theme('image', $renderdir .'/images/delete.png');
+  foreach ($rules as $r) {
+    $function = $r['plugin'] .'_render_rules';
+    if (function_exists($function)) {
+      $fontstyle = $function($r);
+    }
+    $color_names = array(
+      'color' => t('Font color'),
+      'linkcolor' => t('Link color'),
+      'hovercolor' => t('Hover color'),
+      'bgcolor' => t('Background color'),
+    );
+    $colors = '';
+    foreach ($fontstyle['colors'] as $key => $color) {
+      $colors .= '<div class="render-font-color" style="background-color: '. $color .';" title="'. $color_names[$key] .'"> </div>';
+    }
+    $operations = array(
+      l($img_edit, 'admin/settings/render/edit/'. $r['rid'], array('attributes' => array('title' => t('Edit'), 'class' => 'render-rule-op'), 'html' => TRUE)),
+      l($img_duplicate, 'admin/settings/render/duplicate/'. $r['rid'], array('attributes' => array('title' => t('Duplicate'), 'class' => 'render-rule-op'), 'html' => TRUE)),
+      l($img_delete, 'admin/settings/render/rules/delete/'. $r['rid'], array('attributes' => array('title' => t('Delete'), 'class' => 'render-rule-op'), 'html' => TRUE)),
+    );
+    $rows[] = array(
+      $plugins[$r['plugin']]['title'],
+      $r['name'],
+      $r['selector'],
+      $fontstyle['font'],
+      $colors,
+      $r['weight'],
+      implode('', $operations),
+    );
+  }
+  $output = theme('table', $header, $rows, array('class' => 'render-rules'));
+  $output .= '<p>';
+  $output .= l(t('Add another rule'), 'admin/settings/render/addrule');
+  $output .= '</p>';
+  
+  // Display logos of supported plugins.
+  $output .= '<h4>'. t('Supported plugins') .'</h4>';
+  $plugin_links = array();
+  foreach ($plugins as $plugin) {
+    $logo = $renderdir .'/plugins/'. $plugin['name'] .'.png';
+    if (file_exists($logo)) {
+      $plugin_links[] = l(theme('image', $logo, $plugin['title'], $plugin['title'], array()), $plugin['url'], array('html' => TRUE));
+    }
+    else {
+      $plugin_links[] = l($plugin['title'], $plugin['url']);
+    }
+  }
+  $output .= implode(' | ', $plugin_links);
+  
+  drupal_add_css(drupal_get_path('module', 'render') .'/render.css', 'module', 'all', FALSE);
+  
+  return $output;
+}
+
+/**
+ * Clear cache after module is enabled.
+ */
+function render_enable() {
+  render_cache_clear(FALSE);
+}
+
+/**
+ * Clear dynamic rendering cache.
+ */
+function render_cache_clear($redirect = TRUE) {
+  // Re-scan plugin directories.
+  render_find_render(NULL, TRUE);
+  
+  // Regenerate list of active plugins.
+  render_get_rules();
+  
+  // Regenerate all JavaScript and Stylesheet files for all plugins and rules.
+  $active_plugins = variable_get('render_plugins', array());
+  foreach ($active_plugins as $plugin) {
+    render_render_rules_js($plugin);
+    render_css_screen($plugin);
+  }
+  
+  if ($redirect) {
+    drupal_goto('admin/settings/render');
+  }
+}
+
+/**
+ * Manage font files page; menu callback.
+ */
+function render_manage() {
+  drupal_set_title(t('Manage fonts'));
+  
+  $delimg = theme('image', drupal_get_path('module', 'render') .'/images/delete.png');
+  $header = array(t('Font'), t('Location'), '');
+  foreach (render_get_fonts() as $file => $name) {
+    $rows[] = array(
+      $name,
+      $file,
+      l($delimg .' '. t('delete'), 'admin/settings/render/deletefont/'. urlencode($file), array('html' => TRUE)),
+    );
+  }
+  $output = theme('table', $header, $rows, array('style' => 'width:100%'));
+  $output .= drupal_get_form('render_upload');
+  return $output;
+}
+
+/**
+ * Render a form to upload a new font file.
+ */
+function render_upload() {
+  $form['#attributes'] = array('enctype' => 'multipart/form-data');
+  
+  // Display help for each plugin.
+  $form['help'] = array(
+    '#value' => '<p />',
+  );
+  $plugins = render_plugins();
+  foreach ($plugins as $plugin) {
+    $function = $plugin['name'] .'_render_help';
+    if (function_exists($function) && $plugin_help = $function()) {
+      $form['help'][$plugin['name']] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#title' => t('@plugin instructions', array('@plugin' => $plugin['title'])),
+      );
+      $form['help'][$plugin['name']]['help'] = array(
+        '#type' => 'markup',
+        '#value' => $plugin_help,
+      );
+    }
+  }
+  $form['renderfile'] = array(
+    '#type' => 'file',
+    '#title' => t('Upload font file'),
+    '#description' => t('Select the font file that you created using the instructions above.'),
+    '#size' => 40,
+  );
+  $form[] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  
+  return $form;
+}
+
+/**
+ * Form validation callback for render_upload form.
+ */
+function render_upload_validate($form, &$form_state) {
+  // @todo Implement file mime type info in render plugins and return FALSE
+  // here, if the uploaded file is not supported by at least one plugin.
+}
+
+/**
+ * Form submit callback for render_upload form.
+ */
+function render_upload_submit($form, &$form_state) {
+  $dir = file_create_path('render');
+  // Creates directory if needed.
+  if (file_check_directory($dir, 1)) {
+    if ($file = file_save_upload('renderfile', array(), file_directory_path() .'/render')) {
+      file_set_status($file, FILE_STATUS_PERMANENT);
+      drupal_set_message(t('New font file uploaded.'));
+    }
+    else {
+      drupal_set_message(t('File could not be saved.'), 'error');
+    }
+  }
+  else {
+    drupal_set_message(t('Cannot create render directory in files.'), 'error');
+  }
+}
+
+/**
+ * Create a new rendering rule.
+ * 
+ * Since multiple rendering plugins can support the same font file types
+ * we need to ask for the plugin to use before a rule can be created.
+ */
+function render_add_rule() {
+  $form = array();
+  $form['plugin_select'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Available plugins'),
+  );
+  $form['plugin'] = array(
+    '#type' => 'value',
+    '#required' => TRUE,
+  );
+  foreach (render_plugins() as $plugin) {
+    $function = $plugin['name'] .'_render_setup';
+    if (function_exists($function)) {
+      if ($function()) {
+        $form['plugin_select'][$plugin['name']] = array(
+          '#type' => 'radio',
+          '#title' => $plugin['title'],
+          '#name' => 'plugin',
+          '#return_value' => $plugin['name'],
+        );
+      }
+    }
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Next'),
+  );
+  return $form;
+}
+
+/**
+ * Form submit callback for render_add_rule form.
+ */
+function render_add_rule_submit($form, &$form_state) {
+  if (isset($form_state['values']['plugin'])) {
+    drupal_goto('admin/settings/render/edit/'. check_plain($form_state['values']['plugin']));
+  }
+}
+
+/**
+ * Edit a rendering rule; menu callback.
+ *
+ * @param $edit
+ *   An array or object of rule parameters.
+ *
+ * @return
+ *   A form to edit a rule.
+ */
+function render_edit_rule($edit = NULL) {
+  if (is_numeric($edit)) {
+    if (isset($_POST['op']) && $_POST['op'] == t('Delete')) {
+      drupal_goto('admin/settings/render/rules/delete/'. $edit);
+    }
+    else {
+      $rule = render_load_rule($edit);
+    }
+  }
+  else if (is_string($edit)) {
+    $rule['plugin'] = check_plain($edit);
+  }
+  $font_select = $rule = (array)$rule;
+  $rules = array();
+  
+  // Override font colors for font selection.
+  $font_select['color']      = '#000000';
+  $font_select['linkcolor']  = '#000000';
+  $font_select['hovercolor'] = '#000000';
+  $font_select['bgcolor']    = '#FFFFFF';
+  $font_select['fontsize']   = '16px';
+  $fonts                     = render_get_fonts($rule['plugin']);
+  foreach ($fonts as $path => $name) {
+    $font_select['selector'] = '.render-font-'. str_replace(array(' ', '_', '.'), '-', $name);
+    $font_select['font']     = $path;
+    $rules[]                 = render_render_rule_js($font_select);
+  }
+  
+  // Ensure that plugin is properly loaded.
+  $function = $rule['plugin'] .'_render_load';
+  if (function_exists($function)) {
+    $function();
+  }
+  // Certain plugins like sIFR require some basic CSS to work properly. Thus, we
+  // need to create the CSS and JS files, even if there are no rules yet.
+  render_css_screen($rule['plugin'], FALSE);
+  drupal_add_css(file_directory_path() .'/render/'. $rule['plugin'] .'-screen.css', 'module', 'screen', FALSE);
+  drupal_add_js(render_wrap_rules($rule['plugin'], $rules, TRUE), 'inline');
+  
+  drupal_add_css(drupal_get_path('module', 'render') .'/render.css', 'module', 'all', FALSE);
+  
+  return drupal_get_form('render_rule', $rule);
+}
+
+/**
+ * Form builder function for add/edit rule form.
+ *
+ * @param $edit
+ *   An array containing a rendering rule.
+ */
+function render_rule(&$form_state, $edit) {
+  if (!empty($edit['rid'])) {
+    $form['rid'] = array(
+      '#type' => 'hidden',
+      '#value' => $edit['rid'],
+    );
+    drupal_set_title(t('Edit replacement rule %s', array('%s' => $edit['name'])));
+  }
+  else {
+    drupal_set_title(t('Add a new rendering rule'));
+  }
+  $edit += array(
+    'name' => '',
+    'selector' => '',
+    'font' => '',
+    'weight' => 0,
+  );
+
+  $form['plugin'] = array(
+    '#type' => 'value',
+    '#value' => $edit['plugin'],
+    '#required' => TRUE,
+  );
+
+  $form['basics'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Basics'),
+  );
+  $form['basics']['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Rule Name'),
+    '#default_value' => $edit['name'],
+    '#required' => TRUE,
+    '#description' => t('The human readable name for this rule.'),
+  );
+  $form['basics']['selector'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Selector'),
+    '#default_value' => $edit['selector'],
+    '#description' => t('A CSS / HTML selector for the elements you want to replace.'),
+    '#required' => TRUE,
+  );
+  $form['basics']['selectorhelp'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('CSS Selector Help'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['basics']['selectorhelp']['contents'] = array(
+    '#type' => 'markup',
+    '#value' => '<p>'. t('The supported CSS selectors are !selector1, !selector2 and !selector3. Whitespace is used to select descendants. Whitespace should only be used for this, so instead of !whitespace1 use !whitespace2. Multiple selectors may be used by seperating them with a comma ("!separator").', array(
+      '!selector1' => '<code>#</code>',
+      '!selector2' => '<code>&gt;</code>',
+      '!selector3' => '<code>.</code>',
+      '!whitespace1' => '<code>#foo &gt; p</code>',
+      '!whitespace2' => '<code>#foo&gt;p</code>',
+      '!separator' => '<code>,</code>',
+    )) .'</p>',
+  );
+  $form['basics']['selectorhelp']['contents']['#value'] .= '<p>'. t('Selectors are dependent on your theme. Examine the HTML source to find appropriate classes and ids being output by your current theme. The following are example selectors based on the default Garland theme:') .'</p>';
+  $form['basics']['selectorhelp']['contents']['#value'] .= '<ul>'. t('!site-title-prefix Site title !suffix
+    !page-title-prefix Page title !suffix
+    !node-titles-prefix Node titles !suffix
+    !block-titles-prefix Block titles !suffix
+    !comment-titles-prefix Comment titles !suffix', array(
+    '!site-title-prefix' => '<li><a href="" onclick="document.getElementById(\'edit-selector\').value = \'#header h1 span\';return false;">',
+    '!page-title-prefix' => '<li><a href="" onclick="document.getElementById(\'edit-selector\').value = \'#tabs-wrapper h2\';return false;">',
+    '!node-titles-prefix' => '<li><a href="" onclick="document.getElementById(\'edit-selector\').value = \' .node h2\';return false;">',
+    '!block-titles-prefix' => '<li><a href="" onclick="document.getElementById(\'edit-selector\').value = \' .block h2\';return false;">',
+    '!comment-titles-prefix' => '<li><a href="" onclick="document.getElementById(\'edit-selector\').value = \' .comment h3\';return false;">',
+    '!suffix' => '</a></li>',
+  )) .'</ul>';
+
+  $form['basics']['weight'] = array(
+    '#type' => 'weight',
+    '#title' => t('Weight'),
+    '#description' => t('You can adjust the order in which the rules are executed by changing their weights. Lighter items are executed before heavier.'),
+    '#delta' => 10,
+    '#default_value' => $edit['weight'],
+  );
+  
+  $function = $edit['plugin'] .'_render_rule';
+  if (function_exists($function)) {
+    $function($form, $edit);
+  }
+  
+  $form['submits'] = array(
+    '#prefix' => '<div class="container-inline">',
+    '#suffix' => '</div>',
+  );
+  $form['submits'][] = array('#type' => 'submit', '#value' => t('Submit'));
+  if (!empty($edit['rid'])) {
+    $form['submits'][] = array('#type' => 'button', '#value' => t('Delete'));
+  }
+  
+  return $form;
+}
+
+/**
+ * Form submit callback for render_rule form.
+ */
+function render_rule_submit($form, &$form_state) {
+  render_save_rule($form_state['values']);
+
+  // Regenerate list of active plugins.
+  render_get_rules($form_state['values']['plugin'], TRUE);
+  // Create the CSS file.
+  render_css_screen($form_state['values']['plugin']);
+  // Create the JS file.
+  render_render_rules_js($form_state['values']['plugin']);
+  // Change query-strings on CSS/JS files to enforce reload for all users.
+  _drupal_flush_css_js();
+
+  $form_state['redirect'] = 'admin/settings/render';
+}
+
+/**
+ * Form builder function for delete rule form.
+ */
+function render_delete_rule_form(&$form_state, $rid = NULL) {
+  if (!isset($rid) || !($rule = render_load_rule($rid))) {
+    drupal_goto('admin/settings/render');
+  }
+  $form = array();
+  $form['rid'] = array(
+    '#type' => 'hidden',
+    '#value' => $rule['rid'],
+  );
+  return confirm_form($form, t('Are you sure you want to delete the rule %rule?', array('%rule' => $rule['name'])), 'admin/settings/render');
+};
+
+/**
+ * Form submit callback for delete rule form.
+ */
+function render_delete_rule_form_submit($form, &$form_state) {
+  if ($form_state['values']['op'] == t('Confirm')) {
+    $rule = render_load_rule($form_state['values']['rid']);
+    db_query('DELETE FROM {render} WHERE rid = %d', $form_state['values']['rid']);
+    drupal_set_message(t('Rule %name has been deleted.', array('%name' => $rule['name'])));
+    render_render_rules_js($rule['plugin']);
+    render_css_screen($rule['plugin']);
+  }
+
+  $form_state['redirect'] = 'admin/settings/render';
+}
+
+/**
+ * Delete font page; menu callback.
+ */
+function render_fontdelete_confirm() {
+  $args = func_get_args();
+  $fontfile = implode('/', $args);
+
+  if (!$fontfile) {
+    drupal_goto('admin/settings/render/manage');
+  }
+  return drupal_get_form('render_fontdelete_confirm_form', $fontfile);
+}
+
+/**
+ * Form builder function for delete font form.
+ */
+function render_fontdelete_confirm_form(&$form_state, $fontfile) {
+  return confirm_form(array('render_fontfile' => array('#type' => 'hidden', '#value' => $fontfile)), t("Are you sure you want to delete the file &quot;%fontfile&quot;?", array('%fontfile' => $fontfile)), 'admin/settings/render/manage');
+}
+
+/**
+ * Form submit callback for delete font form.
+ */
+function render_fontdelete_confirm_form_submit($form, &$form_state) {
+  if ($form_state['values']['op'] == t('Confirm')) {
+    render_font_delete($form_state['values']['render_fontfile']);
+  }
+  $form_state['redirect'] = 'admin/settings/render/manage';
+}
+
+/**
+ * Delete a font file.
+ */
+function render_font_delete($fontfile) {
+  if (file_delete($fontfile)) {
+    drupal_set_message(t('The font %file has been deleted.', array('%file' => $fontfile)));
+  }
+  else {
+    drupal_set_message(t('There was a problem deleting the font file.'), 'error');
+  }
+}
+
+/**
+ * Return form radio items for font selection.
+ * 
+ * @param array $form
+ *   A form array containing rule definitions.
+ * @param string $field
+ *   A field name to append the selection.
+ */
+function render_font_select($form, $field) {
+  $fonts = render_get_fonts($form['plugin']);
+
+  $font_select = array();
+  foreach ($fonts as $path => $filename) {
+    $name = substr($filename, 0, strrpos($filename, '.'));
+    $font_select[][$field] = array(
+      '#type' => 'radio',
+      '#title' => '<span class="render-font-'. str_replace(array(' ', '_', '.'), '-', $filename) .' render-font">'. $name .'</span>',
+      '#return_value' => $path,
+      '#default_value' => $form[$field],
+    );
+  }
+  return $font_select;
+}
+
+/**
+ * Scan files/render for font files.
+ *
+ * @return array
+ *   An array with filepath => filename pairs.
+ * 
+ * @todo Additionally search current theme for font files.
+ */
+function render_get_fonts($plugin = NULL) {
+  $fonts = array();
+  
+  // Build the file mask.
+  $mask = array();
+  $plugins = render_plugins();
+  if (isset($plugin) && isset($plugins[$plugin]) && !empty($plugins[$plugin]['file_masks'])) {
+    $mask = $plugins[$plugin]['file_masks'];
+  }
+  else {
+    foreach ($plugins as $plugin) {
+      if (!empty($plugin['file_masks'])) {
+        $mask = array_merge($mask, $plugin['file_masks']);
+      }
+    }
+  }
+  $mask = implode('|', $mask);
+  
+  $dir   = file_create_path('render');
+  $files = file_scan_directory($dir, $mask, array('.', '..', 'CVS', '.svn'), 0, FALSE);
+  foreach ((array)$files as $file) {
+    $fonts[$file->filename] = $file->basename;
+  }
+  
+  return $fonts;
+}
+
+/**
+ * Fetch rules from database.
+ *
+ * @param $plugin
+ *   An optional plugin name to limit the query.
+ * @param $reset
+ *   (optional) TRUE to reload rules from the database.
+ *
+ * @return
+ *   An array of rules.
+ */
+function render_get_rules($plugin = NULL, $reset = FALSE) {
+  static $rules = array();
+  
+  if (!empty($rules) && !$reset) {
+    return $rules;
+  }
+  
+  if (isset($plugin)) {
+    $result = db_query("SELECT * FROM {render} WHERE plugin = '%s' ORDER BY weight", check_plain($plugin));
+  }
+  else {
+    $result = db_query('SELECT * FROM {render} ORDER BY weight');
+  }
+  while ($rule = db_fetch_array($result)) {
+    // Unserialize custom plugin properties.
+    $properties = unserialize($rule['properties']);
+    $rule = array_merge($rule, $properties);
+    
+    $rules[$rule['rid']] = $rule;
+  }
+
+  // Store active plugins in a variable.
+  $active_plugins = array();
+  foreach ($rules as $rule) {
+    $active_plugins[$rule['plugin']] = $rule['plugin'];
+  }
+  variable_set('render_plugins', $active_plugins);
+  
+  return $rules;
+}
+
+/**
+ * Fetch a rule from the database.
+ */
+function render_load_rule($rid) {
+  $rule = db_fetch_array(db_query('SELECT * FROM {render} WHERE rid = %d', $rid));
+  
+  // Unserialize custom plugin properties.
+  $properties = unserialize($rule['properties']);
+  $rule = array_merge($rule, $properties);
+  
+  return $rule;
+}
+
+/**
+ * Save a rule in the database.
+ *
+ * @param $edit
+ *   An array from the rule add/edit form.
+ */
+function render_save_rule($edit) {
+  $edit = (array)$edit;
+  if (!empty($edit['rid'])) {
+    db_query('DELETE FROM {render} WHERE rid = %d', $edit['rid']);
+  }
+  
+  // Serialize custom plugin properties.
+  $plugins = render_plugins();
+  $properties = array();
+  foreach ($edit as $key => $val) {
+    if (is_string($key) && in_array($key, $plugins[$edit['plugin']]['properties'])) {
+      $properties[$key] = $val;
+      unset($edit[$key]);
+    }
+  }
+  
+  foreach ($edit as $key => $val) {
+    if (in_array($key, _render_fields())) {
+      // Only save keyed values.
+      if (!is_numeric($key)) {
+        if (is_numeric($val)) {
+          if (is_float(0 + $val)) {
+            $valsubs[] = '%f';
+          }
+          else {
+            $valsubs[] = '%d';
+          }
+        }
+        else {
+          $valsubs[] = '\'%s\'';
+        }
+        $vals[] = $val;
+        $keys[] = $key;
+      }
+    }
+  }
+  
+  // Add custom plugin properties field.
+  $keys[]    = 'properties';
+  $valsubs[] = '\'%s\'';
+  $vals[]    = serialize($properties);
+  
+  $keys = implode(', ', $keys);
+  $valsubs = implode(', ', $valsubs);
+  db_query("INSERT INTO {render} ($keys) VALUES ($valsubs) ", $vals);
+  drupal_set_message(t('Rule %rule has been saved.', array('%rule' => $edit['name'])));
+}
+
+/**
+ * Duplicate an existing render rule.
+ *
+ * @param int $rid
+ *   A rule id of an existing rule.
+ */
+function render_duplicate_rule($rid) {
+  $rule = render_load_rule($rid);
+  $rule['name'] = $rule['name'] .' ('. t('Dupe') .')';
+  unset($rule['rid']);
+  unset($rule['properties']);
+  render_save_rule($rule);
+  
+  drupal_goto('admin/settings/render');
+}
+
+/**
+ * Find the directory of each plugin and save locations in a variable.
+ *
+ * Recurses into the render.module's directory to find the shallowest
+ * file dependency of all plugins.
+ *
+ * This removes the need for administrators to rename a plugin's directory
+ * when they place it into the module directory.
+ *
+ * @param string $plugin
+ *   An internal name of a plugin. (optional)
+ * @param bool $reset
+ *   Whether to clear the plugin directory cache.
+ *
+ * @return array
+ *   An array containing the directory for each plugin.
+ */
+function render_find_render($plugin_name = NULL, $reset = FALSE) {
+  $plugins = render_plugins();
+  
+  if (!$reset) {
+    $dirs = variable_get('render_plugin_dirs', array());
+  }
+  else {
+    variable_del('render_plugin_dirs');
+    $dirs = array();
+  }
+  // If plugin name is given and we already know the directory, return it.
+  if (isset($plugin_name) && isset($dirs[$plugin_name]) && $dirs[$plugin_name]) {
+    return $dirs[$plugin_name];
+  }
+  
+  $dirs = array();
+  $renderdir = drupal_get_path('module', 'render');
+  foreach ($plugins as $name => $plugin) {
+    if (!isset($dirs[$name])) {
+      $mask = preg_quote($plugin['dependencies'][0]);
+      $files = file_scan_directory($renderdir, $mask, array('.', '..', 'CVS', '.svn'), 0, TRUE, 'filename', 1);
+      // The first one is the shallowest, use it.
+      if ($file = array_shift($files)) {
+        $dirs[$name] = substr($file->filename, 0, strlen($file->filename) - strlen($file->basename) - 1);
+      }
+    }
+  }
+  
+  // Cache the results.
+  if (!empty($dirs)) {
+    variable_set('render_plugin_dirs', $dirs);
+  }
+  
+  // If plugin name is given, return only that plugin directory.
+  if (isset($plugin_name)) {
+    if (isset($dirs[$plugin_name])) {
+      return $dirs[$plugin_name];
+    }
+    else {
+      // Plugin is malformed, directory was not found, or name does not exist.
+      return FALSE;
+    }
+  }
+  else {
+    return !empty($dirs) ? $dirs : FALSE;
+  }
+}
+
+/**
+ * Add JavaScripts and Stylesheets for all active plugins to all pages.
+ */
+function render_all_pages() {
+  static $done;
+  if ($done) {
+    return;
+  }
+  $plugins = render_plugins();
+  $active_plugins = variable_get('render_plugins', array());
+  $dir = file_directory_path() .'/render/';
+  foreach ($plugins as $plugin) {
+    if (in_array($plugin['name'], $active_plugins)) {
+      $function = $plugin['name'] .'_render_load';
+      if (function_exists($function)) {
+        $function();
+      }
+      drupal_add_css($dir . $plugin['name'] .'-screen.css', 'module', 'screen');
+      drupal_add_js($dir . $plugin['name'] .'-rules.js');
+    }
+  }
+  $done = true;
+}
+
+/**
+ * Save rendering JavaScript files for each plugin.
+ */
+function render_render_rules_js($edited_plugin = NULL) {
+  // Hide messages from other users.
+  $verbose = user_access('administer site configuration') ? TRUE : FALSE;
+  
+  $dir = file_create_path('render');
+  if (!file_check_directory($dir, 1)) {
+    if ($verbose) {
+      drupal_set_message(t('Cannot create directory %render.', array('%render' => $dir)), 'error');
+    }
+    return FALSE;
+  }
+  
+  $rules = array();
+  
+  // Render JavaScript rules for each plugin.
+  foreach (render_get_rules($edited_plugin) as $rule) {
+    $rules[$rule['plugin']][] = render_render_rule_js($rule);
+  }
+  
+  // Wrap rules with execution handler and save to files.
+  foreach ($rules as $plugin => $plugin_rules) {
+    $plugin_js = render_wrap_rules($plugin, $plugin_rules);
+    $filename = check_plain($plugin) .'-rules.js';
+    if ($file = file_save_data($plugin_js, $dir .'/'. $filename, FILE_EXISTS_REPLACE)) {
+      if ($verbose) {
+        drupal_set_message(t('JavaScript file !file has been saved.', array('!file' => l($filename, file_create_url($dir .'/'. $filename)))));
+      }
+    }
+    elseif ($verbose) {
+      drupal_set_message(t('JavaScript file !file could not be saved.', array('!file' => $dir .'/'. $filename)), 'error');
+    }
+  }
+}
+
+/**
+ * Return a single JavaScript rendering rule.
+ */
+function render_render_rule_js($rule) {
+  $plugins = render_plugins();
+  $function = $rule['plugin'] .'_render_render_rule_js';
+  if (function_exists($function)) {
+    return $function($rule);
+  }
+  else {
+    $message = t("Error: @plugin does not provide a method to build JavaScript rendering invocations.", array('@plugin' => $rule['plugin']));
+    drupal_set_message($message, 'error');
+    return '  /* '. $message ." */\n";
+  }
+}
+
+/**
+ * Wrap execution handler around JavaScript rules.
+ */
+function render_wrap_rules($plugin, $rules, $inline = FALSE) {
+  $output = '';
+  if (is_array($rules) && $inline) {
+    $output .= "\n//<![CDATA['\n";
+  }
+  if (is_array($rules)) {
+    $plugins = render_plugins();
+    $function = $plugin .'_render_wrap_rules';
+    if (function_exists($function)) {
+      $output .= $function($rules);
+    }
+  }
+  if (is_array($rules) && $inline) {
+    $output .= "//]]>\n";
+  }
+  return $output;
+}
+
+/**
+ * Create a stylesheet file for a plugin.
+ *
+ * @param string $plugin
+ *   A plugin name.
+ * @param bool $verbose
+ *   Whether to output positive status messages, defaults to TRUE.
+ * @param bool $print
+ *   Whehter to output the contents directly, defaults to FALSE.
+ */
+function render_css_screen($plugin, $verbose = TRUE, $print = FALSE) {
+  // Hide messages from other users.
+  if (!user_access('administer site configuration')) {
+    $verbose = FALSE;
+  }
+  
+  if ($print) {
+    header("Content-Type: text/css");
+    header("Expires: Sun, 19 Nov 1978 05:00:00 GMT");
+    header("Last-Modified: ". gmdate("D, d M Y H:i:s") ." GMT");
+    header("Cache-Control: no-store, no-cache, must-revalidate");
+    header("Cache-Control: post-check=0, pre-check=0", FALSE);
+    header("Pragma: no-cache");
+  }
+  
+  $plugin   = check_plain($plugin);
+  $plugins  = render_plugins();
+  $function = $plugin .'_render_css_screen';
+  if (function_exists($function)) {
+    $output = $function(render_get_rules($plugin));
+  }
+  else {
+    $message = t("Error: @plugin does not provide a method to build a CSS file.", array('@plugin' => $plugin));
+    if ($verbose) {
+      drupal_set_message($message, 'error');
+    }
+    return '  /* '. $message ." */\n";
+  }
+  
+  $dir = file_create_path('render');
+  if (file_check_directory($dir, TRUE)) {
+    $filename = $plugin .'-screen.css';
+    if ($file = file_save_data($output, $dir .'/'. $filename, FILE_EXISTS_REPLACE)) {
+      if ($verbose) {
+        drupal_set_message(t('CSS file !file has been saved.', array('!file' => l($filename, file_create_url($dir .'/'. $filename)))));
+      }
+    }
+    else {
+      if ($verbose) {
+        drupal_set_message(t('CSS file !file could not be saved.', array('!file' => $dir .'/'. $filename)), 'error');
+      }
+    }
+  }
+  else {
+    if ($verbose) {
+      drupal_set_message(t('Cannot create directory %render.', array('%render' => $dir)), 'error');
+    }
+  }
+  if ($print) {
+    print $output;
+  }
+}
+
+/**
+ * Creates a download link for render_octet_download().
+ *
+ * @param string $plugin_name
+ *   A name of a plugin.
+ * @param string $filename
+ *   A filename of a plugin to link to.
+ *
+ * @return string
+ *   An already rendered HTML link.
+ */
+function render_download_link($plugin_name, $filename) {
+  $plugindir = render_find_render($plugin_name);
+  if (!$plugindir) {
+    $plugindir = drupal_get_path('module', 'render') .'/'. $plugin_name;
+  }
+  return l($filename, 'render/download/'. urlencode($plugindir .'/'. $filename));
+}
+
+/**
+ * Downloads files using application/octet-stream mime type.
+ *
+ * Makes text files download rather than appearing in browser.
+ *
+ * @param string $file
+ *   The file to be downloaded.
+ */
+function render_octet_download() {
+  $args = func_get_args();
+  $file = implode('/', $args);
+  if (user_access('administer site configuration') && is_file($file)) {
+    header('Content-Type: application/octet-stream');
+    header('Content-Disposition: attachment; filename="'. basename($file) .'"');
+    ob_start();
+    include $file;
+    $contents = ob_get_contents();
+    ob_end_clean();
+    print $contents;
+  }
+  else {
+    drupal_not_found();
+  }
+}
+
+/**
+ * Return database fields that make up a rendering rule.
+ */
+function _render_fields() {
+  return array('rid', 'plugin', 'name', 'selector', 'properties', 'weight');
+}
+

@@ -1,0 +1,13 @@
+; $Id: spaces_site.info,v 1.1.2.1 2008/11/05 18:55:17 yhahn Exp $
+name = "Spaces Site"
+description = "Provides nothing but a space for your entire site."
+package = "Spaces"
+dependencies[] = spaces
+core = "6.x"
+
+; Information added by drupal.org packaging script on 2010-02-15
+version = "6.x-2.0-beta7"
+core = "6.x"
+project = "spaces"
+datestamp = "1266249907"
+

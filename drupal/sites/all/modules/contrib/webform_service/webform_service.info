@@ -1,0 +1,6 @@
+name = Webform Service
+description = Provides a webform service.
+package = Services - services
+dependencies[] = services
+dependencies[] = webform
+core = 6.x

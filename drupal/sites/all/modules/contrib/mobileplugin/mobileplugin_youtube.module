@@ -1,0 +1,107 @@
+<?php
+// $Id: mobileplugin_youtube.module,v 1.2 2009/05/24 11:33:13 teemule Exp $
+
+/**
+ * Mobile Plugin: YouTube optimizations
+ * Nitro FX Oy, Finland 2009
+ * Teemu Lehtinen
+ */
+
+/**
+ * Adds fields to group settings form.
+ * @param group the stored group settings array
+ * @return drupal form api fields to add
+ */
+function mobileplugin_youtube_mobileplugin_setup(&$group_setup) {
+	$form = array();
+	$form['youtube'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Youtube optimizations')
+	);
+	$form['youtube']['youtubeact'] = array(
+		'#type' => 'select',
+		'#title' => t('YouTube embedded video action'),
+		'#default_value' => _mobileplugin_get_setup_val($group_setup, 'youtubeact', 'rtsp'),
+		'#options' => array('none' => t('Do nothing'), 'rtsp' => t('Replace with a thumbnail and link'), 'remove' => t('Remove'))
+	);
+	return $form;
+}
+
+/**
+ * Optimizes node content fields for mobile view.
+ * @param group_setup a Mobile Plugin group settings array
+ * @param dom a simple html dom object to optimize
+ */
+function mobileplugin_youtube_mobileplugin_optimize_dom(&$group_setup, &$dom) {
+	$ytact = _mobileplugin_get_setup_val($group_setup, 'youtubeact', 'rtsp');
+	if ($ytact != 'none') {
+		foreach ($dom->find('object') as $e) {
+			foreach ($e->find('param') as $p) {
+				if (strtolower($p->name) == 'movie') {
+					if ($id = _mobileplugin_youtube_parse_id($p->value)) {
+						if ($ytact == 'rtsp') {
+							$e->outertext = _mobileplugin_youtube_for_id($id);
+						} else {
+							$e->outertext = '';
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Parses a YouTube video id from a src string.
+ * @return a YouTube video id or false
+ */
+function _mobileplugin_youtube_parse_id($src) {
+	if (strtolower(substr($src, 0, 25)) == 'http://www.youtube.com/v/') {
+		$e = strpos($src, '&', 25);
+		if ($e !== false) {
+			return substr($src, 25, $e - 25);
+		}
+	}
+	return false;
+}
+
+/**
+ * Creates a mobile optimized presentation for a youtube video.
+ * @param id a YouTube video id
+ * @return markup for mobile optimized content
+ */
+function _mobileplugin_youtube_for_id($id) {
+	$c = '<div class="youtube"><a href="http://m.youtube.com/watch?v=' . $id
+		. '"><img src="http://i.ytimg.com/vi/' . $id . '/0.jpg" /><br />' . t('Play from YouTube') . '</a></div>';
+	return $c;
+}
+
+/**
+ * Gets content information from You Tube Data API over the net.
+ * @param id a YouTube video id
+ * @return an array of format ids to content urls
+ *
+function _mobileplugin_youtube_get_content_map($id) {
+	$map = array();
+	$result = drupal_http_request('http://gdata.youtube.com/feeds/api/videos/' . $id);
+	if ($result->error) {
+		return $map;
+	}
+	$dom = new DOMDocument();
+	if (!$dom->loadXML($result->data)) {
+		return $map;
+	}
+	foreach ($dom->firstChild->childNodes as $dom1) {
+		if ($dom1->nodeName == 'media:group') {
+			foreach ($dom1->childNodes as $dom2) {
+				if ($dom2->nodeName == 'media:content') {
+					$map[intval($dom2->getAttribute("yt:format"))] = $dom2->getAttribute('url');
+				}
+			}
+			break;
+		}
+	}
+	return $map;
+}
+*/

@@ -1,0 +1,5 @@
+; $Id:$
+name = Ordinal
+description = Format a number to be its ordinal.
+package = NYSS
+core = 6.x

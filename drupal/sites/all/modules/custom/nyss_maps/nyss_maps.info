@@ -1,0 +1,5 @@
+; $Id:$
+name = NYSS Maps
+description = Creates the district map pages.
+package = NYSS
+core = 6.x

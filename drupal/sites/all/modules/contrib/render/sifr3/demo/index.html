@@ -1,0 +1,205 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>sIFR 3 revision 436</title>
+
+  <link rel="stylesheet" href="all.css" type="text/css" media="all">
+  <link rel="stylesheet" href="../css/sifr.css" type="text/css">
+
+  <style type="text/css" media="screen">
+    /*****************************************************************************
+    These styles should be at the bottom of `sifr.css`. Make sure that they're
+    only applied for the screen media type!
+    *****************************************************************************/
+    
+    .sIFR-active h1,
+    .sIFR-active h2,
+    .sIFR-active h3,
+    .sIFR-active h4,
+    .sIFR-active h5#pullquote {
+      visibility: hidden;
+      font-family: Verdana;
+    }
+
+    .sIFR-active h1 {
+      padding-bottom: 0;
+    }
+
+    .sIFR-active h2 {
+      font-size: 55px;
+      display: block;
+    }
+
+    .sIFR-active h3 {
+      font-size: 18px;
+    }
+
+    .sIFR-active h4 {
+      font-size: 21px;
+      font-weight: normal;
+    }
+
+    .sIFR-active h5#pullquote {
+      font-size: 24px;
+    }
+  </style>
+
+  <script src="../js/sifr.js" type="text/javascript"></script>
+  <script src="../js/sifr-debug.js" type="text/javascript"></script>
+  <script type="text/javascript">
+    /*****************************************************************************
+    The sIFR configuration should typically go in `sifr-config.js`, but in order to
+    keep the config file clean, and to give a quick overview, it's done here instead.
+    *****************************************************************************/
+  
+    var cochin = {
+      src: 'cochin.swf'
+      ,ratios: [7, 1.32, 11, 1.31, 13, 1.24, 14, 1.25, 19, 1.23, 27, 1.2, 34, 1.19, 42, 1.18, 47, 1.17, 48, 1.18, 69, 1.17, 74, 1.16, 75, 1.17, 1.16]
+    };
+
+    var rockwell = {
+      src: 'rockwell.swf'
+      ,ratios: [6, 1.41, 9, 1.35, 15, 1.29, 21, 1.25, 22, 1.22, 27, 1.24, 29, 1.21, 34, 1.22, 41, 1.21, 45, 1.2, 46, 1.21, 59, 1.2, 68, 1.19, 69, 1.2, 96, 1.19, 97, 1.18, 102, 1.19, 103, 1.18, 107, 1.19, 108, 1.18, 112, 1.19, 114, 1.18, 116, 1.19, 120, 1.18, 121, 1.19, 1.18]
+    };
+
+    // You probably want to switch this on, but read <http://wiki.novemberborn.net/sifr3/DetectingCSSLoad> first.
+    // sIFR.useStyleCheck = true;
+    sIFR.activate(cochin, rockwell);
+
+    sIFR.replace(rockwell, {
+      selector: 'h1'
+      ,css: [
+        '.sIFR-root { text-align: center; font-weight: bold; }'
+        ,'a { text-decoration: none; }'
+        ,'a:link { color: #000000; }'
+        ,'a:hover { color: #CCCCCC; }'
+      ]
+    });
+  
+    sIFR.replace(rockwell, {
+      selector: 'h5#pullquote'
+      ,css: 'em { font-style: normal; color: #660000; }'
+      ,selectable: false
+    });
+  
+    sIFR.replace(cochin, {
+      selector: 'h3.sidebox'
+      ,css: {
+        '.sIFR-root': { 'background-color': '#DCDCDC' }
+      }
+    });
+  
+    sIFR.replace(cochin, {selector: 'h2,h3'});
+  
+    sIFR.replace(cochin, {
+      selector: 'h4.subhead'
+      ,css: {
+        '.sIFR-root': { 'color': '#660000', 'letter-spacing': -1.5, 'text-transform': 'capitalize' }
+      }
+      ,filters: {
+        DropShadow: {
+          knockout: true
+          ,distance: 1
+          ,color: '#330000'
+          ,strength: 2
+        }
+      }
+    });
+  </script>
+</head>
+
+<body>
+<div id="container">
+
+  <h1><a href="http://novemberborn.net/sifr3">The Gothic Times</a></h1>
+
+  <div id="main">
+    <div id="left">
+      <div class="gutter">
+        <h3 class="sidebox">Vanden Keere, Mrs. Eaves wed in Baskerville</h3>
+        <p>ed wisi. Cras ornare sagittis risus. Cras nisl neque, nonummy et, condimentum a, adipiscing ut, sem. Duis scelerisque ullamcorper elit.</p>
+        <p>Fusce aliquet aliquet sapien. Donec tincidunt eleifend odio. Morbi lorem. Pellentesque et massa elementum nisl commodo consectetuer. Sed eget quam. Nullam vulputate. Morbi eu enim.   Integer velit. Etiam enim neque, facilisis vulputate, fermentum a, lobortis vel, erat. Maecenas risus.</p>
+        <p>In viverra. Ut ornare commodo urna. In hac habitasse platea dictumst. Donec dapibus, tellus sit amet varius malesuada, pede nisl interdum lacus, sed pretium tortor neque non sapien. Etiam eu dolor sed dui tristique suscipit. Sed iaculis metus quis nulla. Mauris egestas elit et orci. Nulla tincidunt vestibulum dui. In nec velit sit amet ante iaculis rhoncus. Donec arcu eros, egestas sed, dignissim a, rhoncus eget, dolor.</p>
+      </div>
+    </div>
+
+    <div id="right">
+      <h3>Helvetica, Arial in Grotesque Accident</h3>
+      <p>Maecenas rhoncus diam id metus. Aenean lacinia lectus sit amet diam. Vestibulum urna ante, mollis vitae, sagittis sit amet, aliquam nec, dolor.</p>
+      <p>Aenean ultricies tortor in nunc. Vestibulum quis lacus. Etiam lobortis gravida diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Curabitur ut urna. Maecenas hendrerit elit at massa. Phasellus ultricies. Integer sollicitudin. Donec pellentesque eros sed leo.</p>
+    </div>
+
+    <div id="center">
+      <h2 class="foo">Geneva Plan Signed</h2>
+      <h4 class="subhead">new agreement creates Myriad opportunities for Fruitiger, sans-serifs</h4>
+      
+      <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Sed ac urna.
+        Sed rutrum lectus eu orci. Nulla mattis erat. Fusce scelerisque hendrerit
+        wisi. Aenean imperdiet imperdiet nunc. Morbi tincidunt, mi vel posuere varius,
+        mi est nonummy leo, eu volutpat leo massa sit amet turpis. Curabitur tempor
+        auctor quam. Morbi dapibus. Vestibulum eleifend. Etiam eleifend sapien nec
+        dolor. Proin porttitor felis a orci. Curabitur pellentesque urna a turpis.</p>
+
+      <h5 id="pullquote">&ldquo;The quest to abolish the serif <em>shall continue</em>.&rdquo;</h5>
+      <p> Donec massa erat, vehicula ac, tincidunt vel, viverra nec, elit. Sed sodales,
+        enim nec cursus auctor, dui ligula tincidunt augue, eget dapibus odio leo
+        at dolor. Etiam tempor accumsan nisl. Nunc turpis mi, consectetuer pharetra,
+        vulputate vitae, posuere id, lectus. Etiam auctor pharetra metus. Nullam
+        eu urna ac diam ultricies ultrices. Vestibulum a ligula. Ut vitae turpis.
+        Nullam tincidunt faucibus arcu. Praesent rhoncus arcu at mi. Duis ipsum
+        mauris, ornare in, fringilla non, imperdiet et, quam.</p>
+      <p> Pellentesque habitant morbi tristique senectus et netus et malesuada fames
+        ac turpis egestas. Phasellus mollis. Nulla velit orci, elementum at, sodales
+        eget, mollis eget, massa. Maecenas pellentesque vulputate diam. Proin lacinia.
+        Donec vulputate vestibulum wisi. Donec cursus. Praesent varius semper nunc.
+        Cras tortor pede, posuere iaculis, lobortis cursus, aliquet non, velit.
+        Vestibulum mauris lectus, tristique non, sollicitudin non, commodo eget,
+        quam. Nulla quis velit. Fusce iaculis aliquet augue. Nulla commodo sodales
+        pede. Integer adipiscing tellus vel turpis. Sed egestas, diam ac auctor
+        pretium, sapien libero venenatis orci, sit amet porta dolor mauris at odio.
+        Aenean id sapien. Praesent rhoncus bibendum turpis. Nunc quis felis pellentesque
+        nunc mollis dignissim. Phasellus vel ante.</p>
+      <p> Phasellus sagittis dui eu wisi. Etiam varius scelerisque pede. Nulla pellentesque
+        erat id sapien. Duis nec orci quis massa facilisis eleifend. Sed arcu. Praesent
+        id velit eget dolor mollis posuere. Donec vitae est. Suspendisse risus pede,
+        ornare id, porttitor ut, volutpat vel, mi. Morbi sem massa, porta non, viverra
+        id, blandit in, orci. Nulla vitae diam. Pellentesque commodo, risus sit
+        amet mollis ultricies, ipsum mauris porta metus, non mollis wisi augue id
+        urna. Nulla facilisi. Nam imperdiet fermentum velit. Curabitur eget lacus.
+        Sed non odio. Cras posuere blandit arcu.</p>
+      <p> Aenean laoreet lacus ut felis. Quisque ornare sapien pulvinar erat. Etiam
+        non augue quis arcu accumsan commodo. Vestibulum ultrices. Nulla euismod.
+        Mauris ac mi. Proin consequat, wisi quis sollicitudin pulvinar, ipsum augue
+        scelerisque neque, vitae cursus lacus mi a lorem. Fusce non magna eu arcu
+        mattis tincidunt. Morbi id orci. Etiam sed mauris. In condimentum, ante
+        pharetra rutrum cursus, lorem ipsum placerat dolor, suscipit dapibus ipsum
+        justo vitae metus. Nulla aliquam. Pellentesque molestie sem ac mi. Pellentesque
+        ornare velit eu odio. Nunc ultricies nonummy dui. Sed in erat ac est auctor
+        scelerisque. Vestibulum aliquet. Curabitur ante diam, dapibus commodo, mollis
+        at, luctus at, diam. Maecenas libero erat, tristique ut, consequat sit amet,
+        consectetuer eu, leo.</p>
+      <p> Etiam tellus dolor, commodo viverra, tempor ac, suscipit a, dolor. Nulla
+        ut urna vitae orci vestibulum pharetra. Proin a magna dignissim nibh sodales
+        eleifend. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices
+        posuere cubilia Curae; Nulla sed diam id nibh elementum congue. Mauris faucibus.
+        Fusce justo quam, varius eget, luctus non, sagittis et, est. Duis nulla
+        justo, placerat quis, ultrices ac, eleifend a, ligula. Aliquam vitae eros.
+        Aenean tincidunt, libero vel adipiscing dapibus, lacus nisl tempus enim,
+        eu blandit justo tellus id odio. Proin ornare. Integer felis wisi, cursus
+        et, imperdiet nec, vulputate vel, tellus. Vestibulum rutrum.</p>
+      <p> Praesent eget quam a orci tincidunt molestie. Duis pellentesque tristique
+        eros. Pellentesque habitant morbi tristique senectus et netus et malesuada
+        fames ac turpis egestas. Nullam et lectus. Nam eleifend iaculis augue. Maecenas
+        nec nibh quis neque aliquet semper. Fusce vitae arcu sed lacus cursus imperdiet.
+        Curabitur volutpat erat vitae lorem. Donec nonummy, dolor et facilisis rutrum,
+        lacus diam tristique massa, eget dictum odio pede et sem. In hac habitasse
+        platea dictumst. Donec ullamcorper euismod libero. Proin porta, dolor at
+        ultricies venenatis, sapien lectus lacinia leo, et congue libero purus id
+        nisl.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

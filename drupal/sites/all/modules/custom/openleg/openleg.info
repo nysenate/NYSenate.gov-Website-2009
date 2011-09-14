@@ -1,0 +1,5 @@
+; $Id:$
+name = OpenLeg
+description = Handles retrieval of legislative information from the New York State Senate's OpenLeg system.
+package = NYSS
+core = 6.x

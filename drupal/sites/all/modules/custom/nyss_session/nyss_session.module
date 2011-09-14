@@ -1,0 +1,320 @@
+<?php
+// $Id$
+
+/**
+ *  @file
+ *  NYSS Session
+ *
+ *  This module provides an API to tell the website whether the senate is in session.
+ *
+ */
+
+define('NYSS_USE_LDBC_FEED', 0);
+define('NYSS_IN_SESSION', 1);
+define('NYSS_NOT_IN_SESSION', 2);
+
+/**
+ *  Implement hook_menu().
+ */
+function nyss_session_menu() {
+  $items = array();
+  $items['admin/nyss/nyss/session'] = array(
+    'title' => 'Session settings',
+    'description' => 'Specify settings to tell the website whether the senate is in session.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('nyss_session'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+function nyss_session_theme() {
+  return array(
+    'nyss_session_show_video' => array(
+      'arguments' => array(),
+      'template' => 'nyss-session-show-video',
+    ),
+  );
+}
+
+/**
+ * Form builder. Configure settings for handling video offline and high-traffic conditions.
+ *
+ * @ingroup forms
+ * @see system_settings_form().
+ */
+function nyss_session() {
+  $form['nyss_session_status'] = array(
+    '#type' => 'radios',
+    '#title' => t('The senate is currently'),
+    '#options' => array(
+      'use_lbdc_feed' => t('Use LBDC feed'),
+      'standby to convene' => t('The Senate is standing by to convene. '),
+      'standby to reconvene' => t('The Senate is standing by to reconvene. '),
+      'in session' => t('The Senate is in Session. '),
+      'senate and assembly convened in joint session' => t('The Senate and Assembly has convened in a Joint Session. '),
+      'convened in extraordinary session' => t('The Senate is Convened in Extraordinary Session. '),
+      'adjourned to [date, time]' => t('Adjourned until time and date below. '),
+      'adjourned to the call of the temporary president' => t('Adjourned to the call of the Temporary President. '),
+      'at ease' => t('The Senate is Temporarily at Ease. '),
+      'in recess until [time]' => t('The Senate is in recess until time below. '),
+      'in recess' => t('The Senate is in recess. '),
+      'free form text box' => t('Other (enter text below)'),
+    ),
+    '#default_value' => variable_get('nyss_session_status', 'use_lbdc_feed'),
+    '#description' => t('Normally we should use the LBDC feed, but if it isn\'t accurate, you can override it here.'),
+  );
+  $form['nyss_session_text'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Explanatory text'),
+    '#default_value' => variable_get('nyss_session_text', ''),
+    '#description' => t('Enter the message that you want shown when overriding the LBDC feed.'),
+  );
+  $form['nyss_session_start_day'] = array(
+    '#default_value' => variable_get('nyss_session_start_day', ''),
+    '#type' => 'textfield',
+    '#title' => t('Start day'),
+    '#default_value' => variable_get('nyss_session_start_day', ''),
+  );
+  $form['nyss_session_start_time'] = array(
+    '#default_value' => variable_get('nyss_session_start_time', ''),
+    '#type' => 'textfield',
+    '#title' => t('Start time'),
+    '#default_value' => variable_get('nyss_session_start_time', ''),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Wrapper function to retrieve value of the nyss_session_status variable, which
+ * specifies whether to use the old LBDC feed or manually override it to set the session status display block.
+ *
+ * Note by Sheldon, 2/16/2010: I'm not sure that this function is actually used, and it will probably become
+ * obsolete after implementing the new journal clerk system.
+ */
+function nyss_session_status() {
+  return (variable_get('nyss_session_status', '') == '');
+}
+
+/**
+ * Returns an array with status information retrieved from the Journal Clerk's RSS feed.
+ *
+ * @return
+ *   An array with the following keys:
+ *     state          => a text string representation of the current state (e.g., 'In Session', etc.)
+ *     text           => freeform text
+ *     start_day      => the start day of session (in what date format?)
+ *     start_time     => the start time of session (in what time format?)
+ *     display_video  => a Boolean 
+ *     message        => a message to display in the live_session block
+ *     headline       => the headline that should display in the live_session block
+ */
+function nyss_session_get_status() {
+  if (variable_get('nyss_session_status', 'use_lbdc_feed') != 'use_lbdc_feed') {
+    $status = array();
+    // Parse out values from the retrieved XML
+    $status['state'] = variable_get('nyss_session_status', t('The Senate is in Session. '));
+    $status['text'] = variable_get('nyss_session_text', '');
+    $status['start_day'] = variable_get('nyss_session_start_day', '');
+    $status['start_time'] = variable_get('nyss_session_start_time', '');
+    $status['use_js'] = FALSE;
+  }
+  else {
+    $result = _nyss_session_get_xml("http://63.118.56.3/wtsstatus.xml");
+    $status = array();
+    // Parse out values from the retrieved XML
+    $status['state'] = (string)$result->channel->item->wtsstate;
+    $status['text'] = (string)$result->channel->item->wtstext;
+    $status['start_day'] = (string)$result->channel->item->startstringday;
+    $status['start_time'] = (string)$result->channel->item->startstringtime;
+    $status['majority_conference_meeting'] = (string)$result->channel->item->wtsmajconfmeeting;
+    $status['last_convened'] = (string)$result->channel->item->wtslastconvened;
+    $status['last_adjourned'] = (string)$result->channel->item->wtslastadjourned;
+    $status['use_js'] = TRUE;
+  }
+
+  // Calculate a boolean value
+  // This flag also gets set individually below, so this code arguably isn't necessary.
+  // Belts and braces. Belts and braces.
+  $status['display_video'] = in_array(trim(strtolower($status['state'])), 
+    array(
+      "standby to convene", 
+      "standby to reconvene", 
+      "in session", 
+      "senate and assembly convened in joint session",
+      "convened in extraordinary session",
+    )
+  );
+  // Construct the message and headline, and decide whether to display video.
+  switch (trim(strtolower($status['state']))) {
+    // Senate is meeting, so show video
+    case 'standby to convene':
+      $status['message'] = t('The Senate is standing by to convene. ');
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('Senate Status');
+      $status['display_video'] = TRUE;
+      break;
+    case 'standby to reconvene':
+      $status['message'] = t('The Senate is standing by to reconvene. ');
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('Senate Status');
+      $status['display_video'] = TRUE;
+      break;
+    case 'in session':
+      $status['message'] = t('The Senate is in Session. ');
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('Senate Status. ');
+      $status['display_video'] = TRUE;
+      break;
+    case 'senate and assembly convened in joint session':
+      $status['message'] = t('The Senate and Assembly has convened in a Joint Session. ');
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('Senate Status');
+      $status['display_video'] = TRUE;
+      break;
+    case 'convened in extraordinary session':
+      $status['message'] = t('The Senate is Convened in Extraordinary Session. ');
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('Senate Status');
+      $status['display_video'] = TRUE;
+      break;
+
+    // Senate is not currently meeting, so point people to video archives
+    case 'adjourned to [date, time]':
+      $status['message'] = t('Adjourned until @time, @date. ', array('@date' => $status['start_day'], '@time' => $status['start_time']));
+      $status['message'] .= _nyss_session_archives_text();
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('When is Session?');
+      $status['display_video'] = FALSE;
+      break;
+    case 'adjourned to the call of the temporary president':
+      $status['message'] = t('Adjourned to the call of the Temporary President. ');
+      $status['message'] .= _nyss_session_archives_text();
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('When is Session?');
+      $status['display_video'] = FALSE;
+      break;
+    case 'temporarily at ease':
+    case 'at ease':
+      $status['message'] = t('The Senate is Temporarily at Ease. ');
+      $status['message'] .= _nyss_session_archives_text();
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('Senate Status');
+      $status['display_video'] = FALSE;
+      break;
+    case 'in recess until [time]':
+      $status['message'] = t('The Senate is in recess until @time. ', array('@time' => $status['start_time']));
+      $status['message'] .= _nyss_session_archives_text();
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('When is Session?');
+      $status['display_video'] = FALSE;
+      break;
+    case 'in recess':
+      $status['message'] = t('The Senate is in recess. ');
+      $status['message'] .= _nyss_session_archives_text();
+      $status['message'] .= $status['text'];
+      $status['headline'] = t('When is Session?');
+      $status['display_video'] = FALSE;
+      break;
+
+    // Free form text doesn't meet any of the above categories, so don't show video
+    // OR point to the video archives.
+    case 'free form text box':
+      $status['message'] = $status['text'];
+      $status['headline'] = t('Senate Status');
+      $status['display_video'] = FALSE;
+      break;
+
+    default:
+      // belts and braces logic to make sure the temporary president case gets matched correctly
+      if (substr($status['state'], 0, 12) == 'Adjourned to' && preg_match('/temporary president/i', $status['state'], $matches)) {
+        $status['message'] = t('The Senate is adjourned to the call of the Temporary President. ');
+        $status['message'] .= _nyss_session_archives_text();
+        $status['message'] .= $status['text'];
+        $status['headline'] = t('When is Session?');
+        $status['display_video'] = FALSE;
+      }
+      // ... and to match the adjourned to case
+      else if (substr($status['state'], 0, 12) == 'Adjourned to' && trim($status['start_day']) != '' && trim($status['start_time']) != '') {
+        $status['message'] = t('Adjourned until @time, @date. ', array('@date' => $status['start_day'], '@time' => $status['start_time']));
+        $status['message'] .= _nyss_session_archives_text();
+        $status['message'] .= $status['text'];
+        $status['headline'] = t('When is Session?');
+        $status['display_video'] = FALSE;
+      }
+      // ... and to match the in recess case
+      else if (substr($status['state'], 0, 15) == 'In Recess until' && $status['start_time'] != '') {
+        $status['message'] = t('The Senate is in recess until @time . ', array('@time' => $status['start_time']));
+        $status['message'] .= _nyss_session_archives_text();
+        $status['message'] .= $status['text'];
+        $status['headline'] = t('When is Session?');
+        $status['display_video'] = FALSE;
+      }
+      // If nothing matches, use the value of $status['state'] directly
+      else if ($status['state'] != '') {
+        $status['message'] = $status['state'] . ' ';
+        $status['message'] .= $status['text'];
+        $status['headline'] = t('Senate Status');
+        $status['display_video'] = FALSE;
+      }
+      // If even that doesn't exist, use the value of $status['text'] directly
+      else if ($status['text']) {
+        $status['message'] = $status['text'];
+        $status['headline'] = t('Senate Status');
+        $status['display_video'] = FALSE;
+      }
+      // As a final resort, admit that status is unknown.
+      else {
+        $status['message'] = t('We are currently experiencing technical difficulties. Please stand by. ');
+        $status['headline'] = t('Senate Status');
+        $status['display_video'] = FALSE;
+      }
+      break;
+  }
+  $last_char = substr(trim($status['message']), -1, 1);
+  // add a period in case the journal clerk's office appends a message and forgets to punctuate.
+  if (!in_array($last_char, array('.', '?', '!'))) {
+    $status['message'] = trim($status['message']) . '. ';
+  }
+  return $status;
+}
+
+/**
+ * Helper function to return a text string with links to video archives and the
+ * Legislative Cable Channel Calendar.
+ *
+ * @return
+ *   HTML
+ */
+function _nyss_session_archives_text() {
+  return t('Please visit our !archives or check your local listings on the !cable_calendar. ',
+    array(
+      '!archives' => l(t('video archives'), 'video_archives'),
+      '!cable_calendar' => l(t('Legislative Cable Channel Calendar'), 'calendar/legislative-cable-channel'),
+    )
+  );
+}
+
+/**
+ * Retrieves some XML-formatted data.
+ *
+ * @param $url
+ *   The URL for the data source.
+ * @return
+ *   A SimpleXML object based on the XML that was retrieved.
+ */
+function _nyss_session_get_xml($url) {
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+  $data = curl_exec($ch);
+  curl_close($ch);
+  return simplexml_load_string($data);
+}
+

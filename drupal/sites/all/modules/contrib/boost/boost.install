@@ -1,0 +1,234 @@
+<?php
+// $Id: boost.install,v 1.2.2.1.2.3.2.17 2009/06/23 08:45:51 mikeytown2 Exp $
+
+/**
+ * @file
+ * Handles Boost module installation and upgrade tasks.
+ */
+
+//////////////////////////////////////////////////////////////////////////////
+// Core API hooks
+
+/**
+ * Implementation of hook_enable().
+ */
+function boost_enable() {
+  drupal_set_message(t('Boost successfully installed. Please review the available <a href="@settings">configuration settings</a>.', array('@settings' => url('admin/settings/performance'))));
+
+  // Forcibly disable Drupal's built-in SQL caching to prevent any conflicts of interest:
+  if (variable_get('cache', CACHE_DISABLED) != CACHE_DISABLED) {
+    variable_set('cache', CACHE_DISABLED);
+    drupal_set_message(t('Drupal\'s standard page caching disabled by Boost.'));
+  }
+}
+
+/**
+ * Implementation of hook_disable().
+ */
+function boost_disable() {
+  // Make sure that the static page cache is wiped when the module is disabled:
+  boost_cache_clear_all();
+  drupal_set_message(t('Static page cache cleared.'));
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function boost_install() {
+  // Ensure that the module is loaded early in the bootstrap:
+  db_query("UPDATE {system} SET weight = -90 WHERE name = '%s'", 'boost');
+  // Create tables.
+  drupal_install_schema('boost');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function boost_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE '%s_%%'", 'boost');
+  cache_clear_all('variables', 'cache');
+  // Delete tables.
+  drupal_uninstall_schema('boost');
+}
+
+/**
+ * Implementation of hook_requirements().
+ */
+function boost_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+  switch ($phase) {
+    case 'runtime':
+      $cache_directory = variable_get('boost_file_path', boost_cache_directory(NULL, FALSE));
+      $htaccess = file_get_contents('.htaccess');
+      _boost_mkdir_p($cache_directory);
+      $root_file = file_put_contents($cache_directory . '/' . variable_get('boost_root_file', '.boost'), $cache_directory);
+
+      if ($cache_directory != boost_cache_directory(NULL, FALSE)) {
+        $requirements['boost'] = array(
+          'title'       => $t('Boost'),
+          'description' => $t('!url: is not set to the default(!default). ', array('!url' => l('Cache file path', 'admin/settings/performance'), '!default'    => boost_cache_directory(NULL, FALSE))),
+          'severity'    => REQUIREMENT_WARNING,
+          'value'       => $t('Cache path'),
+        );
+      }
+      elseif (!is_dir($cache_directory)) {
+        $requirements['boost'] = array(
+          'title'       => $t('Boost'),
+          'description' => $t('!cache_dir: does not exist.', array('!cache_dir' => $cache_directory)),
+          'severity'    => REQUIREMENT_ERROR,
+          'value'       => $t('Cache path'),
+        );
+      }
+      elseif ($htaccess && count(explode("%{REQUEST_URI}_%{QUERY_STRING}\.html", $htaccess)) < 5) {
+        $requirements['boost'] = array(
+          'title'       => $t('Boost'),
+          'description' => $t('.htaccess file does not contain the boost specific rewrite rules, or the rewrite rules have changed and they need to be updated.', array()),
+          'severity'    => REQUIREMENT_ERROR,
+          'value'       => $t('.htaccess file'),
+        );
+      }
+      elseif (!$root_file || !is_writable($cache_directory)) {
+        $requirements['boost'] = array(
+          'title'       => $t('Boost'),
+          'description' => $t('Directory %dir credentials - Permissions: %fp. Owner %fo. Group %fg.<br /> Your credentials - Group ID: %gid. User ID: %uid. Current script owner: %user.', array('%dir' => getcwd() . '/' . $cache_directory, '%gid' => getmygid(), '%uid' => getmyuid(), '%user' => get_current_user(), '%fp' => substr(sprintf('%o', fileperms($cache_directory)), -4), '%fo' => fileowner($cache_directory), '%fg' => filegroup($cache_directory) )),
+          'severity'    => REQUIREMENT_ERROR,
+          'value'       => $t('Can not write to filesystem'),
+        );
+      }
+      elseif ((variable_get('statistics_count_content_views', 0) || variable_get('statistics_enable_access_log', 0)) && !file_exists('boost_stats.php')) {
+        $requirements['boost'] = array(
+          'title'       => $t('Boost'),
+          'description' => $t('Copy the boost_stats.php file to your webroot. It should be located in the modules/boost/stats directory.'),
+          'severity'    => REQUIREMENT_WARNING,
+          'value'       => $t('boost_stats.php missing from root dir'),
+        );
+      }
+      else {
+        $requirements['boost'] = array(
+          'title'       => $t('Boost'),
+          'severity'    => REQUIREMENT_OK,
+          'value'       => t(''),
+        );
+      }
+    break;
+  }
+  return $requirements;
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function boost_schema() {
+  $schema['boost_cache'] = array(
+    'description' => t('List of the cached page'),
+    'fields' => array(
+      'filename' => array(
+        'description' => 'Path of the cached file relative to Drupal root.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'expire' => array(
+        'description' => t('UNIX timestamp for the expiration date of cached page.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'lifetime' => array(
+        'description' => t('Number of seconds this page should be considered fresh. Used to set the expiration column.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => -1,
+      ),
+      'push' => array(
+        'description' => 'A flag to indicate whether page should be crawled so it is fresh in the cache.',
+        'type' => 'int',
+        'size' => 'small',
+        'not null' => TRUE,
+        'default' => -1,
+      ),
+      'page_callback' => array(
+        'description' => 'The name of the function that renders the page.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'page_arguments' => array(
+        'description' => 'The name of the content type.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+    ),
+    'indexes' => array(
+      'expire' => array('expire'),
+      'push' => array('push'),
+    ),
+    'primary key' => array('filename'),
+  );
+  $schema['boost_cache_settings'] = array(
+    'description' => t('Boost cache settings'),
+    'fields' => array(
+      'csid' => array(
+        'description' => 'Primary Key: Unique cache settings ID.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'page_callback' => array(
+        'description' => 'The name of the function that renders the page.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'page_arguments' => array(
+        'description' => 'The name of the content type.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'lifetime' => array(
+        'description' => t('Number of seconds this page should be considered fresh. Used to set the expiration column.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => -1,
+      ),
+      'push' => array(
+        'description' => 'A flag to indicate whether page should be crawled so it is fresh in the cache.',
+        'type' => 'int',
+        'size' => 'small',
+        'not null' => TRUE,
+        'default' => -1,
+      ),
+    ),
+    'indexes' => array(
+      'page_callback' => array('page_callback'),
+      'page_arguments' => array('page_arguments'),
+    ),
+    'primary key' => array('csid'),
+  );
+  return $schema;
+}
+
+/**
+ * Update 6100 - Install Boost Database.
+ */
+function boost_update_6100() {
+  // Create tables.
+  return drupal_install_schema('boost');
+}
+
+/**
+ * Update 6101 - Copy old variable to new one.
+ */
+function boost_update_6101() {
+  // copy variable
+  return db_query("UPDATE {variable} SET name = 'boost_enabled' WHERE name = 'boost'");
+}

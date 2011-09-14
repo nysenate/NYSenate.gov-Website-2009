@@ -1,0 +1,604 @@
+<?php
+
+/**
+ * @file
+ * This module creates several user lists, which may be viewed as pages and blocks.
+ * User lists may be displayed alphabetically, beginning with A-Z, by newest, by role, or as a list of users who have posted content of a certain type.
+ */
+
+function user_list_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#user_list':
+      return t(
+        '<p>User lists may be displayed alphabetically, beginning with A-Z, by newest, or as a list of users who have posted content of a certain type.</p>
+        <p>Go to !admin to change the global settings for user lists, and to !block to configure specific user listing blocks if desired. Note that all blocks provided by this module are appended with "User List:", so they may be differentiated by similar blocks provided by other modules.</p>
+        <p>Note that you must enable access to the user listings with the \'access user lists\' permission at !access, which controls viewing both blocks and pages. If enabled and allowed, the main user listing page may be viewed at !user_list.</p>',
+        array('!admin' => l('admin/settings/user_list', 'admin/settings/user_list'), '!block' => l('admin/build/block', 'admin/build/block'), '!access' => l('admin/user/permissions', 'admin/user/permissions'), '!user_list' => l('userlist', 'userlist'))
+      );
+  }
+}
+
+function user_list_perm() {
+  return array('access user lists', 'administer user lists');
+}
+
+/**
+ *  returns a themed list of users
+ *  $op:
+ *    'newest' => the $paginated $number of newest users
+ *    'A' - 'Z' => the $paginated $number of users whose username begins with that letter (case doesn't matter)
+ *    'other' => the $paginated $number of users whose username begins with something other than 'A' - 'Z'
+ *    'content' => the $paginated $number of users who have created at least one node of content-type $content_type
+ *    'roles' => the $paginated $number of users who are in $role_type
+ *  $number:
+ *    the number of users to return
+ *  $paginated:
+ *    will this have a paginator at the end?
+ *  $default_header:
+ *    If this has a value, then the default header for this $op will be overridden.
+ *  $default_empty_msg:
+ *    If this has a value, then the default empty_msg for this $op will be overridden.
+ *  $content_type:
+ *    if $op is 'content', then this will be the content type to check, such as 'blog'. otherwise ignored.
+ *  $embed_menu:
+ *    if true, then prepend a userlist menu to the top of the user list.
+ *  $from_block:
+ *    true if is this being called from a block
+ *  $element_override:
+ *    if this is NULL, then we will automatically assign and increment an pager element beginning with 0.
+ *    otherwise, we will use the value given.
+ *  $role_type:
+ *    if $op is 'role', then this will be the user role. otherwise ignored
+ */
+function _user_list($op = 'all', $number = NULL, $paginated = TRUE, $include_more_link = NULL, $default_header = NULL, $default_empty_msg = NULL, $content_type = NULL, $embed_menu = NULL, $from_block = FALSE, $element_override = NULL, $role_type = NULL) {
+  static $element = 0;
+  if (!isset($element_override)) {
+    $element_override = $element;
+    $element += 1;
+  }
+
+  if (!$number) {
+    $number = variable_get('user_list_default_number', 10);
+  }
+
+  if ($embed_menu || ($embed_menu === NULL && variable_get('user_list_embed_menu', TRUE))) {
+    if (!$from_block) {
+      $args = array(arg(0), arg(1), arg(2));
+    }
+    else {
+      $args = array('userlist', $op, $content_type);
+    }
+    $embedded_menu = _user_list_embedded_menu($args);
+  }
+
+  if ($op == 'roles') {
+    $roles = variable_get('user_list_role_types', array());
+  }
+  else if ($op == 'content') {
+    $types = variable_get('user_list_content_types', array());
+  }
+
+  if (drupal_strlen($op) == 1 && variable_get('user_list_alpha_listing', TRUE)) {
+    $result = pager_query("SELECT u.uid, u.name FROM {users} u WHERE u.status <> 0 AND u.access <> 0 AND LOWER(u.name) LIKE '%s%%' ORDER BY u.name ASC", $number, $element_override, NULL, drupal_strtolower($op));
+    if ($include_more_link) {
+      $count = db_result(db_query("SELECT COUNT(u.uid) FROM {users} u WHERE u.status <> 0 AND u.access <> 0 AND LOWER(u.name) LIKE '%s%%'"));
+    }
+    $header = t('Users Beginning with @letter', array('@letter' => drupal_strtoupper($op)));
+    $empty_msg = t('There are currently no users with usernames beginning with @letter.', array('@letter' => $op));
+  }
+  else if ($op == 'content' && ($type_name = node_get_types('name', $content_type)) && $types[$content_type]) {
+    $header = t('Users who have contributed at least one %content', array('%content' => $type_name));
+    $count_query = "SELECT COUNT(DISTINCT(u.uid)) FROM {users} u INNER JOIN {node} n ON n.uid = u.uid AND n.type = '%s' WHERE u.status <> 0 AND u.access <> 0";
+    $result = pager_query("SELECT DISTINCT(u.uid), u.name FROM {users} u INNER JOIN {node} n ON n.uid = u.uid AND n.type = '%s' WHERE u.status <> 0 AND u.access <> 0 ORDER BY u.name ASC", $number, $element_override, $count_query, $content_type);
+    if ($include_more_link) {
+      $count = db_result(db_query($count_query, $content_type));
+    }
+    $empty_msg = t('There are currently no users who have contributed at least one %content.', array('%content' => $type_name));
+  }
+  else if ($op == 'roles' && _user_list_get_roles('base', $role_type) && $roles[$role_type]) {
+    $role = _user_list_get_roles('get', $role_type);
+    $header = t('Users of the %role role', array('%role' => $role->name));
+    $result = pager_query("SELECT u.uid, u.name FROM {users} u INNER JOIN {users_roles} r ON r.uid = u.uid AND r.rid = %d WHERE u.status <> 0 AND u.access <> 0 ORDER BY u.name ASC", $number, $element_override, NULL, $role->rid);
+    if ($include_more_link) {
+      $count = db_result(db_query("SELECT COUNT(u.uid) FROM {users} u INNER JOIN {users_roles} r ON r.uid = u.uid AND r.rid = %d WHERE u.status <> 0 AND u.access <> 0", $role->rid));
+    }
+    $empty_msg = t('There are currently no users of the %role role.', array('%role' => $role->name));
+  }
+  else if ($op == 'newest' && variable_get('user_list_newest', TRUE)) {
+    $header = t('Newest Users');
+    $result = pager_query('SELECT uid, name FROM {users} WHERE status <> 0 AND access <> 0 ORDER BY created DESC', $number, $element_override);
+    if ($include_more_link) {
+      $count = db_result(db_query("SELECT COUNT(u.uid) FROM {users} u WHERE u.status <> 0 AND u.access <> 0"));
+    }
+    $empty_msg = t('There are currently no users.');
+  }
+  else if ($op == 'other' && variable_get('user_list_alpha_listing', TRUE)) {
+    $header = t('Users Not in A-Z');
+    $result = pager_query("SELECT u.uid, u.name FROM {users} u WHERE (LOWER(u.name) < 'a' OR LOWER(u.name) > 'z') AND u.status <> 0 AND u.access <> 0 ORDER BY u.name ASC", $number, $element_override);
+    if ($include_more_link) {
+      $count = db_result(db_query("SELECT COUNT(u.uid) FROM {users} u WHERE (LOWER(u.name) < 'a' OR LOWER(u.name) > 'z') AND u.status <> 0 AND u.access <> 0"));
+    }
+    $empty_msg = t('There are currently no users with usernames not beginning with A-Z.');
+  }
+  else {
+    $header = t('All Users');
+    $result = pager_query('SELECT u.uid, u.name FROM {users} u WHERE status <> 0 AND access <> 0 ORDER BY u.name ASC', $number, $element_override);
+    if ($include_more_link) {
+      $count = db_result(db_query("SELECT COUNT(u.uid) FROM {users} u WHERE u.status <> 0 AND u.access <> 0"));
+    }
+    $empty_msg = t('There are currently no users.');
+  }
+  while ($account = db_fetch_object($result)) {
+    $users[] = $account;
+  }
+  if ($include_more_link) {
+    $include_more_link = ($count > $number ? $include_more_link : NULL);
+  }
+  $output = theme('user_list_list', $op, ($default_header === NULL ? $header : $default_header), $users, ($default_empty_msg === NULL ? $empty_msg : $default_empty_msg), $paginated, $number, $element_override, $include_more_link, $embedded_menu);
+  return $output;
+}
+
+function _user_list_page() {
+  if (arg(1) == 'content') {
+    return _user_list(arg(1), NULL, TRUE, FALSE, NULL, NULL, arg(2));
+  }
+  else if (arg(1) == 'roles') {
+    return _user_list(arg(1), NULL, TRUE, FALSE, NULL, NULL, NULL, NULL, FALSE, NULL, arg(2));
+  }
+  return _user_list(arg(1));
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function user_list_menu() {
+  $items['admin/settings/user_list'] = array(
+    'title' => 'User list',
+    'description' => 'Change the format and types of user lists that appear on the site.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('user_list_admin_settings'),
+    'access arguments' => array('administer user lists'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  if (variable_get('user_list_provide_page', TRUE)) {
+    $items['userlist'] = array(
+      'title' => 'User list',
+      'access arguments' => array('access user lists'),
+      'page callback' => '_user_list_page',
+      'type' => MENU_NORMAL_ITEM,
+    );
+    if (variable_get('user_list_provide_menu', FALSE)) {
+      $items['userlist/all'] = array(
+        'title' => 'all',
+        'access arguments' => array('access user lists'),
+        'page callback' => '_user_list_page',
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'weight' => -3,
+      );
+      if (variable_get('user_list_newest', TRUE)) {
+        $items['userlist/newest'] = array(
+          'title' => 'newest',
+          'access arguments' => array('access user lists'),
+          'page callback' => '_user_list_page',
+          'type' => MENU_LOCAL_TASK,
+          'weight' => -1,
+        );
+      }
+      if (variable_get('user_list_alpha_listing', TRUE)) {
+        $letter = 'a';
+        do {
+          $title = (variable_get('user_list_alpha_listing_caps', FALSE) ? drupal_strtoupper($letter) : $letter);
+          $items['userlist/'. $letter] = array(
+            'title' => '@letter',
+            'title arguments' => array('@letter' => $title),
+            'access arguments' => array('access user lists'),
+            'page callback' => '_user_list_page',
+            'type' => MENU_LOCAL_TASK,
+          );
+        } while ($letter++ < 'z');
+        $items['userlist/other'] = array(
+          'title' => 'other',
+          'access arguments' => array('access user lists'),
+          'page callback' => '_user_list_page',
+          'type' => MENU_LOCAL_TASK,
+          'weight' => 1,
+        );
+      }
+      foreach (variable_get('user_list_content_types', array()) as $type) {
+        if ($name = node_get_types('name', $type)) {
+          $items['userlist/content/'. $type] = array(
+            'title' => $name,
+            'access arguments' => array('access user lists'),
+            'page callback' => '_user_list_page',
+            'type' => MENU_LOCAL_TASK,
+            'weight' => 3,
+          );
+        }
+      }
+      foreach (variable_get('user_list_role_types', array()) as $type) {
+        if (_user_list_get_roles('base', $type)) {
+          $items['userlist/roles/'. $type] = array(
+            'title' => _user_list_get_roles('name', $type),
+            'access arguments' => array('access user lists'),
+            'page callback' => '_user_list_page',
+            'type' => MENU_LOCAL_TASK,
+            'weight' => 4,
+          );
+        }
+      }
+    }
+  }
+  return $items;
+}
+
+function user_list_admin_settings() {
+  $form = array();
+
+  $form['user_list_default_number'] = array(
+    '#type' => 'select',
+    '#title' => t('Default Number of Users to List'),
+    '#default_value' => variable_get('user_list_default_number', 10),
+    '#options' => drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 50, 100, 125, 150, 200, 250, 500)),
+    '#description' => t('Choose the default number of users to list on the various user list pages. Certain blocks, modules, or themes may override this value.'),
+  );
+
+  $form['user_list_types'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('User List Types'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['user_list_types']['user_list_newest'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Newest Users List'),
+    '#default' => variable_get('user_list_newest', TRUE),
+    '#description' => t('If checked, then a listing of newest users will be offered, ordered by most recently registered.'),
+  );
+
+  $form['user_list_types']['alpha_options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Alphabetical User Lists'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['user_list_types']['alpha_options']['user_list_alpha_listing'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Alphabetical Listings'),
+    '#default_value' => variable_get('user_list_alpha_listing', TRUE),
+    '#description' => t('If checked, then you may view users whose usernames begin with a specific letter of the alphabet, such as !a, !m, and !other for other than A-Z.', array('!a' => l('userlist/a', 'userlist/a'), '!m' => l('userlist/m', 'userlist/m'), '!other' => l('userlist/other', 'userlist/other'))),
+  );
+  $form['user_list_types']['alpha_options']['user_list_alpha_listing_caps'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Capitalize Letter in Menu'),
+    '#default_value' => variable_get('user_list_alpha_listing_caps', FALSE),
+    '#description' => t('If checked, then letters listed in the embedded or tabbed menu for links to alphabetized listings will be capitalized.'),
+  );
+
+  $form['user_list_types']['content_options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Content-Based User Lists'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $options = array();
+  foreach (node_get_types() as $type) {
+    $options[$type->type] = $type->name;
+  }
+  $form['user_list_types']['content_options']['user_list_content_types'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Content Type User Lists'),
+    '#default_value' => variable_get('user_list_content_types', array()),
+    '#options' => $options,
+    '#multiple' => TRUE,
+    '#description' => t('Select the node types you wish to allow user lists for. For instance, you may have a list of users who have written at least one blog entry at !blog, or who have contributed at least one image at !image.', array('!blog' => l('userlist/content/blog', 'userlist/content/blog'), '!image' => l('userlist/content/image', 'userlist/content/image'))),
+  );
+
+  $form['user_list_types']['role_options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Role-Based User Lists'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $options = _user_list_get_roles();
+  $form['user_list_types']['role_options']['user_list_role_types'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Role User Lists'),
+    '#default_value' => variable_get('user_list_role_types', array()),
+    '#options' => $options,
+    '#multiple' => TRUE,
+    '#description' => t('Select the roles you wish to allow user lists for. For instance, you may have a list of users who are of the %role role at !role_dest. NOTE: Spaces in role names are converted to underscore, but does not affect the role table.', array('%role' => current($options), '!role_dest' => l('userlist/roles/'. current($options), 'userlist/roles/'. current($options)))),
+  );
+
+  $form['user_list_menu_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Menu Settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['user_list_menu_settings']['user_list_provide_page'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide User Listing Page'),
+    '#default_value' => variable_get('user_list_provide_page', TRUE),
+    '#description' => t('If checked, a user listing page will be provided, along with an item in the menu (which may be renamed, moved, or disabled at !admin_menu). Note that when enabled, the profile module also provides a basic user listing page with the same title of \'user list\', although its path is different and it is not listed in the menu by default. This module\'s path is !userlist, while that of the profile module is !profile.', array('!admin_menu' => l('admin/build/menu', 'admin/build/menu'), '!userlist' => l('userlist', 'userlist'), '!profile' => l('profile', 'profile'))),
+  );
+  $form['user_list_menu_settings']['user_list_embed_menu'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Embedded Menu'),
+    '#default_value' => variable_get('user_list_embed_menu', TRUE),
+    '#description' => t('If checked, a menu will be embedded on the user list page. Note that this bypasses the default menu tab system in Drupal 4.7, and provides its own theme which is easier in most cases to customize.'),
+  );
+  $form['user_list_menu_settings']['user_list_provide_menu'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Menu Tab'),
+    '#default_value' => variable_get('user_list_provide_menu', FALSE),
+    '#description' => t('If checked, a menu tab will be displayed on the user list page. Note that if the alphabetical listings are provided, this menu tab will be quite long (at least 28 available options), and will most certainly require custom theming. Customizing the theme for menu tabs in Drupal 4.7 is a tricky prospect, so unless you require this functionality and are prepared to do the custom work, it is suggested you leave this item disabled and enable the embedded menu instead, which comes with a more manageable theme and is easier to customize.'),
+  );
+  menu_rebuild();
+  return system_settings_form($form);
+}
+
+function user_list_block($op = 'list', $delta = 'all', $edit = array()) {
+  switch ($op) {
+    case 'list':
+      $blocks['all'] = array('info' => t('User List: All users'));
+      $blocks['newest'] = array('info' => t('User List: Newest users'));
+      foreach (variable_get('user_list_content_types', array()) as $type) {
+        if ($name = node_get_types('name', $type)) {
+          $blocks[$type] = array('info' => t('User List: Users with @types', array('@type' => $name)));
+        }
+      }
+      foreach (variable_get('user_list_role_types', array()) as $type) {
+        if (_user_list_get_roles('base', $type)) {
+          $blocks[$type] = array('info' => t('User List: Users with %role', array('%role' => _user_list_get_roles('name', $type))));
+        }
+      }
+      return $blocks;
+    case 'configure':
+      if ($delta == 'all') {
+        $default_header = t('All users');
+      }
+      else if ($delta == 'newest') {
+        $default_header = t('Recent users');
+      }
+      else if (in_array($delta, variable_get('user_list_content_types', array()))) {
+        $default_header = t('Users who have contributed at least one @content', array('@content' => node_get_types('name', $delta)));
+      }
+      else if (in_array($delta, variable_get('user_list_role_types', array()))) {
+        $default_header = t('Users of the %role role', array('%role' => _user_list_get_roles('name', $delta)));
+      }
+      $form['header'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Header'),
+        '#default_value' => variable_get('user_list_block_header_'. $delta, $default_header),
+        '#description' => t('The block header as it will appear to the user.'),
+      );
+      $form['embedded_menu'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Embed Menu'),
+        '#default_value' => variable_get('user_list_block_embed_'. $delta, FALSE),
+        '#description' => t('If checked, an embedded menu of the various user listing pages will be included in the block.'),
+      );
+      $form['number'] = array(
+        '#type' => 'select',
+        '#title' => t('Number of users to list'),
+        '#default_value' => variable_get('user_list_block_number_'. $delta, variable_get('user_list_default_number', 10)),
+        '#options' => drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 50, 100, 125, 150, 200, 250, 500)),
+        '#description' => t('Choose the number of users to list on this block.'),
+      );
+      $form['include_more'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Include a more link'),
+        '#default_value' => variable_get('user_list_block_more_'. $delta, TRUE),
+        '#description' => t('If checked and the corresponding user list page is available, then this block will include a link to that page at the end, if there are more users than are listed in the block.'),
+      );
+      $form['include_more_msg'] = array(
+        '#type' => 'textfield',
+        '#title' => t('View more link text'),
+        '#default_value' => variable_get('user_list_block_more_msg_'. $delta, t('View More')),
+        '#description' => t('If there are more users than listed in the block, and we make a link available to view them on another page, then this is the text for that link.'),
+      );
+      return $form;
+    case 'save':
+      variable_set('user_list_block_header_'. $delta, $edit['header']);
+      variable_set('user_list_block_embed_'. $delta, $edit['embedded_menu']);
+      variable_set('user_list_block_number_'. $delta, $edit['number']);
+      variable_set('user_list_block_more_'. $delta, $edit['include_more']);
+      variable_set('user_list_block_more_msg_'. $delta, $edit['include_more_msg']);
+      break;
+    case 'view':
+      if (user_access('access user lists')) {
+        $number = variable_get('user_list_block_number_'. $delta, variable_get('user_list_default_number', 10));
+        $include_more = variable_get('user_list_block_more_'. $delta, TRUE);
+        $embed_menu = variable_get('user_list_block_embed_'. $delta, FALSE);
+        if ($delta == 'all') {
+          if ($include_more) {
+            $include_more = l(variable_get('user_list_block_more_msg_'. $delta, t('View More')), 'userlist');
+          }
+          $block['subject'] = variable_get('user_list_block_header_'. $delta, t('All Users'));
+          $block['content'] = _user_list('all', $number, FALSE, $include_more, '', NULL, NULL, $embed_menu, TRUE);
+        }
+        else if ($delta == 'newest') {
+          if ($include_more) {
+            $include_more = l(variable_get('user_list_block_more_msg_'. $delta, t('View More')), 'userlist/newest');
+          }
+          $block['subject'] = variable_get('user_list_block_header_'. $delta, t('Recent Users'));
+          $block['content'] = _user_list('newest', $number, FALSE, $include_more, '', NULL, NULL, $embed_menu, TRUE);
+        }
+        else if (in_array($delta, variable_get('user_list_content_types', array()))) {
+          if ($include_more) {
+            $include_more = l(variable_get('user_list_block_more_msg_'. $delta, t('View More')), 'userlist/content/'. $delta);
+          }
+          $block['subject'] = variable_get('user_list_block_header_'. $delta, t('Users who have contributed at least one @content', array('@content' => node_get_types('name', $delta))));
+          $block['content'] = _user_list('content', $number, FALSE, $include_more, '', NULL, $delta, $embed_menu, TRUE);
+        }
+        else if (in_array($delta, variable_get('user_list_role_types', array()))) {
+          if ($include_more) {
+            $include_more = l(variable_get('user_list_block_more_msg_'. $delta, t('View More')), 'userlist/roles/'. $delta);
+          }
+          $block['subject'] = variable_get('user_list_block_header_'. $delta, t('Users of the %role role', array('%role' => _user_list_get_roles('name', $delta))));
+          $block['content'] = _user_list('roles', $number, FALSE, $include_more, '', NULL, NULL, $embed_menu, TRUE, NULL, $delta);
+        }
+      }
+      return $block;
+  }
+}
+
+function _user_list_embedded_menu($args = array()) {
+  $items['all'] = array(
+    'path' => 'userlist',
+    'title' => t('all'),
+  );
+  if (variable_get('user_list_newest', TRUE)) {
+    $items['newest'] = array(
+      'path' => 'userlist/newest',
+      'title' => t('newest'),
+    );
+  }
+  if (variable_get('user_list_alpha_listing', TRUE)) {
+    $letter = 'a';
+    do {
+      $title = (variable_get('user_list_alpha_listing_caps', FALSE) ? drupal_strtoupper($letter) : $letter);
+      $items[$letter] = array(
+        'path' => 'userlist/'. $letter,
+        'title' => t('@letter', array('@letter' => $title)),
+      );
+      if ($args[1] == $letter) {
+        $active = $letter;
+        $items[$letter]['active'] = TRUE;
+      }
+    } while ($letter++ < 'z');
+    $items['other'] = array(
+      'path' => 'userlist/other',
+      'title' => t('other'),
+    );
+    if ($args[1] == 'other') {
+      $active = 'other';
+      $items['other']['active'] = TRUE;
+    }
+  }
+  foreach (variable_get('user_list_content_types', array()) as $type) {
+    if ($name = node_get_types('type', $type)) {
+      $items[$type] = array(
+        'path' => 'userlist/content/'. $type,
+        'title' => $name->name,
+      );
+      if ($args[1] == 'content' && $args[2] == $type) {
+        $active = $type;
+        $items[$type]['active'] = TRUE;
+      }
+    }
+  }
+  foreach (variable_get('user_list_role_types', array()) as $type) {
+    if (_user_list_get_roles('base', $type)) {
+      $items[$type] = array(
+        'path' => 'userlist/roles/'. $type,
+        'title' => _user_list_get_roles('name', $type),
+      );
+      if ($args[1] == 'roles' && $args[2] == $type) {
+        $active = $type;
+        $items[$type]['active'] = TRUE;
+      }
+    }
+  }
+  if (!isset($active)) {
+    $items['all']['active'] = TRUE;
+    $active = 'all';
+  }
+  return theme('user_list_menu', $items);
+}
+
+function user_list_theme() {
+  return array(
+    'user_list_menu' => array(
+      'arguments' => array('content', NULL),
+    ),
+    'user_list_list' => array(
+      'arguments' => array('content', NULL),
+    )
+
+  );
+}
+
+function theme_user_list_menu($items) {
+  drupal_add_css(drupal_get_path('module', 'user_list') .'/user_list.css');
+  $output = '';
+  foreach ($items as $item) {
+    $output .= '  <li class="leaf'. (isset($item['active']) ? ' active' : '') .'">'. l(t($item['title']), $item['path']) ."</li>\n";
+  }
+  return "<div class=\"menu user_list_menu\">\n<ul>\n". $output .'</ul></div>';
+}
+
+function theme_user_list_list($op = '', $header = '', $users = array(), $empty_msg = 'There are currently no users in this category to list.', $paginated = FALSE, $number = 10, $element = 0, $include_more = NULL, $embedded_menu = '') {
+  drupal_add_css(drupal_get_path('module', 'user_list') .'/user_list.css');
+  $output = '';
+  $output .= "<div id=\"user_list_$op\" class=\"user_list\">\n";
+  if ($header) {
+    $output .= '  <h3>'. $header ."</h3>\n  ";
+  }
+  $output .= "  <div class=\"content\">\n    ";
+  $output .= $embedded_menu;
+  if (empty($users)) {
+    $output .= $empty_msg;
+  }
+  else {
+    $output .= theme('user_list', $users);
+  }
+  $output .= "  </div>\n  ";
+  if ($include_more) {
+    $output .= "  <div class=\"more\">$include_more</div>\n";
+  }
+  if ($paginated) {
+    $output .= theme('pager', NULL, $number, $element);
+  }
+  $output .= "</div>\n";
+  return $output;
+}
+
+/**
+ *  returns an array|object|boolean of role table
+ *  $op:
+ *    'get' => return a $role object for a $role_type or an array of roles from role table
+ *    'base' => return whether a role exists in role table
+ *    'name' => return just the name of the role specified in $role_type
+ *  $role_type:
+ *    if role_type is null gets all roles, if role_type is specified grabs information for only that role from role table
+ */
+function _user_list_get_roles($op = 'get', $role_type = NULL) {
+  if (!is_null($role_type)) {
+    // need to make sure we translate back to spaces
+    $role_type = str_replace('_', ' ', $role_type);
+    $result = db_query("SELECT r.rid, r.name FROM {role} r WHERE r.name = '%s'", $role_type);
+  }
+  else {
+    $result = db_query("SELECT r.rid, r.name FROM {role} r");
+  }
+  if ($result) {
+    if ($op == 'base') {
+      return TRUE;
+    }
+    else if ($op == 'get') {
+      $roles = array();
+      if (is_null($role_type)) {
+        while ($role = db_fetch_object($result)) {
+          if ($role->rid > 2) {
+            // take care of spaces for url's
+            $roles[str_replace(' ', '_', $role->name)] = $role->name;
+          }
+        }
+      }
+      else {
+        $roles = db_fetch_object($result);
+      }
+      return $roles;
+    }
+    else if ($op == 'name') {
+      $roles = db_fetch_object($result);
+      if (isset($roles->name)) {
+        return $roles->name;
+      }
+    }
+  }
+  else {
+    return FALSE;
+  }
+}

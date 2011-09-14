@@ -1,0 +1,406 @@
+<?php
+// $Id$
+
+/**
+ *  Implements hook_theme().
+ */
+function nyss_misc_theme($existing, $type, $theme, $path) {
+  $items = array();
+  $items['nyss_misc_clean_markup'] = array(
+    'arguments' => array(
+      'node' => NULL,
+      'content' => NULL,
+    ),
+  );
+  $items['nyss_misc_node_relationships'] = array(
+    'arguments' => array(
+      'node' => NULL,
+      'types' => NULL,
+    ),
+  );
+  $items['nyss_misc_footer_menu'] = array(
+    'arguments' => array(),
+  );
+  $items['nyss_misc_primary_menu'] = array(
+    'arguments' => array(),
+  );
+  return $items;
+}
+
+/**
+ *  @file
+ *  NYSS Misc
+ *  Miscellaneous theme and modules alterations
+ *
+ */
+function nyss_misc_form_alter(&$form, $form_state, $form_id) {
+  // Remove Category filter from Advanced Search page
+  if ($form_id == 'search_form') {
+    unset($form['advanced']['category']);
+  }
+  
+  if ($form['#id'] == 'node-form') {
+    if ($form['path']['path']['#default_value']) {
+      $form['path']['pathauto_perform_alias']['#default_value'] = FALSE;
+    }
+    switch($form_id) {
+      //If this is one of Ben's OpenData nodes, it should default to a recommended base description.
+      case 'community_project_fund_node_form':
+        if(!$form['body_field']['body']['#default_value']) {
+          $form['body_field']['body']['#default_value'] = t('Insert your own content here.');
+        }
+        break;
+    }
+  }
+  
+  // Set up a few custom things for the Search Box that appears on 404 Pages
+  if ($form_id == 'search_block_form') {
+    unset($form['search_block_form']['#title']);
+    $form['search_block_form']['#size'] = 45;
+    $form['search_block_form']['#default_value'] = 'Search';
+    $form['search_block_form']['#attributes'] = array('onblur' => "if (this.value == '') {this.value = 'Search';}", 'onfocus' => "if (this.value == 'Search') {this.value = '';}" );
+    $form['submit']['#value'] = 'Go';
+  }
+  
+  if ($form_id == 'campaign_node_form') {
+    $form['activism_cta_module'] = array(
+      '#value'  => 'activism_petition',
+      '#type'   => 'hidden',
+    );
+    unset($form['buttons']['preview']);
+  }
+  // Require certain checkboxes to fill out a petition
+  if($form_id == 'activism_petition_activism_cta_form') {
+    $form['activism_cta_mail_list_age'] = array(
+      '#prefix' => '<div class="clearboth"></div>', 
+      '#type' => 'checkboxes',
+      '#title' => t('Terms of Participation'),
+      '#options' => array(
+        'age' => t('I confirm that I am over 13 years old'),
+        'privacy' => t('I have read the ' . l('Privacy Policy', 'privacy-policy')),
+        'top' => t('I have read the ' . l('Terms of Participation', 'legal')),
+      ),
+      '#required' => 1,
+    );
+    $form['#submit']['#validate'] = 'nyss_misc_activism_signup_form_validate';
+    $form['#submit'][] = 'nyss_misc_activism_signup_form_submit';
+    $form['submit']['#value'] = t('Submit');
+  }
+      
+  // Integrate Bronto with the Petition Module
+  if (isset($form['#node']) && $form['#node']->activism_cta_mail_list == 1 && arg(2) != 'activism_cta' && arg(2) != 'edit') {
+    if($form['activism_signup_state']) {
+      $form['activism_signup_state']['#default_value'] = 'NY';
+    }
+    if(!$form['activism_signup_mail']) {
+      $form['activism_signup_mail'] = array(
+        '#type' => 'textfield',
+        '#title' => t('E-mail address'),
+      );
+    }
+  }
+}
+
+function nyss_misc_activism_signup_form_validate(&$form, $form_state) {
+  if($form_state['values']['activism_signup_mail_list'] == 1) {
+    if ($form_state['values']['activism_signup_mail'] == '') {
+      form_set_error('activism_signup_mail ', t('You must include a valid email address to sign up.'));
+    }
+  }
+  if ($form_state['values']['activism_cta_mail_list_age']['age'] == '0') {
+    form_set_error('activism_cta_mail_list_age', t('You must confirm that you are over 13 years old to sign up.'));
+  }
+  if ($form_state['values']['activism_cta_mail_list_age']['privacy'] == '0') {
+    form_set_error('activism_cta_mail_list_age', t('You must confirm that you have read the Privacy Policy to sign up.'));
+  }
+  if ($form_state['values']['activism_cta_mail_list_age']['top'] == '0') {
+    form_set_error('activism_cta_mail_list_age', t('You must confirm that you have read the Terms of Participation to sign up.'));
+  }
+}
+
+function nyss_misc_activism_signup_form_submit(&$form, $form_state) {
+  if(count(form_get_errors()) == 0) {
+    if($form_state['values']['activism_signup_mail_list'] == 1) {
+      $accounts = nyss_signup_accounts();
+      
+      if (context_isset('nyss', 'senator')) {
+        $senator = context_get('nyss', 'senator');
+        if($senator->field_bronto_sitename[0]['value']) {
+          $committee_list = nyss_signup_get_list_name_from_nid($senator->nid);
+          $list = $committee_list . '___' . $accounts[$senator->field_bronto_sitename[0]['value']];
+        }
+      }
+      else {
+        $general_list . '___' . $accounts[$general_sitename];
+        $list = variable_get('bronto_general_list', '') . '___' . $accounts[variable_get('bronto_general_sitename', '')];
+      }
+
+      list($list, $siteID) = split('___', $list);
+      $nid = nyss_signup_get_nid_from_mailing_list($list);
+      nyss_signup_add_to_db($list, $siteID, $form_state['values']['activism_signup_mail'], $nid);
+      drupal_set_message('Email address submitted!');
+    }
+    else {
+      drupal_set_message('You have successfully signed this petition.');
+    }
+  }
+}
+
+function nyss_misc_node($node = NULL) {
+  static $page_thing;
+
+  // Create the static cache for future reference.
+  if (is_null($node)) {
+    if (is_null($page_thing)) {
+      if (arg(0) == 'node' && ($nid = arg(1)) && is_numeric($nid)) {
+        $node = node_load($nid);
+      }
+      else if (arg(0) == 'node' && (arg(1) == 'add') && ($nid = arg(3)) && is_numeric($nid)) {
+        $node = node_load($nid);
+      }
+      $page_thing = nyss_misc_node_from_path($node->path);
+    }
+    return $page_thing;
+  }
+}
+
+/**
+ *  Retrives the group or department node from a given URL. Used in the Organic Groups Team list and stuff.
+ *  @param $title
+ *    The title from the URL.
+ *  @param $reset 
+ *    If you send a true $reset variable the cache will not be used. Okay??
+ *  @return
+ *    The corresponding senator node object.
+ */
+function nyss_misc_node_from_path($path = NULL, $reset = FALSE) {
+  static $titles;
+
+  if($path == NULL) {
+    $path = arg(0).'/'.arg(1);
+  }
+
+  if (!isset($titles[$path]) || $reset) {
+    $titles[$path] = '';
+    
+    // Try to find a path from the first part of the URL.
+    $nid = db_result(db_query_range(db_rewrite_sql("SELECT n.nid FROM `node` n INNER JOIN `url_alias` s ON s.src = CONCAT('node/', n.nid) WHERE s.dst = '%s'"), $path, 0, 1));
+    if ($nid) {
+      $titles[$path] = node_load($nid);
+    }
+  }
+
+  return $titles[$path];
+}
+
+/**
+ * Called from the theme to render the big footer menu.
+ *
+ * @return string
+ */
+function nyss_misc_footer_menu() {
+  $cache = cache_get('nyss_misc_footer_menu');
+  $data = isset($cache) ? $cache->data : NULL;
+  if (empty($data)) {
+    $data = nyss_misc_menu_tree_output(menu_tree_all_data('primary-links'));
+    cache_set('nyss_misc_footer_menu', $data, 'cache');
+  }
+  return $data;
+}
+
+function theme_nyss_misc_footer_menu() {
+  return nyss_misc_footer_menu();
+}
+
+/**
+ * Called from the theme to render the primary links.
+ *
+ * @return string
+ */
+function nyss_misc_primary_menu() {
+  $cache = cache_get('nyss_misc_primary_menu');
+  $data = $cache->data;
+  $data = isset($cache) ? $cache->data : NULL;
+  if (empty($data)) {
+    $data = theme('nice_menu_primary_links');
+    cache_set('nyss_misc_primary_menu', $data, 'cache');
+  }
+  return $data;
+}
+
+function theme_nyss_misc_primary_menu() {
+  return nyss_misc_primary_menu();
+}
+
+/* 
+ * Hacked version of menu_tree_output to kill the 'Legislation' menu item
+ */
+function nyss_misc_menu_tree_output($tree) {
+  $output = '';
+  $items = array();
+
+  // Pull out just the menu items we are going to render so that we
+  // get an accurate count for the first/last classes.
+  foreach ($tree as $data) {
+    if (!$data['link']['hidden'] && $data['link']['title'] != 'Legislation') {
+      $items[] = $data;
+    }
+  }
+  $num_items = count($items);
+  foreach ($items as $i => $data) {
+    $extra_class = NULL;
+    if ($i == 0) {
+      $extra_class = 'first';
+    }
+    if ($i == $num_items - 1) {
+      $extra_class = 'last';
+    }
+    $link = theme('menu_item_link', $data['link']);
+    if ($data['below']) {
+      $output .= theme('menu_item', $link, $data['link']['has_children'], menu_tree_output($data['below']), $data['link']['in_active_trail'], $extra_class);
+    }
+    else {
+      $output .= theme('menu_item', $link, $data['link']['has_children'], '', $data['link']['in_active_trail'], $extra_class);
+    }
+  }
+  return $output ? theme('menu_tree', $output) : '';
+}
+
+/**
+ *  Generate some node header content for one of a node's related node types (e.g., senator, committee, event)
+ *  @param $node
+ *    The node object or node id.
+ *  @param $type 
+ *    The node type of its RELATED node (e.g., event, senator, committee, etc.)
+ *  @return
+ *    HTML-formatted links.
+ */
+function nyss_misc_node_relationship($node, $type = 'event') {
+  if (is_numeric($node)) {
+    $node = node_load($node);
+  }
+  $links = '';
+  if (isset($node->{"field_$type"})) {
+    $nid = $node->{"field_$type"}[0]['nid'];
+    if ($nid) {
+      $view = FALSE;
+      if (isset($node->{"field_$type"}[0]['view'])) {
+        $view = $node->{"field_$type"}[0]['view'];
+      }
+      if (!$view) {
+        $sql = 'SELECT n.nid, nr.title FROM {node} n LEFT JOIN {node_revisions} nr ON n.vid = nr.vid WHERE n.nid = %d';
+        if ($node->status) {
+          $sql .= ' AND n.status = 1';
+        }
+        $info = db_fetch_object(db_query($sql, $nid));
+        if ($info) {
+          $view = l($info->title, 'node/' . $nid);
+        }
+      }
+      if ($view) {
+        $links = "\n" . '<ul><li class="issues"><label>' . t('Related') . ' ' . $type . ': </label><span class="term_list">' . $view . '</span></li></ul>';
+      }
+    }
+  }
+  return $links;
+}
+
+/**
+ *  Generate node header content for a node's related node types (e.g., senator, committee, event)
+ *  @param $node
+ *    The node object or node id.
+ *  @param $type 
+ *    An array listing the related node types for whih header content should be produced
+ *  @return
+ *    HTML-formatted links.
+ */
+function nyss_misc_node_relationships($node, $types=array('event', 'committee', 'initiative')) {
+  $output = '';
+  foreach ($types as $type) {
+    $output .= nyss_misc_node_relationship($node, $type);
+  }
+  return $output;
+}
+
+function theme_nyss_misc_node_relationships($node, $types=array('event', 'committee', 'initiative')) {
+  return nyss_misc_node_relationships($node, $types);
+}
+
+/**
+ *  Look up the node type of the current page.
+ *  @return
+ *    The node type if on a node page; else NULL.
+ */
+function nyss_misc_node_type() {
+  if (arg(0) == 'node' && ($nid = arg(1)) && is_numeric($nid)) {
+    $node = node_load($nid);
+    return $node->type;
+  }
+  else return NULL;
+}
+
+/**
+ *  Get a plural spelling for a node type.
+ *  @param $type
+ *    The machine name of a node type.
+ *  @return
+ *    The corresponding senator node object.
+ */
+function nyss_misc_content_name_plural($type) {
+  $plural_name = array(
+    'blog' => t('Blog entries'),
+    'cable_broadcast' => t('Cable broadcasts'),
+    'campaign' => t('Petitions'),
+    'committee' => t('Committees'),
+    'community_project_fund' => t('Community project funds'),
+    'story' => t('Constituent stories'),
+    'district' => t('Districts'),
+    'event' => t('Events'),
+    'expenditure_report' => t('Expenditure reports'),
+    'feed' => t('Feeds'),
+    'group' => t('Groups'),
+    'in_the_news' => t('News items'),
+    'initiative' => t('Initiatives'),
+    'legislation' => t('Legislation'),
+    'organization' => t('Organizations'),
+    'outline' => t('Outlines'),
+    'page' => t('Pages'),
+    'panel' => t('Panels'),
+    'payroll' => t('Payrolls'),
+    'photo' => t('Photos'),
+    'poll' => t('Polls'),
+    'press_release' => t('Press releases'),
+    'report' => t('Reports'),
+    'senator' => t('Senators'),
+    'testimony' => t('Testimony'),
+    'transcript' => t('Transcripts'),
+    'video' => t('Videos'),
+    'webform' => t('Webforms'),
+  );
+  $type_plural = $plural_name[$type];
+  if ($type_plural) {
+    return $type_plural;
+  }
+  $node_type = node_get_types('type', $type);
+  return $node_type->name . 's';
+}
+
+/**
+ *  Return cleaned-up text for display in common listing contexts.
+ *  @param $node
+ *    The node whose content is being cleaned.
+ *  @param $content
+ *    The HTML that needs to be cleaned.
+ *  @return
+ *    HTML
+ */
+function theme_nyss_misc_clean_markup($node, $content) {
+  return nyss_misc_clean_markup($node, $content);
+}
+  
+function nyss_misc_clean_markup(&$node, $content) {
+  if ($node->format == 3) {
+    return $content;
+  }
+  return check_markup(strip_tags($content, '<p><div><img><a><b><i><strong><em><div><span><table><tr><td><th><tbody><thead>'), 1, TRUE);
+}

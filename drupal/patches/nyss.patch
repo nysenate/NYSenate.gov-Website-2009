@@ -1,0 +1,1206 @@
+diff -Naur pressflow-6.22.104/.htaccess production_export/.htaccess
+--- pressflow-6.22.104/.htaccess	2011-06-01 02:13:26.000000000 -0500
++++ production_export/.htaccess	2011-06-30 00:10:26.000000000 -0500
+@@ -106,11 +106,1080 @@
+   # uncomment the following line:
+   # RewriteBase /
+ 
++  # Redirect deprecated press release pages to current press release URL
++  RewriteCond %{HTTP_HOST} ^(.*)$ [NC]
++  RewriteRule ^senator/([^/]+)/contact_form$  http://%1/senator/$1/contact [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^(.*)$ [NC]
++  RewriteRule ^senator/([^/]+)/press$  http://%1/senator/$1/content/press_release [L,R=301]
++
++  # Redirect deprecated blog pages to current blog URL
++  RewriteCond %{HTTP_HOST} ^(.*)$ [NC]
++  RewriteRule ^senator/([^/]+)/blog$  http://%1/senator/$1/content/blog [L,R=301]
++
++  # Redirect deprecated "in the news" pages to current preferred URL
++  RewriteCond %{HTTP_HOST} ^(.*)$ [NC]
++  RewriteRule ^senator/([^/]+)/news$  http://%1/senator/$1/content/in_the_news [L,R=301]
++
++  # Redirect deprecated 'all content' pages to current preferred URL
++  RewriteCond %{HTTP_HOST} ^(.*)$ [NC]
++  RewriteRule ^senator/([^/]+)/content$  http://%1/senator/$1/newsroom [L,R=301]
++
++  # Reduce proxy caching for any content that matches url_pattern:
++  RewriteCond %{QUERY_STRING} ^$
++  RewriteRule ^ - [E=LOW_CACHE:1]
++  Header set Cache-Control "s-maxage=10" env=LOW_CACHE
++  
++  RewriteCond %{QUERY_STRING} ^q=live$
++  RewriteRule ^ - [E=NO_CACHE_A:1]
++  Header set Cache-Control "s-maxage=10, no-store, no-cache, private, must-revalidate, post-check=0, pre-check=0" env=NO_CACHE_A
++  
++  RewriteCond %{REQUEST_URI} ^/sites/all/modules/custom/nyss_session/session_get_status\.php$
++  RewriteRule ^ - [E=NO_CACHE:1]
++  Header set Cache-Control "no-store, no-cache, must-revalidate, post-check=0, pre-check=0" env=NO_CACHE
++  
++  RewriteCond %{HTTP_HOST} ^nyssenate20\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate20\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/eric-adams [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate15\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate15\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-p-addabbo-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate55\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www.nyssenate55\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-s-alesi [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate48\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate48\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/patty-ritchie [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate42\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate42\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-bonacic [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate46\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate46\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/neil-d-breslin [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate50\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate50\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-defrancisco [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate32\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate32\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/ruben-diaz [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate17\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate17\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/martin-malav%C3%A9-dilan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate29\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate29\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-duane [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate33\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate33\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/gustavo-rivera [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate44\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate44\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/hugh-t-farley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate2\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate2\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-flanagan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate8\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate8\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/charles-j-fuschillo-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate3\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate3\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/lee-m-zeldin [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate22\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate22\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/martin-j-golden [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate47\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate47\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-griffo [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate6\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate6\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kemp-hannon [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate36\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate36\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/ruth-hassell-thompson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate10\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate10\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/shirley-l-huntley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate7\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate7\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jack-m-martins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate4\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate4\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/owen-h-johnson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate34\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate34\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jeffrey-d-klein [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate27\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate27\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-kruger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate26\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate26\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/liz-krueger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate24\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate24\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/andrew-j-lanza [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate39\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate39\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/william-j-larkin-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate1\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate1\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kenneth-p-lavalle [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate40\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate40\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/greg-ball [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate52\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate52\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/tom-libous [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate45\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate45\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/elizabeth-little [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate5\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate5\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-l-marcellino [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate62\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate62\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-d-maziarz [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate43\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate43\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/roy-j-mcdonald [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate13\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate13\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jose-peralta [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate18\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate18\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/velmanette-montgomery [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate38\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate38\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/david-carlucci [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate54\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate54\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-f-nozzolio [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate12\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate12\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-gianaris [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate37\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate37\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/suzi-oppenheimer [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate11\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate11\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/tony-avella [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate21\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate21\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kevin-s-parker [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate30\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate30\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/bill-perkins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate61\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate61\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-h-ranzenhofer [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate56\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate56\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-e-robach [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate41\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate41\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/stephen-m-saland [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate19\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate19\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-l-sampson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate23\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate23\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/diane-j-savino [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate31\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate31\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/adriano-espaillat [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate28\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate28\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jose-m-serrano [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate51\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate51\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-l-seward [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate9\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate9\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/dean-g-skelos [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate14\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate14\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/malcolm-smith [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate25\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate25\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/daniel-l-squadron [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate58\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate58\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/timothy-kennedy [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate16\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate16\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/toby-ann-stavisky [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate35\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate35\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/andrea-stewart-cousins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate60\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate60\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/mark-grisanti [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate49\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate49\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/david-j-valesky [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate59\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate59\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/pat-gallivan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate53\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate53\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-f-omara [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nyssenate57\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nyssenate57\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/catharine-young [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorlavalle\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorlavalle\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kenneth-p-lavalle [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorflanagan\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorflanagan\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-flanagan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorowenjohnson\.net$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorowenjohnson\.net$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/owen-h-johnson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatormarcellino\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatormarcellino\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-l-marcellino [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorfuschillo\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorfuschillo\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/charles-j-fuschillo-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatordeanskelos\.org$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatordeanskelos\.org$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/dean-g-skelos [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^frankpadavan\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.frankpadavan\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/frank-padavan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorgolden\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorgolden\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/martin-j-golden [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorlanza\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorlanza\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/andrew-j-lanza [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatormorahan\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatormorahan\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-p-morahan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorbilllarkin\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorbilllarkin\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/william-j-larkin-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorvincentleibell\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorvincentleibell\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/vincent-l-leibell [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorsaland\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorsaland\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/stephen-m-saland [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorbonacic\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorbonacic\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-bonacic [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorfarley\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorfarley\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/hugh-t-farley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorlittle\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorlittle\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/elizabeth-little [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorgriffo\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorgriffo\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-griffo [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatordefrancisco\.org$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatordefrancisco\.org$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-defrancisco [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorjimseward\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorjimseward\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-l-seward [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorwinner\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorwinner\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-h-winner-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatornozzolio\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatornozzolio\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-f-nozzolio [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatoralesi\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatoralesi\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-s-alesi [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorjoerobach\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorjoerobach\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-e-robach [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatorvolker\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatorvolker\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/dale-m-volker [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senatormaziarz\.com$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senatormaziarz\.com$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-d-maziarz [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^adams.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.adams.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/eric-adams [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^addabbo.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.addabbo.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-p-addabbo-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^alesi.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.alesi.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-s-alesi [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^aubertine.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.aubertine.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/darrel-j-aubertine [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^bonacic.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.bonacic.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-bonacic [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^breslin.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.breslin.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/neil-d-breslin [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^defrancisco.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.defrancisco.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-defrancisco [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^diaz.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.diaz.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/ruben-diaz [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^dilan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.dilan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/martin-malav%C3%A9-dilan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^duane.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.duane.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-duane [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^espada.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.espada.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/pedro-espada-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^farley.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.farley.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/hugh-t-farley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^flanagan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.flanagan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-flanagan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^fuschillo.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.fuschillo.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/charles-j-fuschillo-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^foley.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.foley.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/brian-x-foley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^golden.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.golden.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/martin-j-golden [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^griffo.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.griffo.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-griffo [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^hannon.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.hannon.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.kemphannon.com/ [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^hassellthompson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.hassellthompson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/ruth-hassell-thompson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^huntley.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.huntley.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/shirley-l-huntley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^craigjohnson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.craigjohnson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/craig-m-johnson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^owenjohnson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.owenjohnson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/owen-h-johnson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^klein.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.klein.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jeffrey-d-klein [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^carlkruger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.carlkruger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-kruger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^lizkrueger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.lizkrueger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/liz-krueger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^lanza.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.lanza.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/andrew-j-lanza [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^larkin.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.larkin.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/william-j-larkin-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^lavalle.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.lavalle.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kenneth-p-lavalle [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^leibell.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.leibell.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/vincent-l-leibell [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^libous.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.libous.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/tom-libous [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^little.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.little.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/elizabeth-little [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^marcellino.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.marcellino.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-l-marcellino [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^maziarz.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.maziarz.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-d-maziarz [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^mcdonald.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.mcdonald.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/roy-j-mcdonald [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^montgomery.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.montgomery.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/velmanette-montgomery [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^morahan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.morahan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-p-morahan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^nozzolio.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.nozzolio.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-f-nozzolio [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^onorato.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.onorato.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-onorato [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^oppenheimer.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.oppenheimer.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/suzi-oppenheimer [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^padavan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.padavan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/frank-padavan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^parker.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.parker.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kevin-s-parker [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^perkins.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.perkins.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/bill-perkins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ranzenhofer.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.ranzenhofer.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-h-ranzenhofer [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^robach.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.robach.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-e-robach [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^saland.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.saland.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/stephen-m-saland [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^sampson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.sampson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-l-sampson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^savino.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.savino.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/diane-j-savino [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^schneiderman.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.schneiderman.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/eric-t-schneiderman [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^serrano.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.serrano.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jose-m-serrano [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^seward.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.seward.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-l-seward [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^skelos.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.skelos.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/dean-g-skelos [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^smith.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.smith.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/malcolm-smith [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^squadron.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.squadron.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/daniel-l-squadron [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^stachowski.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.stachowski.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/william-t-stachowski [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^stavisky.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.stavisky.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/toby-ann-stavisky [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^stewartcousins.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.stewartcousins.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/andrea-stewart-cousins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^thompson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.thompson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/antoine-m-thompson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^valesky.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.valesky.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/david-j-valesky [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^volker.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.volker.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/dale-m-volker [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^winner.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.winner.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-h-winner-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^young.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.young.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/catharine-young [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ericadams.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.ericadams.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/eric-adams [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^josephaddabbo.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.josephaddabbo.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-p-addabbo-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^jamesalesi.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.jamesalesi.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-s-alesi [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^darrelaubertine.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.darrelaubertine.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/darrel-j-aubertine [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^johnbonacic.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.johnbonacic.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-bonacic [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^neilbreslin.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.neilbreslin.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/neil-d-breslin [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^johndefrancisco.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.johndefrancisco.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-defrancisco [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^rubendiaz.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.rubendiaz.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/ruben-diaz [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^martindilan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.martindilan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/martin-malav%C3%A9-dilan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^thomasduane.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.thomasduane.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-duane [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^pedroespada.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.pedroespada.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/pedro-espada-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^hughfarley.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.hughfarley.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/hugh-t-farley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^johnflanagan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.johnflanagan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-j-flanagan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^charlesfuschillo.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.charlesfuschillo.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/charles-j-fuschillo-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^brianfoley.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.brianfoley.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/brian-x-foley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^martingolden.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.martingolden.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/martin-j-golden [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^josephgriffo.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.josephgriffo.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-griffo [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^kemphannon.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.kemphannon.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kemp-hannon [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ruthhassellthompson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.ruthhassellthompson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/ruth-hassell-thompson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^shirleyhuntley.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.shirleyhuntley.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/shirley-l-huntley [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^cjohnson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.cjohnson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/craig-m-johnson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ojohnson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.ojohnson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/owen-h-johnson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^jeffreyklein.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.jeffreyklein.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jeffrey-d-klein [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^kruger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.kruger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-kruger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^carlkruger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.carlkruger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-kruger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^krueger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.krueger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/liz-krueger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^lizkrueger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.lizkrueger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/liz-krueger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^andrewlanza.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.andrewlanza.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/andrew-j-lanza [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^williamlarkin.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.williamlarkin.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/william-j-larkin-jr [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^kennethlavalle.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.kennethlavalle.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kenneth-p-lavalle [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^vincentleibell.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.vincentleibell.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/vincent-l-leibell [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^tomlibous.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.tomlibous.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/tom-libous [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^elizabethlittle.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.elizabethlittle.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/elizabeth-little [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^bettylittle.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.bettylittle.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/elizabeth-little [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^carlmarcellino.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.carlmarcellino.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-l-marcellino [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^georgemaziarz.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.georgemaziarz.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-d-maziarz [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^roymcdonald.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.roymcdonald.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/roy-j-mcdonald [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^velmanettemontgomery.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.velmanettemontgomery.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/velmanette-montgomery [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^thomasmorahan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.thomasmorahan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-p-morahan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^michaelnozzolio.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.michaelnozzolio.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-f-nozzolio [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^georgeonorato.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.georgeonorato.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-onorato [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^suzioppenheimer.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.suzioppenheimer.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/suzi-oppenheimer [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^frankapadavan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.frankapadavan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/frank-padavan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^kevinparker.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.kevinparker.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/kevin-s-parker [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^billperkins.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.billperkins.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/bill-perkins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^michaelranzenhofer.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.michaelranzenhofer.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-h-ranzenhofer [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^robach.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.robach.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-e-robach [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^josephrobach.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.josephrobach.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/joseph-e-robach [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^stephensaland.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.stephensaland.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/stephen-m-saland [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^johnsampson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.johnsampson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/john-l-sampson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^dianesavino.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.dianesavino.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/diane-j-savino [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ericschneiderman.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.ericschneiderman.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/eric-t-schneiderman [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^joseserrano.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.joseserrano.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jose-m-serrano [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^jamesseward.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.jamesseward.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/james-l-seward [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^deanskelos.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.deanskelos.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/dean-g-skelos [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^malcolmsmith.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.malcolmsmith.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/malcolm-smith [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^danielsquadron.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.danielsquadron.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/daniel-l-squadron [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^williamstachowski.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.williamstachowski.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/william-t-stachowski [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^tobystavisky.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.tobystavisky.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/toby-ann-stavisky [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^andreastewartcousins.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.andreastewartcousins.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/andrea-stewart-cousins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^antoinethompson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.antoinethompson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/antoine-m-thompson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^davidvalesky.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.davidvalesky.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/david-j-valesky [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^dalevolker.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.dalevolker.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/dale-m-volker [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^georgewinner.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.georgewinner.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/george-h-winner-jr [L,R=301]
++  
++
++  RewriteCond %{HTTP_HOST} ^catharineyoung.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.catharineyoung.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/catharine-young [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^johnson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.johnson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/johnson [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^kruger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.kruger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/carl-kruger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^krueger.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.krueger.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/liz-krueger [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^hassell-thompson.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.hassell-thompson.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/ruth-hassell-thompson [L,R=301]
++  
++  RewriteCond %{HTTP_HOST} ^espaillat.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.espaillat.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^adrianoespaillat.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.adrianoespaillat.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/adriano-espaillat [L,R=301]
++  
++  RewriteCond %{HTTP_HOST} ^carlucci.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.carlucci.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^davidcarlucci.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.davidcarlucci.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/david-carlucci [L,R=301]
++  
++  RewriteCond %{HTTP_HOST} ^rivera.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.rivera.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^gustavorivera.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.gustavorivera.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/gustavo-rivera [L,R=301]
++  
++  RewriteCond %{HTTP_HOST} ^gianaris.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.gianaris.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^michaelgianaris.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.michaelgianaris.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/michael-gianaris [L,R=301]
++  
++  RewriteCond %{HTTP_HOST} ^kennedy.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.kennedy.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^timothykennedy.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.timothykennedy.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/timothy-kennedy [L,R=301]
++  
++  RewriteCond %{HTTP_HOST} ^avella.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.avella.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^tonyavella.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.tonyavella.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/tony-avella [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^zeldin.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.zeldin.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^leezeldin.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.leezeldin.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/lee-m-zeldin [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^martins.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.martins.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^jackmartins.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.jackmartins.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jack-m-martins [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ball.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.ball.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^gregball.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.gregball.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/greg-ball [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ritchie.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.ritchie.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^pattyritchie.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.pattyritchie.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/patty-ritchie [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^omara.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.omara.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^thomasomara.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.thomasomara.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/thomas-f-omara [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^gallivan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.gallivan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^patgallivan.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.patgallivan.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/pat-gallivan [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^grisanti.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.grisanti.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^markgrisanti.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.markgrisanti.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/mark-grisanti [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^monserrate.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.monserrate.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^hirammonserrate.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.hirammonserrate.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^joseperalta.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^peralta.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.joseperalta.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.peralta.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/senator/jose-peralta [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senate.ny\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/ [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^markup.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/markup [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ideas.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/ideas [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^data.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/opendata [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^census.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/census [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^opensenate.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/open [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^legislation.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/legislation [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^openlegislation.nysenate\.gov$
++  RewriteRule ^(.*)$ http://open.nysenate.gov/openleg [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^summerreading.nysenate\.gov$
++  RewriteRule ^(.*)$ http://nyread.com [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ol.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www.open.nysenate\.gov$
++  RewriteRule ^(.*)$ http://open.nysenate.gov/legislation [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^opendata.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/opendata [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^openideas.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/openideas [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^ideas.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/openideas [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^software.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/department/cio [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^opensoftware.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/department/cio [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^calendar.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/calendar [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^events.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/calendar [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^mlk.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/initiative/mlk-day-service [L,R=301]
++   
++  RewriteCond %{HTTP_HOST} ^jobs2011\.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^jobs\.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^newjobs\.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/initiative/job-creation-and-taxpayer-protection-act-2011 [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^veterans\.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/initiative/veterans [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^redistricting\.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.redistricting\.nysenate\.gov$
++  RewriteRule ^(.*)$ http://www.nysenate.gov/initiative/redistricting [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^senate.state.ny.us$ [OR]
++  RewriteCond %{HTTP_HOST} ^www\.senate.state.ny.us$
++  RewriteRule ^(.*)$ http://www.nysenate.gov [L,R=301]
++
++  RewriteCond %{HTTP_HOST} ^dev.nysenate\.gov$ [OR]
++  RewriteCond %{HTTP_HOST} ^sandbox.nysenate\.gov$
++  RewriteRule ^(.*)$ http://nysenatestg.prod.acquia-sites.com [L,R=301]
++
++  RewriteCond %{HTTP_HOST} nysenate\.gov$ [NC]
++  RewriteCond %{HTTP_HOST} !^www\.nysenate\.gov$ [NC]
++  RewriteRule ^(.*)$ http://www.nysenate\.gov/$1 [L,R=301]
++
+   # Rewrite URLs of the form 'x' to the form 'index.php?q=x'.
+   RewriteCond %{REQUEST_FILENAME} !-f
+   RewriteCond %{REQUEST_FILENAME} !-d
+   RewriteCond %{REQUEST_URI} !=/favicon.ico
+   RewriteRule ^(.*)$ index.php?q=$1 [L,QSA]
++
+ </IfModule>
+ 
+ # $Id$
+diff -Naur pressflow-6.22.104/google00dfbaefc00b6c21.html production_export/google00dfbaefc00b6c21.html
+--- pressflow-6.22.104/google00dfbaefc00b6c21.html	1969-12-31 18:00:00.000000000 -0600
++++ production_export/google00dfbaefc00b6c21.html	2010-03-31 14:58:06.000000000 -0500
+@@ -0,0 +1 @@
++google-site-verification: google00dfbaefc00b6c21.html
+\ No newline at end of file
+diff -Naur pressflow-6.22.104/google5ebd22a406baf325.html production_export/google5ebd22a406baf325.html
+--- pressflow-6.22.104/google5ebd22a406baf325.html	1969-12-31 18:00:00.000000000 -0600
++++ production_export/google5ebd22a406baf325.html	2011-01-28 15:21:11.000000000 -0600
+@@ -0,0 +1 @@
++google-site-verification: google5ebd22a406baf325.html
+\ No newline at end of file
+diff -Naur pressflow-6.22.104/misc/feed.png production_export/misc/feed.png
+--- pressflow-6.22.104/misc/feed.png	2011-06-01 02:13:26.000000000 -0500
++++ production_export/misc/feed.png	2011-03-23 20:34:32.000000000 -0500
+@@ -1,5 +1,3 @@
+ ‰PNG
+ 
+-   IHDR         óÿa   gAMA  ¯È7Šé   tEXtSoftware Adobe ImageReadyqÉe<  ŽIDATxÚt“MHTQ†ßsî;£Ž:™CÊD™i­œ¤\øQPD›H"s´lj„DQ`‹È-[å&[”A.ªEdX”ZQÈäOBâUgæþœÓwÎ½3’Ò…ïž¹ð½ïy¾Ÿacç’‰Êdíõ˜Ëp0z1¾ñ,þ¦`¾ –ìû÷âS‰ñDÆ[[7ÎõÉM„g™áIF‰d]æÇ'2üyµEšžH2…òÖ“”ø3ã¿Æÿ+ÖžÄÒ¢Sa«¤Hm
+-‡.¢øÈ‚÷Ãü‰!0oe“Ø/\ÕgD8äÊò¯Àýøby,Z	ëà”õÃlìÚ$ö(¤/Á²}iÝX/…¹c?¬ŽË`[›5‘ÿê6¼ÏÏJbß‘ÈSh%°vµ¢êÒK”Ÿ¾+Ýü™†ûø<Äôˆ60:®©ö’Øw®Ð”j’Â6¶§iÏ zv<ÙA7ûS‰u¸‚ÇµX™ërnù‡§àŽÞ‚´g);óø du
+-Ïo®÷%}&»%‚õQamòë¼'½º29ÒŸU ÷â®¦(këÖbe"E±„pÎÖÑ;ˆœoè„÷f@“°ªzðÈMŒBæm°X%•¶GO#,Z¬jWBVß¶û<{ÎûGúÖHs—¾±ðm,èEc+Q	X¸a„g%Ùü”î¶›Ôß¼º^c;3Á7¢q"’.Ÿï? ·ÔzID¬Žbœïc¥Q©´NÎ}y”CfÎBÎ|f6yeï½†}uéåÿY’Ò¨Â†éš	[èÚ%b5qä¸=`ô6±·¹UÌ6—u¨u¥ù’¨hã%WAÍ¢iÁâ0ÊMøšþ;ÿ` Q5S:éÄÇ9    IEND®B`‚
+\ No newline at end of file
++   IHDR         óÿa   tEXtSoftware Adobe ImageReadyqÉe<   ¶IDATxÚb`@: U ˆˆUÏˆÅ æýPî žøtCõ\0£ði8ƒ¨@üˆ=€8(¦ðùÆ¾Ø`Â"& Äö@ü ˆ¡®H ºl>±€€ ñz nD2Ä` …E ‚Ù—ÀðpDVÇ‚-€Ôy ¾ Ä‰PWø1( ˆ7 ¡ÿê¥‹H±„Û  &Pà)±!TääB ^ e_fI À `W.2»ù•    IEND®B`‚
+\ No newline at end of file
+diff -Naur pressflow-6.22.104/modules/search/search.module production_export/modules/search/search.module
+--- pressflow-6.22.104/modules/search/search.module	2011-06-01 02:13:26.000000000 -0500
++++ production_export/modules/search/search.module	2011-06-30 00:10:26.000000000 -0500
+@@ -417,6 +417,15 @@
+  * @ingroup search
+  */
+ function search_index($sid, $type, $text) {
++  /*  ALERT!!! The following three lines of code were added to Drupal core by Sheldon on Jan. 11, 2011.
++   *  This supports removing content from the search index on a per-node basis, using the nyss_search_searchtext_alter() function
++   *  in the nyss_search module.
++   */
++  $alter_values = array('sid' => $sid, 'type' => $type, 'text' => $text);
++  drupal_alter('searchtext', $alter_values);
++  $text = $alter_values['text'];
++  /* END SHELDON'S HACK */
++  
+   $minimum_word_size = variable_get('minimum_word_size', 3);
+ 
+   // Link matching
+@@ -914,7 +923,7 @@
+  *
+  * @ingroup search
+  */
+-function do_search($keywords, $type, $join1 = '', $where1 = '1 = 1', $arguments1 = array(), $columns2 = 'i.relevance AS score', $join2 = '', $arguments2 = array(), $sort_parameters = 'ORDER BY score DESC') {
++function do_search($keywords, $type, $join1 = '', $where1 = '1 = 1', $arguments1 = array(), $columns2 = 'i.relevance AS score', $join2 = '', $arguments2 = array(), $sort_parameters = 'ORDER BY score DESC', $searchlimit = '10') {
+   $query = search_parse_query($keywords);
+ 
+   if ($query[2] == '') {
+@@ -954,7 +963,7 @@
+   $arguments = array_merge($arguments2, $arguments1, array($query[4]));
+ 
+   // Do actual search query
+-  $result = pager_query("$select $sort_parameters", 10, 0, $count_select, $arguments);
++  $result = pager_query("$select $sort_parameters", $searchlimit, 0, $count_select, $arguments);
+   $results = array();
+   while ($item = db_fetch_object($result)) {
+     $results[] = $item;
+diff -Naur pressflow-6.22.104/robots.txt production_export/robots.txt
+--- pressflow-6.22.104/robots.txt	2011-06-01 02:13:26.000000000 -0500
++++ production_export/robots.txt	1969-12-31 18:00:00.000000000 -0600
+@@ -1,57 +0,0 @@
+-#
+-# robots.txt
+-#
+-# This file is to prevent the crawling and indexing of certain parts
+-# of your site by web crawlers and spiders run by sites like Yahoo!
+-# and Google. By telling these "robots" where not to go on your site,
+-# you save bandwidth and server resources.
+-#
+-# This file will be ignored unless it is at the root of your host:
+-# Used:    http://example.com/robots.txt
+-# Ignored: http://example.com/site/robots.txt
+-#
+-# For more information about the robots.txt standard, see:
+-# http://www.robotstxt.org/wc/robots.html
+-#
+-# For syntax checking, see:
+-# http://www.sxw.org.uk/computing/robots/check.html
+-
+-User-agent: *
+-Crawl-delay: 10
+-# Directories
+-Disallow: /includes/
+-Disallow: /misc/
+-Disallow: /modules/
+-Disallow: /profiles/
+-Disallow: /scripts/
+-Disallow: /themes/
+-# Files
+-Disallow: /CHANGELOG.txt
+-Disallow: /cron.php
+-Disallow: /INSTALL.mysql.txt
+-Disallow: /INSTALL.pgsql.txt
+-Disallow: /install.php
+-Disallow: /INSTALL.txt
+-Disallow: /LICENSE.txt
+-Disallow: /MAINTAINERS.txt
+-Disallow: /update.php
+-Disallow: /UPGRADE.txt
+-Disallow: /xmlrpc.php
+-# Paths (clean URLs)
+-Disallow: /admin/
+-Disallow: /comment/reply/
+-Disallow: /logout/
+-Disallow: /node/add/
+-Disallow: /search/
+-Disallow: /user/register/
+-Disallow: /user/password/
+-Disallow: /user/login/
+-# Paths (no clean URLs)
+-Disallow: /?q=admin/
+-Disallow: /?q=comment/reply/
+-Disallow: /?q=logout/
+-Disallow: /?q=node/add/
+-Disallow: /?q=search/
+-Disallow: /?q=user/password/
+-Disallow: /?q=user/register/
+-Disallow: /?q=user/login/

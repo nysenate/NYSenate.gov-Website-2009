@@ -1,0 +1,1 @@
+<li id="menu-senator-<?php print $mlid; ?>" class="<?php if ($submenu) print 'menuparent '; ?>menu-path-<?php print str_replace('/', '-', $path); ?>"><div class=""><?php print l($text, $path); ?> <span class=""></span></div><?php print $submenu; ?></li>

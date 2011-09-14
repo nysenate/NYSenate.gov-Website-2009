@@ -1,0 +1,101 @@
+# $Id: nb.po,v 1.1.2.1 2009/05/08 16:55:27 lakka Exp $
+#
+# Norwegian Bokmål translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  spamspan.module,v 1.7.2.4.2.6 2009/05/04 17:58:33 lakka
+#  spamspan.info: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2009-05-07 16:57+0200\n"
+"PO-Revision-Date: 2009-05-07 16:57+0200\n"
+"Last-Translator: Eirik Rotevatn <EMAIL@ADDRESS>\n"
+"Language-Team: Norwegian Bokmål <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+#: spamspan.module:43
+msgid "Disguises email addresses in an attempt to reduce spam."
+msgstr "Maskerer e-postadresser i et forsøk på å redusere spam."
+
+#: spamspan.module:45
+msgid " <a href=\"%url\">more help</a>"
+msgstr " <a href=\"%url\">mer hjelp</a>"
+
+#: spamspan.module:49
+msgid "<p>The SpamSpan module obfuscates email addresses to help prevent spambots from collecting them. It will produce clickable links if JavaScript is enabled, and will show the email address as <code>example [at] example [dot] com</code> if the browser does not support JavaScript.</p><p>To configure the module, select \"configure\" next to the <a href=\"admin/filters\">input format</a> you'd like to use. Enable \"Hide Email Addresses\" and submit the form. Then select the \"configure\" tab to choose relevant options.</p>"
+msgstr "<p>SpamSpanmodulen maskerer e-postadresser i et forsøk på å skjule de for spambots. Den vil lage klikkbare lenker om JavaScript er aktivert, og vil vise e-postadressene som <code>eksempel [at] eksempel [dot] com</code> om nettleseren ikke støtter JavaScript.</p><p>For å konfigurere modulen, velg \"konfigurer\" ved <a href=\"admin/filters\">inndataformatet</a> du vil bruke. Aktiver \"Skjul e-postadresser\" og lagre, velg så \"konfigurer\"-fanen for å definere relevante innstillinger.</p>"
+
+#: spamspan.module:60
+msgid "Each email address will be obfuscated in a human readable fashion or (if JavaScript is enabled) replaced with a spamproof clickable link."
+msgstr "Hver e-postadresse vil maskeres på en måte mennesker kan lese, eller (dersom JavaScript er aktivert) erstattes av en klikkbar link som er beskyttet mot spam."
+
+#: spamspan.module:70
+msgid "Hide email addresses"
+msgstr "Masker e-postadresser"
+
+#: spamspan.module:77
+msgid "Attempt to hide email addresses from spam-bots."
+msgstr "Prøv å gjøre e-postadresser uleselige for spambots"
+
+#: spamspan.module:89
+msgid "SpamSpan email address encoding filter"
+msgstr "SpamSpan filter for koding av e-postadresser"
+
+#: spamspan.module:90
+msgid "Warning: these are global settings and not per input format. Changing them here will change them for other input formats too.  You should not normally need to change any of these settings."
+msgstr "Advarsel: dette er globale innstillinger og ikke for hvert enkelt inndataformat. Endre innstillingene her vil endre de for alle inndataformat. Du skal normalt ikke behøve å endre noen av disse innstillingene."
+
+#: spamspan.module:96
+msgid "User name class"
+msgstr "Navn på brukerklasse"
+
+#: spamspan.module:99
+msgid "The class name of the &lt;span&gt; element enclosing the part of the address before the \"@\"."
+msgstr "Navnet på klassen på &lt;span&gt;-elementet som går rundt delen av adressen som står foran \"@\"."
+
+#: spamspan.module:104
+msgid "Domain part class"
+msgstr "Navn på domeneklasse"
+
+#: spamspan.module:107
+msgid "The class name of the &lt;span&gt; element enclosing the part of the address after the \"@\"."
+msgstr "Navnet på klassen på &lt;span&gt;-elementet som går rundt delen av adressen som står bak \"@\"."
+
+#: spamspan.module:112
+msgid "Replacement for \"@\""
+msgstr "Erstatter for \"@\""
+
+#: spamspan.module:115
+msgid "Replace \"@\" with this text when javascript is disabled."
+msgstr "Erstatt \"@\" med denne teksten når JavaScript er deaktivert."
+
+#: spamspan.module:119
+msgid "Use a graphical replacement for \"@\""
+msgstr "Bruk en grafisk erstatter for \"@\""
+
+#: spamspan.module:122
+msgid "Replace \"@\" with a graphical representation when javascript is disabled (and ignore the setting \"Replacement for @\" above)."
+msgstr "Erstatt \"@\" med en grafisk representasjon når JavaScript er deaktivert (og ignorer innstillingen om teksterstattning over)."
+
+#: spamspan.module:0
+msgid "spamspan"
+msgstr "spamspan"
+
+#: spamspan.info:0
+msgid "SpamSpan"
+msgstr "SpamSpan"
+
+#: spamspan.info:0
+msgid "The SpamSpan module obfuscates email addresses to help prevent spambots from collecting them.  It implements the technique at http://www.spamspan.com."
+msgstr "SpamSpanmodulen maskerer e-postadresser i et forsøk på å skjule de for spambots. Modulen er demonstrert på http://www.spamspan.com."
+
+#: spamspan.info:0
+msgid "Input filters"
+msgstr "Inndatafilter"
+

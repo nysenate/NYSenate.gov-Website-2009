@@ -1,0 +1,66 @@
+div.ui-accordion {
+  margin-left: -12px;
+  position: relative;
+  width: 289px;
+}
+
+div.most {
+  background: url(../images/nyss_accordion_tab_bottom_bg.png) bottom left repeat-x;
+}
+
+div.ui-accordion h4 {
+  background: url(../images/nyss_arrow_right.png) 9px 0px no-repeat;
+  padding-left: 25px;
+  color: #1B5187;
+  font-family: Helvetica, Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+  font-size: .9em;
+  font-weight: bold;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+div.ui-accordion h4 {
+  padding-bottom: 12px;
+}
+
+div.ui-accordion h4.selected {
+  background: url(../images/nyss_arrow_down.png) 6px 3px no-repeat;
+  padding-bottom: 0;
+}
+
+div.ui-accordion div.view  {
+  margin-bottom: 10px;
+  padding-bottom: 18px;
+}
+
+
+div.ui-accordion div.most-commented div.view {
+	padding-bottom: 0;
+	margin-bottom: 0;
+}
+
+div.most-commented {
+	background: none;
+}
+
+div.ui-accordion div.item-list ul {
+	padding: 0 0 0 10px;
+}
+
+div.ui-accordion div.item-list ul li {
+	border-bottom: 1px solid #E2DED5;
+	padding-bottom: .3em;
+	margin-bottom: .3em;
+	margin-right: 10px;
+	list-style-image: none;
+	list-style-type: none;
+	padding-left: 15px;
+}
+
+div.ui-accordion div.item-list ul li.views-row-last {
+	border-bottom: none;
+	padding-bottom: 0;
+	margin-bottom: 0;
+}

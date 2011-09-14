@@ -1,0 +1,191 @@
+# translation of legal-5.x-1.3.po to russian
+# $Id: ru.po,v 1.1 2008/05/25 21:11:19 MegaGrunt Exp $
+# Russian translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  legal.module,v 1.15.2.5 2008/01/12 00:58:24 MegaGrunt
+#  legal.info,v 1.1.2.1 2007/02/04 02:48:02 MegaGrunt
+#  legal.install,v 1.1.4.3 2007/09/15 18:50:59 MegaGrunt
+#
+# Vlad Savitsky <vlad_savitsky@mail.ru>, 2008.
+msgid ""
+msgstr ""
+"Project-Id-Version: legal-5.x-1.3\n"
+"POT-Creation-Date: 2008-02-24 00:33+0200\n"
+"PO-Revision-Date: 2008-02-24 16:50+0200\n"
+"Last-Translator: Vlad Savitsky <vlad_savitsky@mail.ru>\n"
+"Language-Team: russian <ru@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms:  nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Generator: KBabel 1.11.4\n"
+
+#: legal.module:9
+msgid "Display a Terms & Conditions statement on the registration page, require visitor to accept T&C to register."
+msgstr "Показывает Правила сайта на странице регистрации, требует от посетителя согласиться с Правилами, чтобы зарегистрироваться."
+
+#: legal.module:10
+msgid "When a user creates an account they are required to accept your Terms & Conditions to complete their registration."
+msgstr "Когда пользователь регистрируется, то им нужно принять ваши Правила сайта, чтобы завершить регистрацию."
+
+#: legal.module:13
+msgid "Display a Terms & Conditions statement on the registration page, require visitor to accept the T&C to register. "
+msgstr "Показывает Правила сайта на странице регистрации, требует от посетителя согласиться с Правилами, чтобы зарегистрироваться. "
+
+#: legal.module:14
+msgid "A !page displaying your T&C will be automatically created, access to this page can be set via the !access administration page."
+msgstr "!page показывающая ваши Правила сайта будет автоматически создана, доступ к этой странице может быть настроен на странице !access."
+
+#: legal.module:35 legal.info:0
+msgid "Legal"
+msgstr "Правила сайта"
+
+#: legal.module:39 legal.info:0
+msgid "Display Terms and Conditions statement on the registration page."
+msgstr "Показывает Правила сайта на странице регистрации."
+
+#: legal.module:42;49
+msgid "Terms and Conditions"
+msgstr "Правила сайта"
+
+#: legal.module:81
+msgid "Terms and Conditions of Use"
+msgstr "Правила использования сайта"
+
+#: legal.module:97;157;251
+msgid "Terms & Conditions"
+msgstr "Правила сайта"
+
+#: legal.module:123
+msgid "<strong>Accept</strong> Terms & Conditions of Use"
+msgstr "<strong>Я буду выполнять</strong> Правила сайта"
+
+#: legal.module:159
+msgid "Your Terms & Conditions"
+msgstr "Правила и условия вашего сайта"
+
+#: legal.module:169
+msgid "Display Style"
+msgstr "Стиль отображения"
+
+#: legal.module:171
+msgid "Scroll Box"
+msgstr "В окне с прокруткой"
+
+#: legal.module:171
+msgid "Scroll Box (CSS)"
+msgstr "В окне с прокруткой (CSS)"
+
+#: legal.module:171
+msgid "HTML Text"
+msgstr "HTML-текст"
+
+#: legal.module:172
+msgid "How terms & conditions should be displayed to users."
+msgstr "Как правила сайта показывать пользователям."
+
+#: legal.module:179
+msgid "Additional Checkboxes"
+msgstr "Дополнительные соглашения"
+
+#: legal.module:180
+msgid "Each field will be shown as a checkbox which the user must tick to register."
+msgstr "Каждое поле будет показано в виде условия, с которым пользователь должен согласиться, чтобы зарегистрироваться."
+
+#: legal.module:193
+msgid "Label"
+msgstr "Заголовок"
+
+#: legal.module:210
+msgid "Explain Changes"
+msgstr "Разъяснение об изменениях"
+
+#: legal.module:211
+msgid "Explain what changes were made to the T&C since the last version. This will only be shown to users who accepted a previous version. Each line will automatically be shown as a bullet point."
+msgstr "Объясните какие изменения были сделаны в Правилах сайта по сравнению с прошлой версией. Это будет показано только пользователям, которые приняли предыдущую версию. Каждая новая строка будет оформлена как пункт списка."
+
+#: legal.module:218
+msgid "Changes"
+msgstr "Изменения"
+
+#: legal.module:225;285;318
+msgid "Preview"
+msgstr "Просмотреть"
+
+#: legal.module:230;557
+msgid "Save"
+msgstr "Сохранить"
+
+#: legal.module:279
+msgid "Terms & Conditions must be entered."
+msgstr "Нужно ввести текст Правил сайта."
+
+#: legal.module:289
+msgid "Display setting has been saved."
+msgstr "Настройки отображения были сохранены."
+
+#: legal.module:295
+msgid "Terms & Conditions have been saved."
+msgstr "Правила сайта были сохранены."
+
+#: legal.module:307
+msgid "Terms & Conditions will not be shown to users, as no T&C have been saved."
+msgstr "Правила сайта не будут показываться пользователям, потому что они не были сохранены."
+
+#: legal.module:309
+msgid "Current Version"
+msgstr "Текущая версия"
+
+#: legal.module:309
+msgid "Version ID:"
+msgstr "Номер версии:"
+
+#: legal.module:309
+msgid "Last saved:"
+msgstr "Последнее изменение:"
+
+#: legal.module:571
+msgid "User ID cannot be identified."
+msgstr "Неизвестный ID пользователя."
+
+#: legal.module:585
+msgid "Session opened for %name."
+msgstr "Сессия открыта для пользователя %name."
+
+#: legal.module:602
+msgid "To continue to use this site please read the Terms & Conditions below, and complete the form to confirm your acceptance."
+msgstr "Чтобы продолжить использовать этот сайт, вам нужно согласиться с Правилами сайта. Ниже приведены Правила сайта. Пожалуйста, прочитайте их. Если вы согласны - заполните форму."
+
+#: legal.module:671
+msgid "Changes List"
+msgstr "Список изменений"
+
+#: legal.module:672
+msgid "Changes to the Terms & Conditions since last accepted:"
+msgstr "Изменения в Правилах сайта с тех пор, как вы с ними согласились:"
+
+#: legal.module:585
+msgid "user"
+msgstr "пользователь"
+
+#: legal.module:20
+msgid "administer Terms and Conditions"
+msgstr "управлять Правилами сайта"
+
+#: legal.module:20
+msgid "view Terms and Conditions"
+msgstr "смотреть Правила сайта"
+
+#: legal.module:0
+msgid "legal"
+msgstr "legal"
+
+#: legal.install:46
+msgid "Legal module installed successfully."
+msgstr "Модуль \"Правила сайта\" установлен."
+
+#: legal.install:49
+msgid "Table installation for the Legal module was unsuccessful. The tables may need to be installed by hand. See legal.install file for a list of the installation queries."
+msgstr "Установка таблиц базы данных модуля Право не сделана. Таблицы нужно установить вручную. Установочные запросы ищите в файле legal.install."
+
